@@ -1,4 +1,5 @@
 /* Sets all the text color to red! */
-body {
-    color: red;
+.neurograph-warning {
+  background-color: var(--text-highlight-bg);
+  color: var(--text-normal);
 }

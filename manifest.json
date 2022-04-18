@@ -1,10 +1,10 @@
 {
-	"id": "obsidian-sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.1",
-	"minAppVersion": "0.12.0",
-	"description": "This is a sample plugin for Obsidian. This plugin demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
+	"id": "obsidian-neurograph",
+	"name": "NeuroGraph",
+	"version": "0.0.1",
+	"minAppVersion": "0.14.0",
+	"description": "A clean and intuitive graph view for Obsidian",
+	"author": "Zsolt Viczian",
+	"authorUrl": "https://zsolt.blog",
 	"isDesktopOnly": false
 }
