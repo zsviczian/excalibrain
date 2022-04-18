@@ -12,6 +12,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "obsidian-dataview": "^0.5.9"
   },
   "devDependencies": {
     "@babel/core": "^7.16.12",

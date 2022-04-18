@@ -1,0 +1,1 @@
+export type Hierarchy = {[key:string]: string[]}

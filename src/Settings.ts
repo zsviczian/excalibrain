@@ -5,13 +5,18 @@ import {
 } from "obsidian";
 import { t } from "./lang/helpers";
 import NeuroGraph from "./main";
+import { Hierarchy } from "./Types";
 
 export interface NeuroGraphSettings {
-  hierarchy: {};
+  hierarchy: Hierarchy;
 }
 
 export const DEFAULT_SETTINGS: NeuroGraphSettings = {
-  hierarchy: {},
+  hierarchy: {
+    parents: ["Parent", "Parents", "up", "u"],
+    children: ["Children", "Child", "down", "d"],
+    friends: ["Friends", "Friend", "Jump", "Jumps", "j"]
+  },
 };
 
 const fragWithHTML = (html: string) =>
@@ -51,7 +56,7 @@ export class NeuroGraphSettingTab extends PluginSettingTab {
     coffeeImg.height = 45;
 
     
-    const malformedJSON = containerEl.createEl("p", { text: t("MALFORMED_JSON"), cls:"neurograph-warning" });
+    const malformedJSON = containerEl.createEl("p", { text: t("JSON_MALFORMED"), cls:"neurograph-warning" });
     malformedJSON.hide();
     new Setting(containerEl)
       .setName(t("HIERARCHY_NAME"))
@@ -63,11 +68,32 @@ export class NeuroGraphSettingTab extends PluginSettingTab {
           .setValue(JSON.stringify(this.plugin.settings.hierarchy,null,2))
           .onChange((value) => {
             try {
-              JSON.parse(value);
+              const j = JSON.parse(value);
+              if(!(j.hasOwnProperty("parents") && j.hasOwnProperty("children") && j.hasOwnProperty("friends"))) {
+                malformedJSON.setText(t("JSON_MISSING_KEYS"));
+                malformedJSON.show();
+                return;
+              }
+              if(!(Array.isArray(j.parents) && Array.isArray(j.children) && Array.isArray(j.friends))) {
+                malformedJSON.setText(t("JSON_VALUES_NOT_STRING_ARRAYS"));
+                malformedJSON.show();
+                return;  
+              }
+              if(j.parents.length===0 || j.children.length===0 || j.friends.length === 0) {
+                malformedJSON.setText(t("JSON_VALUES_NOT_STRING_ARRAYS"));
+                malformedJSON.show();
+                return;
+              }
+              if(!(j.parents.every((v:any)=>typeof v === "string") && j.children.every((v:any)=>typeof v === "string") && j.friends.every((v:any)=>typeof v === "string"))) {
+                malformedJSON.setText(t("JSON_VALUES_NOT_STRING_ARRAYS"));
+                malformedJSON.show();
+                return;
+              }
               malformedJSON.hide();
-              this.hierarchy = value;
+              this.hierarchy = value; 
             }
             catch {
+              malformedJSON.setText(t("JSON_MALFORMED"));
               malformedJSON.show();
             }
         });
