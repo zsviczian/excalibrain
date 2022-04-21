@@ -5,7 +5,7 @@ export enum RelationType {
   INFERRED
 }
 
-type Relation = {
+export type Relation = {
   target: Page;
   isParent: boolean;
   parentType?: RelationType;
@@ -28,7 +28,7 @@ const DEFAULT_RELATION:Relation = {
 export class Page {
   public path: string;
   public file: TFile;
-  private neighbours: Map<string,Relation>;
+  public neighbours: Map<string,Relation>;
 
   constructor(path:string, file:TFile) {
     this.path = path;
@@ -96,6 +96,10 @@ export class Page {
     });
   }
   
+  unlinkNeighbour(pagePath: string) {
+    this.neighbours.delete(pagePath);
+  }
+
   //-----------------------------------------------
   //see: getRelationLogic.excalidraw
   //-----------------------------------------------

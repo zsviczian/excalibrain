@@ -1,10 +1,13 @@
-import { App, MetadataCache, Notice, Plugin, PluginManifest } from 'obsidian';
+import { App, MetadataCache, Notice, Plugin, PluginManifest, TAbstractFile, TFile, TFolder } from 'obsidian';
 import { Page, RelationType } from './graph/Page';
 import { DEFAULT_SETTINGS, NeuroGraphSettings, NeuroGraphSettingTab } from './Settings';
 import { errorlog, log } from './utils/logging';
 import { getAPI } from "obsidian-dataview"
 import { t } from './lang/helpers';
 import { PLUGIN_NAME } from './constants';
+import { DvAPIInterface } from 'obsidian-dataview/lib/typings/api';
+import { getDVFieldLinksForPage } from './utils/dataview';
+import { Pages } from './graph/Pages';
 
 declare module "obsidian" {
   interface App {
@@ -16,18 +19,20 @@ declare module "obsidian" {
 
 export default class NeuroGraph extends Plugin {
   public settings:NeuroGraphSettings;
-  private pages: Map<string,Page>;
+  private pages: Pages;
+  public DVAPI: DvAPIInterface;
   
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
-    this.pages = new Map<string,Page>();
+    this.pages = new Pages(this);
   }
 
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new NeuroGraphSettingTab(this.app, this));
     this.app.workspace.onLayoutReady(async()=>{
-      if(!getAPI()) {
+      this.DVAPI = getAPI();
+      if(!this.DVAPI) {
         new Notice(t("DATAVIEW_NOT_FOUND"),4000);
         errorlog({fn:this.onload, where:"main.ts/onload()", message:"Dataview not found"});
         this.app.plugins.disablePlugin(PLUGIN_NAME)
@@ -38,56 +43,54 @@ export default class NeuroGraph extends Plugin {
 	}
 
   private initializeIndexer() {
-//    this.registerMetaCacheEventHandlers();
+    this.registerMetaCacheEventHandlers();
     const start = Date.now();
+    const resolvedLinks = this.app.metadataCache.resolvedLinks;
+
+    //Add all existing files
     for(const f of this.app.vault.getFiles()) {
-      this.pages.set(f.path,new Page(f.path,f));
+      this.pages.add(f.path,new Page(f.path,f));
     }
-    Object.keys(this.app.metadataCache.unresolvedLinks).forEach(
-      parentPath=>Object.keys(parentPath).forEach(childPath=>{
-        const page = new Page(childPath,null);
-        const parent = this.pages.get(parentPath);
-        this.pages.set(childPath,page);
-        page.addParent(parent,RelationType.INFERRED);
-        parent.addChild(page,RelationType.INFERRED);
-      })
-    )
-    Object.keys(app.metadataCache.resolvedLinks).forEach(
-      parentPath=>Object.keys(parentPath).forEach(childPath=>{
-        const child = this.pages.get(childPath);
-        const parent = this.pages.get(parentPath);
-        child.addParent(parent,RelationType.INFERRED);
-        parent.addChild(child,RelationType.INFERRED);
-      })
-    )
+    //Add all unresolved links and make child of page where it was found
+    this.pages.addUnresolvedLinks()
+    //Add all links as inferred children to pages on which they were found
+    this.pages.addResolvedLinks();
+    //Iterate all pages and add defined links based on Dataview fields
+    this.pages.forEach((page:Page,key:string)=>{
+      if(!page?.file) return;
+      this.pages.addDVFieldLinksToPage(page);
+    })
 
     log(`NeuroGraph initialized ${this.pages.size} number of pages in ${Date.now()-start}ms`);
   }
 
   private registerMetaCacheEventHandlers() {
     const metaCache: MetadataCache = self.app.metadataCache;
-    this.registerEvent(
-      metaCache.on("changed", (file, data, cache) =>
-        log({type:"changed",file,data,cache}),
-      ),
-    );
 
     this.registerEvent(
-      metaCache.on("deleted", (file, prevCache) =>
-        log({type:"deleted", file, prevCache}),
-      ),
+      metaCache.on("dataview:metadata-change",(type:string, file: TAbstractFile|TFile, oldPath?: string) => {
+        if(type!=="rename") return;
+        if(!(file instanceof TFile)) return;
+        this.pages.delete(oldPath);
+        this.pages.addWithConnections(file);
+        //register page: path
+        log({type,fileType: file instanceof TFile ? "file":"folder", path:file.path,oldPath});
+      })
     );
-
     this.registerEvent(
-      metaCache.on("resolve", (file) =>
-        log({type:"resolve", file, resolvedLinks: app.metadataCache.resolvedLinks[file.path], unresolvedLinks: app.metadataCache.unresolvedLinks[file.path]}),
-      ),
-    );
-
-    this.registerEvent(
-      metaCache.on("resolved", () =>
-        log("resolve"),
-      ),
+      metaCache.on("dataview:metadata-change",(type:string, file: TFile) => {
+        if(type==="rename") return;
+        switch (type) {
+          case "update":
+            this.pages.delete(file.path);
+            this.pages.addWithConnections(file);
+            break;
+          case "delete":
+            this.pages.delete(file.path);
+            break;
+        }
+        log({type, path:file.path});       
+      })
     );
   }
 
@@ -103,3 +106,4 @@ export default class NeuroGraph extends Plugin {
 		await this.saveData(this.settings);
 	}
 }
+

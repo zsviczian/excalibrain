@@ -1,11 +1,12 @@
 import { App, TFile } from "obsidian";
+import { Page } from "src/graph/Page";
 import NeuroGraph from "src/main";
 
-const getPathOrSelf = (app: App, link:string, hostPath:string) => 
+const getPathOrSelf = (app: App, link:string, hostPath:string):string => 
   (app.metadataCache.getFirstLinkpathDest(link,hostPath)?.path)??link;
 
-const readDVField = (app: App, field: any, file:TFile) => {
-  const res = new Set();
+const readDVField = (app: App, field: any, file:TFile):string[] => {
+  const res = new Set<string>();
 
   //the field is a list of links
   if(field.values) {
@@ -33,15 +34,18 @@ const readDVField = (app: App, field: any, file:TFile) => {
   return Array.from(res);
 }
 
-const getDVFieldLinks = (plugin: NeuroGraph, page: Record<string, any>, direction: string) => {
-  const fields = plugin.settings.hierarchy[direction];
-  const links = new Set();
+export const getDVFieldLinksForPage = (plugin: NeuroGraph, page: Page, fields: string[]):{link:string,field:string}[] => {
+  const dvPage = plugin.DVAPI.page(page.file.path);
+  if(!dvPage) {
+    return [];
+  }
+  const links:{link:string,field:string}[] = [];
   const processed = new Set();
   fields.forEach(f => {
-    if(page[f] && !processed.has(f)) {
+    if(dvPage[f] && !processed.has(f)) {
       processed.add(f);
-      readDVField(plugin.app,page[f],page.file).forEach(l=>links.add(l))
+      readDVField(plugin.app,dvPage[f],dvPage.file).forEach(l=>links.push({link:l,field:f}))
     };
   });
-  return Array.from(links);
+  return links;
 }
