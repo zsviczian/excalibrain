@@ -1,5 +1,5 @@
 {
-	"name": "obsidian-excalibrain",
+	"name": "excalibrain",
 	"version": "0.0.1",
 	"description": "A clean and intuitive graph view for Obsidian",
 	"main": "lib/index.js",
