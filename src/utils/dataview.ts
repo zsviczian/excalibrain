@@ -1,6 +1,6 @@
 import { App, TFile } from "obsidian";
 import { Page } from "src/graph/Page";
-import NeuroGraph from "src/main";
+import ExcaliBrain from "src/main";
 
 const getPathOrSelf = (app: App, link:string, hostPath:string):string => 
   (app.metadataCache.getFirstLinkpathDest(link,hostPath)?.path)??link;
@@ -34,7 +34,7 @@ const readDVField = (app: App, field: any, file:TFile):string[] => {
   return Array.from(res);
 }
 
-export const getDVFieldLinksForPage = (plugin: NeuroGraph, page: Page, fields: string[]):{link:string,field:string}[] => {
+export const getDVFieldLinksForPage = (plugin: ExcaliBrain, page: Page, fields: string[]):{link:string,field:string}[] => {
   const dvPage = plugin.DVAPI.page(page.file.path);
   if(!dvPage) {
     return [];

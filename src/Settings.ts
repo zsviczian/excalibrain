@@ -4,14 +4,14 @@ import {
   Setting,
 } from "obsidian";
 import { t } from "./lang/helpers";
-import NeuroGraph from "./main";
+import ExcaliBrain from "./main";
 import { Hierarchy } from "./Types";
 
-export interface NeuroGraphSettings {
+export interface ExcaliBrainSettings {
   hierarchy: Hierarchy;
 }
 
-export const DEFAULT_SETTINGS: NeuroGraphSettings = {
+export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   hierarchy: {
     parents: ["Parent", "Parents", "up", "u"],
     children: ["Children", "Child", "down", "d"],
@@ -22,11 +22,11 @@ export const DEFAULT_SETTINGS: NeuroGraphSettings = {
 const fragWithHTML = (html: string) =>
   createFragment((frag) => (frag.createDiv().innerHTML = html));
 
-export class NeuroGraphSettingTab extends PluginSettingTab {
-  plugin: NeuroGraph;
+export class ExcaliBrainSettingTab extends PluginSettingTab {
+  plugin: ExcaliBrain;
   private hierarchy: string = null;
 
-  constructor(app: App, plugin: NeuroGraph) {
+  constructor(app: App, plugin: ExcaliBrain) {
     super(app, plugin);
     this.plugin = plugin;
   }
@@ -34,6 +34,7 @@ export class NeuroGraphSettingTab extends PluginSettingTab {
   async hide() {
     if(this.hierarchy) {
       this.plugin.settings.hierarchy = JSON.parse(this.hierarchy);
+      this.plugin.initializeIndexer();
     }
     await this.plugin.saveSettings();
   }
@@ -56,7 +57,7 @@ export class NeuroGraphSettingTab extends PluginSettingTab {
     coffeeImg.height = 45;
 
     
-    const malformedJSON = containerEl.createEl("p", { text: t("JSON_MALFORMED"), cls:"neurograph-warning" });
+    const malformedJSON = containerEl.createEl("p", { text: t("JSON_MALFORMED"), cls:"excalibrain-warning" });
     malformedJSON.hide();
     new Setting(containerEl)
       .setName(t("HIERARCHY_NAME"))

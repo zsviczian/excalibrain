@@ -1,13 +1,13 @@
 import { App, MetadataCache, Notice, Plugin, PluginManifest, TAbstractFile, TFile, TFolder } from 'obsidian';
-import { Page, RelationType } from './graph/Page';
-import { DEFAULT_SETTINGS, NeuroGraphSettings, NeuroGraphSettingTab } from './Settings';
-import { errorlog, log } from './utils/logging';
+import { Page } from './graph/Page';
+import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './Settings';
+import { errorlog, log } from './utils/utils';
 import { getAPI } from "obsidian-dataview"
 import { t } from './lang/helpers';
 import { PLUGIN_NAME } from './constants';
 import { DvAPIInterface } from 'obsidian-dataview/lib/typings/api';
-import { getDVFieldLinksForPage } from './utils/dataview';
 import { Pages } from './graph/Pages';
+import { getEA } from "obsidian-excalidraw-plugin";
 
 declare module "obsidian" {
   interface App {
@@ -17,19 +17,19 @@ declare module "obsidian" {
   }
 }
 
-export default class NeuroGraph extends Plugin {
-  public settings:NeuroGraphSettings;
+export default class ExcaliBrain extends Plugin {
+  public settings:ExcaliBrainSettings;
   private pages: Pages;
   public DVAPI: DvAPIInterface;
+  public initialized: boolean = false;
   
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
-    this.pages = new Pages(this);
   }
 
 	async onload() {
 		await this.loadSettings();
-		this.addSettingTab(new NeuroGraphSettingTab(this.app, this));
+		this.addSettingTab(new ExcaliBrainSettingTab(this.app, this));
     this.app.workspace.onLayoutReady(async()=>{
       this.DVAPI = getAPI();
       if(!this.DVAPI) {
@@ -38,34 +38,32 @@ export default class NeuroGraph extends Plugin {
         this.app.plugins.disablePlugin(PLUGIN_NAME)
         return;
       }
+      log(getEA());
       this.initializeIndexer();
     });
 	}
 
-  private initializeIndexer() {
-    this.registerMetaCacheEventHandlers();
+  public async initializeIndexer() {
+    this.initialized = false;
+    this.pages = new Pages(this);
+
+    const metaCache: MetadataCache = self.app.metadataCache;
+
+    //wait for Dataview to complete reloading the index
+    while(
+      //@ts-ignore
+      this.app.metadataCache.inProgressTaskCount > 0 &&
+      this.DVAPI.index.importer.reloadQueue.length > 0
+    ) {
+      await sleep(100);
+    }
+
     const start = Date.now();
-    const resolvedLinks = this.app.metadataCache.resolvedLinks;
 
     //Add all existing files
     for(const f of this.app.vault.getFiles()) {
       this.pages.add(f.path,new Page(f.path,f));
     }
-    //Add all unresolved links and make child of page where it was found
-    this.pages.addUnresolvedLinks()
-    //Add all links as inferred children to pages on which they were found
-    this.pages.addResolvedLinks();
-    //Iterate all pages and add defined links based on Dataview fields
-    this.pages.forEach((page:Page,key:string)=>{
-      if(!page?.file) return;
-      this.pages.addDVFieldLinksToPage(page);
-    })
-
-    log(`NeuroGraph initialized ${this.pages.size} number of pages in ${Date.now()-start}ms`);
-  }
-
-  private registerMetaCacheEventHandlers() {
-    const metaCache: MetadataCache = self.app.metadataCache;
 
     this.registerEvent(
       metaCache.on("dataview:metadata-change",(type:string, file: TAbstractFile|TFile, oldPath?: string) => {
@@ -92,6 +90,20 @@ export default class NeuroGraph extends Plugin {
         log({type, path:file.path});       
       })
     );
+
+    //Add all unresolved links and make child of page where it was found
+    this.pages.addUnresolvedLinks()
+    //Add all links as inferred children to pages on which they were found
+    this.pages.addResolvedLinks();
+    //Iterate all pages and add defined links based on Dataview fields
+
+    this.pages.forEach((page:Page,key:string)=>{
+      if(!page?.file) return;
+      this.pages.addDVFieldLinksToPage(page);
+    })
+
+    log(`ExcaliBrain initialized ${this.pages.size} number of pages in ${Date.now()-start}ms`);  
+    this.initialized = true;
   }
 
 	onunload() {

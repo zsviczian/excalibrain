@@ -1,8 +1,12 @@
 {
-	"name": "obsidian-neurograph",
+	"name": "obsidian-excalibrain",
 	"version": "0.0.1",
 	"description": "A clean and intuitive graph view for Obsidian",
-	"main": "main.js",
+	"main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib/**/*"
+  ],
   "scripts": {
     "dev": "cross-env NODE_ENV=development rollup --config rollup.config.js -w",
     "build": "cross-env NODE_ENV=production rollup --config rollup.config.js && terser main.js --compress toplevel=true,passes=2 --output main.js",
@@ -12,7 +16,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "obsidian-dataview": "^0.5.9"
+    "obsidian-dataview": "^0.5.9",
+    "obsidian-excalidraw-plugin": "1.6.26-3"
   },
   "devDependencies": {
     "@babel/core": "^7.16.12",

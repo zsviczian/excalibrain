@@ -1,15 +1,15 @@
 import { App, TFile } from "obsidian";
-import NeuroGraph from "src/main";
+import ExcaliBrain from "src/main";
 import { getDVFieldLinksForPage } from "src/utils/dataview";
-import { log } from "src/utils/logging";
+import { log } from "src/utils/utils";
 import { Page, Relation, RelationType } from "./Page";
 
 export class Pages {
   private pages = new Map<string,Page>();
   private app: App;
-  private plugin: NeuroGraph;
+  private plugin: ExcaliBrain;
 
-  constructor (plugin: NeuroGraph) {
+  constructor (plugin: ExcaliBrain) {
     this.app = plugin.app;
     this.plugin = plugin;
   }
@@ -23,7 +23,9 @@ export class Pages {
   }
 
   public forEach = this.pages.forEach.bind(this.pages);
-  public size = this.pages.size;
+  public get size():number {
+     return this.pages.size;
+  }
 
   public delete(toBeDeletedPath:string) {
     const page = this.pages.get(toBeDeletedPath);
@@ -53,7 +55,7 @@ export class Pages {
     backlinksSet.forEach(link=>{
       const parent = this.pages.get(link);
       if(!link) {
-        log(`Unexpected: ${page.file.path} is referenced from ${link} as backlink in metadataCache, but page for ${link} has not yet been registered in NeuroGraph index.`);
+        log(`Unexpected: ${page.file.path} is referenced from ${link} as backlink in metadataCache, but page for ${link} has not yet been registered in ExcaliBrain index.`);
         return;
       }
       parent.addChild(page,RelationType.INFERRED);
@@ -80,6 +82,9 @@ export class Pages {
     }); 
   }
 
+  /**
+   * @param page if undefined add unresolved links for all the pages
+   */
   public addUnresolvedLinks(page?:Page) {
     const unresolvedLinks = this.app.metadataCache.unresolvedLinks;
     Object.keys(unresolvedLinks).forEach(parentPath=>{
@@ -89,7 +94,7 @@ export class Pages {
       Object.keys(unresolvedLinks[parentPath]).forEach(childPath=>{
         const newPage = new Page(childPath,null);
         const parent = this.pages.get(parentPath);
-        this.add(childPath,page);
+        this.add(childPath,newPage);
         newPage.addParent(parent,RelationType.INFERRED);
         parent.addChild(newPage,RelationType.INFERRED);
       })

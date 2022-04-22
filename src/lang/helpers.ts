@@ -1,7 +1,7 @@
 //Solution copied from obsidian-kanban: https://github.com/mgmeyers/obsidian-kanban/blob/44118e25661bff9ebfe54f71ae33805dc88ffa53/src/lang/helpers.ts
 
 import { moment } from "obsidian";
-import { errorlog } from "src/utils/logging";
+import { errorlog } from "src/utils/utils";
 import en from "./locale/en";
 
 const localeMap: { [k: string]: Partial<typeof en> } = {
