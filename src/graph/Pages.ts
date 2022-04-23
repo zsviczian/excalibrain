@@ -43,7 +43,7 @@ export class Pages {
   }
 
   public addWithConnections(file:TFile) {
-    const page = new Page(file.path,file);
+    const page = new Page(file.path,file,this.plugin);
     this.add(file.path, page);
 
     const backlinksSet = new Set(
@@ -92,7 +92,7 @@ export class Pages {
         return;
       }
       Object.keys(unresolvedLinks[parentPath]).forEach(childPath=>{
-        const newPage = new Page(childPath,null);
+        const newPage = new Page(childPath,null,this.plugin);
         const parent = this.pages.get(parentPath);
         this.add(childPath,newPage);
         newPage.addParent(parent,RelationType.INFERRED);
@@ -102,8 +102,13 @@ export class Pages {
   }
 
   public addDVFieldLinksToPage(page: Page) {
+    const dvPage = this.plugin.DVAPI.page(page.file.path);
+    if(!dvPage) {
+      return;
+    }
+    page.dvPage = dvPage;
     const parentFields = this.plugin.settings.hierarchy.parents;
-    getDVFieldLinksForPage(this.plugin,page,parentFields).forEach(item=>{
+    getDVFieldLinksForPage(this.plugin,dvPage,parentFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
         log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
@@ -113,7 +118,7 @@ export class Pages {
       referencedPage.addChild(page,RelationType.DEFINED,item.field);
     });
     const childFields = this.plugin.settings.hierarchy.children;
-    getDVFieldLinksForPage(this.plugin,page,childFields).forEach(item=>{
+    getDVFieldLinksForPage(this.plugin,dvPage,childFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
         log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
@@ -123,7 +128,7 @@ export class Pages {
       referencedPage.addParent(page,RelationType.DEFINED,item.field);
     });
     const friendFields = this.plugin.settings.hierarchy.friends;
-    getDVFieldLinksForPage(this.plugin,page,friendFields).forEach(item=>{
+    getDVFieldLinksForPage(this.plugin,dvPage,friendFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
         log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);

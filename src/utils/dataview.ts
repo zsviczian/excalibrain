@@ -34,11 +34,7 @@ const readDVField = (app: App, field: any, file:TFile):string[] => {
   return Array.from(res);
 }
 
-export const getDVFieldLinksForPage = (plugin: ExcaliBrain, page: Page, fields: string[]):{link:string,field:string}[] => {
-  const dvPage = plugin.DVAPI.page(page.file.path);
-  if(!dvPage) {
-    return [];
-  }
+export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<string, any>, fields: string[]):{link:string,field:string}[] => {
   const links:{link:string,field:string}[] = [];
   const processed = new Set();
   fields.forEach(f => {

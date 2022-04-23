@@ -3,3 +3,7 @@
   background-color: var(--text-highlight-bg);
   color: var(--text-normal);
 }
+
+.excalibrain-prompt-center {
+  text-align: center;
+}

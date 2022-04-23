@@ -1,42 +1,542 @@
 import {
   App,
+  DropdownComponent,
   PluginSettingTab,
   Setting,
+  SliderComponent,
+  TextComponent,
+  ToggleComponent,
 } from "obsidian";
+import { getEA } from "obsidian-excalidraw-plugin";
+import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 import { t } from "./lang/helpers";
 import ExcaliBrain from "./main";
-import { Hierarchy } from "./Types";
+import { Hierarchy, NodeStyle } from "./Types";
+import { WarningPrompt } from "./utils/Prompts";
 
 export interface ExcaliBrainSettings {
+  excalibrainFilepath: string;
   hierarchy: Hierarchy;
+  renderAlias: boolean;
+  backgroundColor: string;
+  baseNodeStyle: NodeStyle;
+  centralNodeStyle: NodeStyle;
+  inferredNodeStyle: NodeStyle;
+  virtualNodeStyle: NodeStyle;
+  siblingNodeStyle: NodeStyle;
+  tagNodeStyles: {[key: string]: NodeStyle};
+  tagStyleList: string[];
 }
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
+  excalibrainFilepath: "excalibrain.md",
   hierarchy: {
     parents: ["Parent", "Parents", "up", "u"],
     children: ["Children", "Child", "down", "d"],
     friends: ["Friends", "Friend", "Jump", "Jumps", "j"]
   },
+  renderAlias: true,
+  backgroundColor: "#C49A13FF",
+  baseNodeStyle: {
+    prefix: "",
+    backgroundColor: "#00000066",
+    textColor: "#ffffffff",
+    borderColor: "#00000000",
+    fontSize: 20,
+    fontFamily: 3,
+    maxLabelLength: 30,
+    roughness: 0,
+    strokeShaprness: "round",
+    strokeWidth: 1,
+    strokeStyle: "solid",
+    padding: 10,
+    gateRadius: 5,
+    gateOffset: 15,
+    gateStrokeColor: "#ffffffff",
+    gateBackgroundColor: "#ffffffff"  
+  },
+  centralNodeStyle: {
+    fontSize: 30,
+    backgroundColor: "#C49A13FF",
+    textColor: "#000000ff",
+  },
+  inferredNodeStyle: {
+    backgroundColor: "#000005b3",
+    textColor: "#95c7f3ff",
+  },
+  virtualNodeStyle: {
+    backgroundColor: "#ff000066",
+    textColor: "#ffffffff",
+  },
+  siblingNodeStyle: {
+    fontSize: 15,
+  },
+  tagNodeStyles: {},
+  tagStyleList: []
 };
+
+const getHex = (color:string) => color.substring(0,7);
+const getAlphaFloat = (color:string) => parseInt(color.substring(7,9),16)/255;
+const getAlphaHex = (a: number) => ((a * 255) | 1 << 8).toString(16).slice(1)
 
 const fragWithHTML = (html: string) =>
   createFragment((frag) => (frag.createDiv().innerHTML = html));
 
+const details = (text: string, parent: HTMLElement) =>
+  parent.createEl("details", {}, (d) => d.createEl("summary", { text }));
+
 export class ExcaliBrainSettingTab extends PluginSettingTab {
   plugin: ExcaliBrain;
+  ea: ExcalidrawAutomate;
   private hierarchy: string = null;
+  private dirty:boolean = false;
 
   constructor(app: App, plugin: ExcaliBrain) {
     super(app, plugin);
     this.plugin = plugin;
+    this.ea = getEA();
+  }
+
+  async sampleNode(style: NodeStyle):Promise<HTMLElement> {
+    this.ea.canvas.viewBackgroundColor = style.backgroundColor;
+
+    return;
   }
 
   async hide() {
+    if(!this.dirty) {
+      return;
+    }
+    this.plugin.settings.tagStyleList = Object.keys(this.plugin.settings.tagNodeStyles);
     if(this.hierarchy) {
       this.plugin.settings.hierarchy = JSON.parse(this.hierarchy);
-      this.plugin.initializeIndexer();
+      this.plugin.initializeIndex();
     }
     await this.plugin.saveSettings();
+  }
+
+  colorpicker(
+    containerEl: HTMLElement,
+    name: string,
+    description: string,
+    getValue:()=>string,
+    setValue:(val:string)=>void,
+    allowOverride: boolean,
+    defaultValue: string
+  ) {
+    let sliderComponent: SliderComponent;
+    let picker: HTMLInputElement;
+    let toggleComponent: ToggleComponent;
+    let colorLabel: HTMLSpanElement;
+    let opacityLabel: HTMLSpanElement;
+    let displayText: HTMLDivElement;
+
+    const setting = new Setting(containerEl)
+      .setName(name)
+
+    if(description) {
+      setting.setDesc(fragWithHTML(description));
+    }
+
+    const setDisabled = (isDisabled:boolean) => {
+      picker.disabled = isDisabled;
+      picker.style.opacity = isDisabled ? "0.3" : "1";
+      sliderComponent.setDisabled(isDisabled);
+      sliderComponent.sliderEl.style.opacity = isDisabled ? "0.3" : "1";
+      colorLabel.style.opacity = isDisabled ? "0.3" : "1";
+      opacityLabel.style.opacity = isDisabled ? "0.3" : "1";
+      displayText.style.opacity = isDisabled ? "0.3" : "1";
+    }
+
+    if(allowOverride) {
+      setting.addToggle(toggle => {
+        toggleComponent = toggle;
+        toggleComponent.toggleEl.style.marginRight = "5px";
+        toggle
+          .setValue(typeof getValue() !== "undefined")
+          .setTooltip(t("NODESTYLE_INCLUDE_TOGGLE"))
+          .onChange(value => {
+            this.dirty = true;
+            if(!value) {
+              setDisabled(true);
+              setValue(undefined);
+              return;
+            }
+            setValue(picker.value + getAlphaHex(sliderComponent.getValue()))
+            setDisabled(false);
+          })
+      })
+    }
+
+    colorLabel = createEl("span",{text:"color:"});
+    colorLabel.style.paddingRight="5px";
+    setting.controlEl.appendChild(colorLabel)   
+
+    picker = createEl("input", {type:"color"},(el:HTMLInputElement)=>{
+      el.value = getHex(getValue()??defaultValue);
+      el.onchange = () => {
+        setValue(el.value+ getAlphaHex(sliderComponent.getValue()));
+      }
+    });
+    setting.controlEl.appendChild(picker);
+
+    opacityLabel = createEl("span",{text: "opacity:"});
+    opacityLabel.style.paddingLeft = "10px";
+    opacityLabel.style.paddingRight = "5px";
+    setting.controlEl.appendChild(opacityLabel);
+
+    setting.addSlider(slider => {
+      sliderComponent = slider;
+      slider
+        .setLimits(0,1,0.1)
+        .setValue(getAlphaFloat(getValue()??defaultValue))
+        .onChange((value)=>{
+          setValue(picker.value + getAlphaHex(value));
+          displayText.innerText = ` ${value.toString()}`;
+          picker.style.opacity = value.toString();
+        })
+    })
+
+    displayText = createDiv("", (el) => {
+      el.style.minWidth = "2em";
+      el.style.textAlign = "right";
+      el.innerText = ` ${sliderComponent.getValue().toString()}`;
+    });
+    setting.controlEl.appendChild(displayText);
+    picker.style.opacity = sliderComponent.getValue().toString();
+
+    setDisabled(allowOverride && !toggleComponent.getValue());
+    
+  }
+
+  numberslider(
+    containerEl: HTMLElement,
+    name: string,
+    description: string,
+    limits: {min:number,max:number,step:number},
+    getValue:()=>number,
+    setValue:(val:number)=>void,
+    allowOverride: boolean,
+    defaultValue: number
+  ) {
+    let displayText: HTMLDivElement;
+    let toggleComponent: ToggleComponent;
+    let sliderComponent: SliderComponent;
+
+    const setting = new Setting(containerEl).setName(name);
+
+    const setDisabled = (isDisabled:boolean) => {
+      sliderComponent.setDisabled(isDisabled);
+      sliderComponent.sliderEl.style.opacity = isDisabled ? "0.3" : "1";
+      displayText.style.opacity = isDisabled ? "0.3" : "1";
+    }
+
+    if(allowOverride) {
+      setting.addToggle(toggle => {
+        toggleComponent = toggle;
+        toggleComponent.toggleEl.style.marginRight = "5px";
+        toggle
+          .setValue(typeof getValue() !== "undefined")
+          .setTooltip(t("NODESTYLE_INCLUDE_TOGGLE"))
+          .onChange(value => {
+            this.dirty = true;
+            if(!value) {
+              setDisabled(true);
+              setValue(undefined);
+              return;
+            }
+            setValue(sliderComponent.getValue())
+            setDisabled(false);
+          })
+      })
+    }
+    
+    setting.addSlider((slider) => {
+      sliderComponent = slider;
+      slider
+        .setLimits(limits.min,limits.max,limits.step)
+        .setValue(getValue()??defaultValue)
+        .onChange(async (value) => {
+          displayText.innerText = ` ${value.toString()}`;
+          setValue(value);
+          this.dirty = true;
+        })
+      });
+
+    if(description) {
+      setting.setDesc(fragWithHTML(description));
+    }
+
+    setting.settingEl.createDiv("", (el) => {
+      displayText = el;
+      el.style.minWidth = "2.3em";
+      el.style.textAlign = "right";
+      el.innerText = ` ${sliderComponent.getValue().toString()}`;
+    });
+
+    setDisabled(allowOverride && !toggleComponent.getValue());
+  }
+
+  dropdownpicker(
+    containerEl: HTMLElement,
+    name: string,
+    description: string,
+    options: Record<string,string>,
+    getValue:()=>string,
+    setValue:(val:string)=>void,
+    allowOverride: boolean,
+    defaultValue: string
+  ) {
+    let dropdownComponent: DropdownComponent;
+    let toggleComponent: ToggleComponent;
+
+    const setting = new Setting(containerEl).setName(name);
+
+    const setDisabled = (isDisabled:boolean) => {
+      dropdownComponent.setDisabled(isDisabled);
+      dropdownComponent.selectEl.style.opacity = isDisabled ? "0.3" : "1";
+    }
+
+    if(allowOverride) {
+      setting.addToggle(toggle => {
+        toggleComponent = toggle;
+        toggleComponent.toggleEl.style.marginRight = "5px";
+        toggle
+          .setValue(typeof getValue() !== "undefined")
+          .setTooltip(t("NODESTYLE_INCLUDE_TOGGLE"))
+          .onChange(value => {
+            this.dirty = true;
+            if(!value) {
+              setDisabled(true);
+              setValue(undefined);
+              return;
+            }
+            setValue(dropdownComponent.getValue())
+            setDisabled(false);
+          })
+      })
+    }
+
+    setting.addDropdown(dropdown => {
+      dropdownComponent = dropdown;
+      dropdown
+        .addOptions(options)
+        .setValue(getValue()??defaultValue)
+        .onChange(value => {
+          setValue(value);
+          this.dirty = true;
+        })
+      })
+
+    if(description) {
+      setting.setDesc(fragWithHTML(description));
+    }
+
+    setDisabled(allowOverride && !toggleComponent.getValue());
+  }
+
+  nodeSettings(heading: string, setting: NodeStyle, allowOverride: boolean = true) {
+    const containerEl = details(heading,this.containerEl);
+
+    let textComponent: TextComponent;
+    let toggleComponent: ToggleComponent;
+    const setDisabled = (isDisabled: boolean) => {
+      textComponent.setDisabled(isDisabled);
+      textComponent.inputEl.style.opacity = isDisabled ? "0.3": "1"; 
+    }
+    const prefixSetting = new Setting(containerEl)
+      .setName(t("NODESTYLE_PREFIX_NAME"))
+      .setDesc(fragWithHTML(t("NODESTYLE_PREFIX_DESC")));
+    if(allowOverride) {
+      prefixSetting.addToggle(toggle => {
+        toggleComponent = toggle;
+        toggleComponent.toggleEl.style.marginRight = "5px";
+        toggle
+          .setValue(typeof setting.prefix !== "undefined")
+          .setTooltip(t("NODESTYLE_INCLUDE_TOGGLE"))
+          .onChange(value => {
+            this.dirty = true;
+            if(!value) {
+              setDisabled(true);
+              setting.prefix = undefined;
+              return;
+            }
+            setDisabled(false);
+          })
+      })
+    }
+    prefixSetting
+      .addText(text => {
+        textComponent = text;
+        text
+          .setValue(setting.prefix??"")
+          .onChange(value => {
+            setting.prefix = value;
+            this.dirty = true;
+          })
+      })  
+    textComponent.setDisabled(allowOverride && !toggleComponent.getValue());
+
+    this.colorpicker(
+      containerEl,
+      t("NODESTYLE_BGCOLOR"),
+      null,
+      ()=>setting.backgroundColor,
+      val=>setting.backgroundColor=val,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.backgroundColor
+    );
+
+    this.colorpicker(
+      containerEl,
+      t("NODESTYLE_TEXTCOLOR"),
+      null,
+      ()=>setting.textColor,
+      val=>setting.textColor=val,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.textColor
+    );
+
+    this.colorpicker(
+      containerEl,
+      t("NODESTYLE_BORDERCOLOR"),
+      null,
+      ()=>setting.borderColor,
+      val=>setting.borderColor=val,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.borderColor
+    );
+
+    this.numberslider(
+      containerEl,
+      t("NODESTYLE_FONTSIZE"),
+      null,
+      {min:10,max:50,step:5},
+      () => setting.fontSize,
+      (val) => setting.fontSize = val,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.fontSize
+    )
+
+    this.dropdownpicker(
+      containerEl,
+      t("NODESTYLE_FONTFAMILY"),
+      null,
+      {1:"Hand-drawn",2:"Normal",3:"Code",4:"Fourth (custom) Font"},
+      () => setting.fontFamily?.toString(),
+      (val) => setting.fontFamily =  parseInt(val),
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.fontFamily.toString()
+    )
+
+    this.numberslider(
+      containerEl,
+      t("NODESTYLE_MAXLABELLENGTH_NAME"),
+      t("NODESTYLE_MAXLABELLENGTH_DESC"),
+      {min:15,max:100,step:5},
+      () => setting.maxLabelLength,
+      (val) => setting.maxLabelLength = val,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.maxLabelLength
+    )
+    
+    this.dropdownpicker(
+      containerEl,
+      t("NODESTYLE_ROUGHNESS"),
+      null,
+      {0:"Architect",1:"Artist",2:"Cartoonist"},
+      () => setting.roughness?.toString(),
+      (val) => setting.roughness =  parseInt(val),
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.toString()
+    )
+
+    this.dropdownpicker(
+      containerEl,
+      t("NODESTYLE_SHARPNESS"),
+      null,
+      {"sharp":"Sharp","round":"Round"},
+      () => setting.strokeShaprness,
+      (val) => setting.strokeShaprness = val,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.strokeShaprness
+    )
+
+    this.numberslider(
+      containerEl,
+      t("NODESTYLE_STROKEWIDTH"),
+      null,
+      {min:0.5,max:6,step:0.5},
+      () => setting.strokeWidth,
+      (val) => setting.strokeWidth = val,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.strokeWidth
+    )
+
+    this.dropdownpicker(
+      containerEl,
+      t("NODESTYLE_STROKESTYLE"),
+      null,
+      {"solid":"Solid","dashed":"Dashed","dotted":"Dotted"},
+      () => setting.strokeStyle,
+      (val) => setting.strokeStyle = val,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.strokeStyle
+    )
+
+    this.numberslider(
+      containerEl,
+      t("NODESTYLE_RECTANGLEPADDING"),
+      null,
+      {min:5,max:50,step:5},
+      () => setting.gateRadius,
+      (val) => setting.gateRadius = val,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.padding
+    )
+
+
+    this.numberslider(
+      containerEl,
+      t("NODESTYLE_GATE_RADIUS_NAME"),
+      t("NODESTYLE_GATE_RADIUS_DESC"),
+      {min:3,max:10,step:1},
+      () => setting.gateRadius,
+      (val) => setting.gateRadius = val,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.gateRadius
+    )
+    
+    this.numberslider(
+      containerEl,
+      t("NODESTYLE_GATE_OFFSET_NAME"),
+      t("NODESTYLE_GATE_OFFSET_DESC"),
+      {min:0,max:25,step:1},
+      () => setting.gateOffset,
+      (val) => setting.gateOffset = val,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.gateOffset
+    )
+
+    this.colorpicker(
+      containerEl,
+      t("NODESTYLE_GATE_COLOR"),
+      null,
+      ()=>setting.gateStrokeColor,
+      val=>setting.gateStrokeColor=val,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.gateStrokeColor
+    );
+    
+    this.colorpicker(
+      containerEl,
+      t("NODESTYLE_GATE_BGCOLOR_NAME"),
+      t("NODESTYLE_GATE_BGCOLOR_DESC"),
+      ()=>setting.gateBackgroundColor,
+      val=>setting.gateBackgroundColor=val,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.gateBackgroundColor
+    );
   }
 
   async display() {
@@ -56,6 +556,36 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     });
     coffeeImg.height = 45;
 
+    new Setting(containerEl)
+      .setName(t("EXCALIBRAIN_FILE_NAME"))
+      .setDesc(fragWithHTML(t("EXCALIBRAIN_FILE_DESC")))
+      .addText(text=>
+        text
+          .setValue(this.plugin.settings.excalibrainFilepath)
+          .onChange(async (value) => {
+            this.dirty = true;
+            if(!value.endsWith(".md")) {
+              value = value + ".md";
+            }
+            const f = this.app.vault.getAbstractFileByPath(value);
+            if(f) {
+              (new WarningPrompt(
+                this.app,
+                "⚠ File Exists",
+                `${value} already exists in your Vault. Is it ok to overwrite this file?`)
+              ).show((result: boolean) => {
+                if(result) {
+                  this.plugin.settings.excalibrainFilepath = value;
+                  this.dirty = true;
+                }
+              });
+              return;
+            }
+            this.plugin.settings.excalibrainFilepath = value;
+            this.dirty = true;
+          })
+          .inputEl.onblur = () => {text.setValue(this.plugin.settings.excalibrainFilepath)}
+      )
     
     const malformedJSON = containerEl.createEl("p", { text: t("JSON_MALFORMED"), cls:"excalibrain-warning" });
     malformedJSON.hide();
@@ -91,7 +621,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
                 return;
               }
               malformedJSON.hide();
-              this.hierarchy = value; 
+              this.hierarchy = value;
+              this.dirty = true;
             }
             catch {
               malformedJSON.setText(t("JSON_MALFORMED"));
@@ -99,5 +630,47 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             }
         });
     });
+
+    new Setting(containerEl)
+      .setName(t("RENDERALIAS_NAME"))
+      .setDesc(fragWithHTML(t("RENDERALIAS_DESC")))
+      .addToggle(toggle=>
+        toggle
+          .setValue(this.plugin.settings.renderAlias)
+          .onChange(value => {
+            this.plugin.settings.renderAlias = value;
+            this.dirty = true;
+          })
+      );
+
+    this.containerEl.createEl("h1", { text: t("STYLE_HEAD") });
+    const styleDesc = this.containerEl.createEl("p", {});
+    styleDesc.innerHTML =  t("STYLE_DESC");
+
+    this.nodeSettings(
+      t("NODESTYLE_BASE"),
+      this.plugin.settings.baseNodeStyle,
+      false
+    )
+
+    this.nodeSettings(
+      t("NODESTYLE_CENTRAL"),
+      this.plugin.settings.centralNodeStyle
+    )
+
+    this.nodeSettings(
+      t("NODESTYLE_INFERRED"),
+      this.plugin.settings.inferredNodeStyle
+    )
+
+    this.nodeSettings(
+      t("NODESTYLE_VIRTUAL"),
+      this.plugin.settings.virtualNodeStyle
+    )
+
+    this.nodeSettings(
+      t("NODESTYLE_SIBLING"),
+      this.plugin.settings.siblingNodeStyle
+    )
   }
 }
