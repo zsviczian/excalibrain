@@ -1,8 +1,9 @@
 import { App, TFile } from "obsidian";
 import ExcaliBrain from "src/main";
+import { Relation, RelationType } from "src/Types";
 import { getDVFieldLinksForPage } from "src/utils/dataview";
 import { log } from "src/utils/utils";
-import { Page, Relation, RelationType } from "./Page";
+import { Page} from "./Page";
 
 export class Pages {
   private pages = new Map<string,Page>();

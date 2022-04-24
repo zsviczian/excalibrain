@@ -1,4 +1,4 @@
-import { APPNAME } from "src/constants";
+import { APPNAME } from "src/constants/constants";
 
 //English
 export default {
@@ -14,19 +14,26 @@ export default {
   HIERARCHY_DESC: "User hierarchy JSON",
   RENDERALIAS_NAME: "Display alias if available",
   RENDERALIAS_DESC: "Displays the page alias instead of the filename if it is specified in the page's front matter.",
-  MAXLABELLENGTH_NAME: "Max label length",
-  MAXLABELLENGTH_DESC: "Maximum number of characters to display from node title. Longer nodes will end with '...'",
-  
+  SHOWINFERRED_NAME: "Display inferred relationships",
+  SHOWINFERRED_DESC: "<b>Toggle ON</b>: Display both explicitly defined and inferred links. Forward links are children, backlinks are parents, " +
+    "if two page mutually referes to one another then relationship is inferred to be a friendship. Explicitly defined relationships always " +
+    "take priority.<br><b>Toggle OFF</b>: Display only explicitely defined relationships.",
   STYLE_HEAD: "Styling",
   STYLE_DESC: "Styles are applied in sequence.<br><ol><li>Base node style</li><li>Optional tag based style</li>" +
     "<li>Inferred node style (only applied if the node is inferred)</li><li>Virtual node style (only applied if the node is virtual)</li></ol> " +
     "All the attributes of the base node style must be specified. " +
     "All other styles may have partial definitions. e.g. You may add a prefix and override the base node-background color in the tag-based style, " + 
     "override the font color in the inferred-node style and set the border stroke style to dotted in the virtual-node style.",
+  CANVAS_BGCOLOR: "Canvas color",
+  MAX_ITEMCOUNT_DESC: "Maximum node count",
+  MAX_ITEMCOUNT_NAME: "Maximum number of nodes to display in a given area of the layout." + 
+    "i.e. the maximum number of parents, the maximum number of children, the maximum number of friends, and " +
+    "the maximum number of siblings to display. If there are more items, they will be ommitted from the drawing.",
   NODESTYLE_INCLUDE_TOGGLE: "Toggle ON: override base node style for this attribute; OFF: apply base node style for this attribute",
   NODESTYLE_PREFIX_NAME: "Prefix",
   NODESTYLE_PREFIX_DESC: "Prefix character or emoji to display in front of the node's label",
   NODESTYLE_BGCOLOR: "Background color",
+  NODESTYLE_BG_FILLSTYLE: "Bacground fill-style",
   NODESTYLE_TEXTCOLOR: "Text color",
   NODESTYLE_BORDERCOLOR: "Border color",
   NODESTYLE_FONTSIZE: "Font size",
@@ -45,6 +52,7 @@ export default {
   NODESTYLE_GATE_COLOR: "Gate border color",
   NODESTYLE_GATE_BGCOLOR_NAME: "Gate background color",
   NODESTYLE_GATE_BGCOLOR_DESC: "The fill color of the gate if it has children",
+  NODESTYLE_GATE_FILLSTYLE: "Gate background fill-style",
   NODESTYLE_BASE: "Base node style",
   NODESTYLE_CENTRAL: "Style of central node",
   NODESTYLE_INFERRED: "Style of inferred nodes",

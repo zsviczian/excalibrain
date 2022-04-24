@@ -1,3 +1,4 @@
+import { settings } from "cluster";
 import {
   App,
   DropdownComponent,
@@ -7,11 +8,11 @@ import {
   TextComponent,
   ToggleComponent,
 } from "obsidian";
-import { getEA } from "obsidian-excalidraw-plugin";
+import { FillStyle, getEA, StrokeSharpness, StrokeStyle } from "obsidian-excalidraw-plugin";
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 import { t } from "./lang/helpers";
 import ExcaliBrain from "./main";
-import { Hierarchy, NodeStyle } from "./Types";
+import { Hierarchy, NodeStyle, LinkStyle } from "./Types";
 import { WarningPrompt } from "./utils/Prompts";
 
 export interface ExcaliBrainSettings {
@@ -19,6 +20,8 @@ export interface ExcaliBrainSettings {
   hierarchy: Hierarchy;
   renderAlias: boolean;
   backgroundColor: string;
+  showInferredNodes: boolean;
+  maxItemCount: number;
   baseNodeStyle: NodeStyle;
   centralNodeStyle: NodeStyle;
   inferredNodeStyle: NodeStyle;
@@ -26,6 +29,10 @@ export interface ExcaliBrainSettings {
   siblingNodeStyle: NodeStyle;
   tagNodeStyles: {[key: string]: NodeStyle};
   tagStyleList: string[];
+  baseLinkStyle: LinkStyle;
+  inferredLinkStyle: LinkStyle;
+  hierarchyLinkStyle: {[key: string]: LinkStyle};
+  hierarchyStyleList: string[];
 }
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
@@ -36,10 +43,13 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
     friends: ["Friends", "Friend", "Jump", "Jumps", "j"]
   },
   renderAlias: true,
-  backgroundColor: "#C49A13FF",
+  backgroundColor: "#0c3e6aff",
+  showInferredNodes: true,
+  maxItemCount: 30,
   baseNodeStyle: {
     prefix: "",
     backgroundColor: "#00000066",
+    fillStyle: "solid",
     textColor: "#ffffffff",
     borderColor: "#00000000",
     fontSize: 20,
@@ -53,7 +63,8 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
     gateRadius: 5,
     gateOffset: 15,
     gateStrokeColor: "#ffffffff",
-    gateBackgroundColor: "#ffffffff"  
+    gateBackgroundColor: "#ffffffff",
+    gateFillStyle: "solid"
   },
   centralNodeStyle: {
     fontSize: 30,
@@ -66,13 +77,25 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   },
   virtualNodeStyle: {
     backgroundColor: "#ff000066",
+    fillStyle: "hachure",
     textColor: "#ffffffff",
   },
   siblingNodeStyle: {
     fontSize: 15,
   },
   tagNodeStyles: {},
-  tagStyleList: []
+  tagStyleList: [],
+  baseLinkStyle: {
+    strokeColor: "#696969FF",
+    strokeWidth: 1,
+    strokeStyle: "solid",
+    roughness: 0,
+    startArrowHead: null,
+    endArrowHead: null,
+  },
+  inferredLinkStyle: {},
+  hierarchyLinkStyle: {},
+  hierarchyStyleList: []
 };
 
 const getHex = (color:string) => color.substring(0,7);
@@ -121,6 +144,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     description: string,
     getValue:()=>string,
     setValue:(val:string)=>void,
+    deleteValue:()=>void,
     allowOverride: boolean,
     defaultValue: string
   ) {
@@ -159,7 +183,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
             if(!value) {
               setDisabled(true);
-              setValue(undefined);
+              deleteValue();
               return;
             }
             setValue(picker.value + getAlphaHex(sliderComponent.getValue()))
@@ -216,6 +240,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     limits: {min:number,max:number,step:number},
     getValue:()=>number,
     setValue:(val:number)=>void,
+    deleteValue:()=>void,
     allowOverride: boolean,
     defaultValue: number
   ) {
@@ -242,7 +267,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
             if(!value) {
               setDisabled(true);
-              setValue(undefined);
+              deleteValue();
               return;
             }
             setValue(sliderComponent.getValue())
@@ -284,6 +309,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     options: Record<string,string>,
     getValue:()=>string,
     setValue:(val:string)=>void,
+    deleteValue:()=>void,
     allowOverride: boolean,
     defaultValue: string
   ) {
@@ -308,7 +334,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
             if(!value) {
               setDisabled(true);
-              setValue(undefined);
+              deleteValue();
               return;
             }
             setValue(dropdownComponent.getValue())
@@ -383,9 +409,22 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       ()=>setting.backgroundColor,
       val=>setting.backgroundColor=val,
+      ()=>delete setting.backgroundColor,
       allowOverride,
       this.plugin.settings.baseNodeStyle.backgroundColor
     );
+
+    this.dropdownpicker(
+      containerEl,
+      t("NODESTYLE_BG_FILLSTYLE"),
+      null,
+      {"hachure": "Hachure", "cross-hatch": "Cross-hatch", "solid": "Solid"},
+      () => setting.fillStyle?.toString(),
+      (val) => setting.fillStyle = val as FillStyle,
+      ()=>delete setting.fillStyle,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.fillStyle.toString()
+    )
 
     this.colorpicker(
       containerEl,
@@ -393,6 +432,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       ()=>setting.textColor,
       val=>setting.textColor=val,
+      ()=>delete setting.textColor,
       allowOverride,
       this.plugin.settings.baseNodeStyle.textColor
     );
@@ -403,6 +443,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       ()=>setting.borderColor,
       val=>setting.borderColor=val,
+      ()=>delete setting.borderColor,
       allowOverride,
       this.plugin.settings.baseNodeStyle.borderColor
     );
@@ -414,6 +455,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       {min:10,max:50,step:5},
       () => setting.fontSize,
       (val) => setting.fontSize = val,
+      ()=>delete setting.fontSize,
       allowOverride,
       this.plugin.settings.baseNodeStyle.fontSize
     )
@@ -425,6 +467,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       {1:"Hand-drawn",2:"Normal",3:"Code",4:"Fourth (custom) Font"},
       () => setting.fontFamily?.toString(),
       (val) => setting.fontFamily =  parseInt(val),
+      ()=>delete setting.fontFamily,
       allowOverride,
       this.plugin.settings.baseNodeStyle.fontFamily.toString()
     )
@@ -436,6 +479,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       {min:15,max:100,step:5},
       () => setting.maxLabelLength,
       (val) => setting.maxLabelLength = val,
+      ()=>delete setting.maxLabelLength,
       allowOverride,
       this.plugin.settings.baseNodeStyle.maxLabelLength
     )
@@ -447,6 +491,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       {0:"Architect",1:"Artist",2:"Cartoonist"},
       () => setting.roughness?.toString(),
       (val) => setting.roughness =  parseInt(val),
+      ()=>delete setting.roughness,
       allowOverride,
       this.plugin.settings.baseNodeStyle.toString()
     )
@@ -457,7 +502,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       {"sharp":"Sharp","round":"Round"},
       () => setting.strokeShaprness,
-      (val) => setting.strokeShaprness = val,
+      (val) => setting.strokeShaprness = val as StrokeSharpness,
+      ()=>delete setting.strokeShaprness,
       allowOverride,
       this.plugin.settings.baseNodeStyle.strokeShaprness
     )
@@ -469,6 +515,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       {min:0.5,max:6,step:0.5},
       () => setting.strokeWidth,
       (val) => setting.strokeWidth = val,
+      ()=>delete setting.strokeWidth,
       allowOverride,
       this.plugin.settings.baseNodeStyle.strokeWidth
     )
@@ -479,7 +526,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       {"solid":"Solid","dashed":"Dashed","dotted":"Dotted"},
       () => setting.strokeStyle,
-      (val) => setting.strokeStyle = val,
+      (val) => setting.strokeStyle = val as StrokeStyle,
+      ()=>delete setting.strokeStyle,
       allowOverride,
       this.plugin.settings.baseNodeStyle.strokeStyle
     )
@@ -489,8 +537,9 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       t("NODESTYLE_RECTANGLEPADDING"),
       null,
       {min:5,max:50,step:5},
-      () => setting.gateRadius,
-      (val) => setting.gateRadius = val,
+      () => setting.padding,
+      (val) => setting.padding = val,
+      ()=>delete setting.padding,
       allowOverride,
       this.plugin.settings.baseNodeStyle.padding
     )
@@ -503,6 +552,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       {min:3,max:10,step:1},
       () => setting.gateRadius,
       (val) => setting.gateRadius = val,
+      ()=>delete setting.gateRadius,
       allowOverride,
       this.plugin.settings.baseNodeStyle.gateRadius
     )
@@ -514,6 +564,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       {min:0,max:25,step:1},
       () => setting.gateOffset,
       (val) => setting.gateOffset = val,
+      ()=>delete setting.gateOffset,
       allowOverride,
       this.plugin.settings.baseNodeStyle.gateOffset
     )
@@ -524,6 +575,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       ()=>setting.gateStrokeColor,
       val=>setting.gateStrokeColor=val,
+      ()=>delete setting.gateStrokeColor,
       allowOverride,
       this.plugin.settings.baseNodeStyle.gateStrokeColor
     );
@@ -534,9 +586,22 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       t("NODESTYLE_GATE_BGCOLOR_DESC"),
       ()=>setting.gateBackgroundColor,
       val=>setting.gateBackgroundColor=val,
+      ()=>delete setting.gateBackgroundColor,
       allowOverride,
       this.plugin.settings.baseNodeStyle.gateBackgroundColor
     );
+
+    this.dropdownpicker(
+      containerEl,
+      t("NODESTYLE_GATE_FILLSTYLE"),
+      null,
+      {"hachure": "Hachure", "cross-hatch": "Cross-hatch", "solid": "Solid"},
+      () => setting.gateFillStyle?.toString(),
+      (val) => setting.gateFillStyle = val as FillStyle,
+      ()=>delete setting.gateFillStyle,
+      allowOverride,
+      this.plugin.settings.baseNodeStyle.gateFillStyle.toString()
+    )
   }
 
   async display() {
@@ -642,10 +707,45 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
           })
       );
-
+    
+    new Setting(containerEl)
+      .setName(t("SHOWINFERRED_NAME"))
+      .setDesc(fragWithHTML(t("SHOWINFERRED_DESC")))
+      .addToggle(toggle=>
+        toggle
+          .setValue(this.plugin.settings.showInferredNodes)
+          .onChange(value => {
+            this.plugin.settings.showInferredNodes = value;
+            this.dirty = true;
+          })
+      );
+    
+    this.numberslider(
+      containerEl,
+      t("MAX_ITEMCOUNT_NAME"),
+      t("MAX_ITEMCOUNT_DESC"),
+      {min:5,max:150, step:5},
+      ()=>this.plugin.settings.maxItemCount,
+      (val)=>this.plugin.settings.maxItemCount = val,
+      ()=>{},
+      false,
+      30
+    )
+      
     this.containerEl.createEl("h1", { text: t("STYLE_HEAD") });
     const styleDesc = this.containerEl.createEl("p", {});
     styleDesc.innerHTML =  t("STYLE_DESC");
+
+    this.colorpicker(
+      containerEl,
+      t("CANVAS_BGCOLOR"),
+      null,
+      ()=>this.plugin.settings.backgroundColor,
+      (val)=>this.plugin.settings.backgroundColor=val,
+      ()=>{},
+      false,
+      this.plugin.settings.backgroundColor
+    )
 
     this.nodeSettings(
       t("NODESTYLE_BASE"),

@@ -1,3 +1,4 @@
 {
-  "minify": true
+  "minify": false,
+  "sourcemap": "inline"
 }

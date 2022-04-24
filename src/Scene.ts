@@ -1,0 +1,381 @@
+import { App, FileView, MarkdownView, Notice, TextFileView, TFile, WorkspaceLeaf } from "obsidian";
+import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
+import { Layout } from "./graph/Layout";
+import { Links } from "./graph/Links";
+import { Node } from "./graph/Node";
+import { Page } from "./graph/Page";
+import ExcaliBrain from "./main";
+import { ExcaliBrainSettings } from "./Settings";
+import { Neighbour, RelationType, Role } from "./Types";
+
+export class Scene {
+  public static _instance: Scene;
+  settings: ExcaliBrainSettings;
+  ea: ExcalidrawAutomate;
+  plugin: ExcaliBrain;
+  app: App;
+  leaf: WorkspaceLeaf;
+  centralPage: Page;
+  textSize: {width:number, height:number};
+  nodeWidth: number;
+  nodeHeight: number;
+  private nodesMap: Map<string,Node> = new Map<string,Node>();
+  private links: Links = new Links();
+  private layouts: Layout[] = [];
+  private removeEH: Function;
+  
+
+  public static async show(plugin: ExcaliBrain,newLeaf: boolean) {
+    //@ts-ignore
+    if(!this._instance ||(this._instance && !app.workspace.getLeafById(this._instance.leaf?.id))) {
+      let brainLeaf: WorkspaceLeaf;
+      app.workspace.iterateAllLeaves(leaf=>{
+        if(
+          leaf.view &&
+          (leaf.view instanceof FileView) &&
+          leaf.view.file.path === plugin.settings.excalibrainFilepath
+        ) {
+          brainLeaf = leaf;
+        }
+      });
+      (this._instance = new this(plugin,newLeaf,brainLeaf));      
+    }
+    await this._instance.initilizeScene();
+  }
+
+  constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
+    this.settings = plugin.settings;
+    this.ea = plugin.EA;
+    this.plugin = plugin;
+    this.app = plugin.app;
+    this.leaf = leaf ?? app.workspace.getLeaf(newLeaf);
+  }
+
+  public async initilizeScene() {
+    const ea = this.ea;
+    const style = this.settings.baseNodeStyle;
+    let file = this.app.vault.getAbstractFileByPath(this.settings.excalibrainFilepath);
+    if(file && !(file instanceof TFile)) {
+      new Notice(`Please check settings. ExcaliBrain path (${this.settings.excalibrainFilepath}) points to a folder, not a file`);
+      return;
+    }
+    let counter = 0;
+    if(!file) {
+      file = await app.vault.create(this.settings.excalibrainFilepath,EMPTYBRAIN);
+      //an ugly temporary hack waiting for metadataCache to index the new file
+      while(file instanceof TFile && !ea.isExcalidrawFile(file) && counter++<10) {
+        await sleep(50);
+      }
+    }
+    counter = 0;
+    if(file && file instanceof TFile && !ea.isExcalidrawFile(file)) {
+      file = await app.vault.create(this.settings.excalibrainFilepath,EMPTYBRAIN);
+      //an ugly temporary hack waiting for metadataCache to index the new file
+      while(file instanceof TFile && !ea.isExcalidrawFile(file) && counter++<10) {
+        await sleep(50);
+      }
+      if(!ea.isExcalidrawFile(file as TFile)) {
+        new Notice(`Couldn't open ${this.settings.excalibrainFilepath}. Please try again later.`);
+        return;
+      }
+    }
+    await this.leaf.openFile(file as TFile);
+    ea.setView(this.leaf.view as any)
+    ea.clear();
+    counter = 0;
+    while(!ea.targetView.excalidrawAPI && counter++<10) {
+      await sleep(50);
+    }
+    if(!ea.targetView.excalidrawAPI) {
+      new Notice(`Error initializing Excalidraw view`);
+      return;
+    }
+    this.ea.targetView.semaphores.saving = true; //disable saving by setting this Excalidraw flag (not published API)
+    ea.style.fontFamily = style.fontFamily;
+    ea.style.fontSize = style.fontSize;
+    this.textSize = ea.measureText("m".repeat(style.maxLabelLength+3));
+    this.nodeWidth = this.textSize.width + 3 * style.padding;
+    this.nodeHeight = 2 * (this.textSize.height + 2 * style.padding);
+    
+    ea.getExcalidrawAPI().updateScene({
+      appState: {
+        viewModeEnabled:true,
+        theme: "light",
+      viewBackgroundColor: this.settings.backgroundColor
+      },
+      elements:[]
+    });
+    
+    ea.style.strokeColor = style.textColor;
+    ea.addText(0,0,"Open a document in another pane and click it to get started.\n\n" +
+      "For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
+      "under 'Links and Transclusion'.", {textAlign:"center"});
+    await ea.addElementsToView();
+    ea.getExcalidrawAPI().zoomToFit();
+    
+    ea.targetView.linksAlwaysOpenInANewPane = true;
+    
+    this.addEventHandler();
+    new Notice("ExcaliBrain On");
+  }
+
+  addNodes(x:{
+    neighbours:Neighbour[],
+    layout:Layout,
+    isCentral:boolean,
+    isSibling:boolean,
+    friendGateOnLeft: boolean
+  }) {
+    x.neighbours.forEach(n => {
+      if(n.page.path === this.ea.targetView.file.path) {
+        return; 
+      }
+      const node = new Node({
+        page: n.page,
+        isInferred: n.relationType === RelationType.INFERRED,
+        isCentral: x.isCentral,
+        isSibling: x.isSibling,
+        friendGateOnLeft: x.friendGateOnLeft
+      });
+      this.nodesMap.set(n.page.path,node);
+      x.layout.nodes.push(node);
+    });
+  }
+
+  private addEventHandler() {
+    const self = this;
+    const brainEventHandler = async (leaf:WorkspaceLeaf) => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      //-------------------------------------------------------
+      //terminate event handler if view no longer exists or file has changed
+      if(!self.ea.targetView?.file || self.ea.targetView.file.path !== self.ea.targetView.file.path) {
+        self.removeEventHandler();
+        return;
+      }
+      
+      if(!(leaf?.view && (leaf.view instanceof FileView) && leaf.view.file)) {
+        return;
+      }
+  
+      const rootFile = leaf.view.file;
+      
+      if (rootFile.path === self.ea.targetView.file.path) { //brainview drawing is the active leaf
+        return; 
+      }
+    
+      if(self.centralPage && self.centralPage.path === rootFile.path) {
+        return; //don't reload the file if it has not changed
+      }
+  
+      self.centralPage = self.plugin.pages.get(rootFile.path);
+      self.ea.clear();
+      self.ea.getExcalidrawAPI().updateScene({elements:[]});
+      self.ea.style.verticalAlign = "middle";
+    
+      const parents = self.centralPage.getParents()
+        .filter(p=>self.settings.showInferredNodes || p.relationType === RelationType.DEFINED)
+        .slice(0,self.plugin.settings.maxItemCount);
+      const children = self.centralPage.getChildren()
+        .filter(c=>self.settings.showInferredNodes || c.relationType === RelationType.DEFINED)
+        .slice(0,self.plugin.settings.maxItemCount);
+      const friends = self.centralPage.getFriends()
+        .filter(f=>self.settings.showInferredNodes || f.relationType === RelationType.DEFINED)    
+        .slice(0,self.plugin.settings.maxItemCount);
+      const siblings = self.centralPage.getSiblings()
+        .filter(s => !(parents.some(p=>p.page.path === s.page.path) &&
+          children.some(c=>c.page.path === s.page.path) &&
+          friends.some(f=>f.page.path === s.page.path)) && 
+          (self.settings.showInferredNodes || s.relationType === RelationType.DEFINED))
+        .slice(0,self.plugin.settings.maxItemCount);
+  
+      //-------------------------------------------------------
+      // Generate layout and nodes
+      self.nodesMap = new Map<string,Node>();
+      self.links = new Links();
+      self.layouts = [];
+      const manyChildren = children.length >10;
+      const manySiblings = siblings.length > 10;
+      const singleParent = parents.length <= 1
+      
+      const lCenter = new Layout({
+        origoX: 0,
+        origoY: 0,
+        top: null,
+        bottom: null,
+        columns: 1,
+        columnWidth: self.nodeWidth,
+        rowHeight: self.nodeHeight
+      });
+      self.layouts.push(lCenter);
+      
+      const lChildren = new Layout({
+        origoX: 0,
+        origoY: 2.5 * self.nodeHeight,
+        top: 2 * self.nodeHeight,
+        bottom: null,
+        columns: manyChildren ? 5 : 3,
+        columnWidth: self.nodeWidth,
+        rowHeight: self.nodeHeight
+      });
+      self.layouts.push(lChildren);
+    
+      const lFriends = new Layout({
+        origoX: (manyChildren ? -3 : -2)  * self.nodeWidth,
+        origoY: 0,
+        top: null,
+        bottom: null,
+        columns: 1,
+        columnWidth: self.nodeWidth,
+        rowHeight: self.nodeHeight
+      });
+      self.layouts.push(lFriends);
+  
+      const lParents = new Layout({
+        origoX: 0,
+        origoY: -2.5 * self.nodeHeight,
+        top: null,
+        bottom: -2 * self.nodeHeight,
+        columns: 3,
+        columnWidth: self.nodeWidth,
+        rowHeight: self.nodeHeight
+      });
+      self.layouts.push(lParents);
+      
+      const lSiblings = new Layout({
+        origoX: self.nodeWidth * ((singleParent ? 0 : 1) + (manySiblings ? 2 : 1)),
+        origoY: -2.5 * self.nodeHeight,
+        top: null,
+        bottom: self.nodeHeight,
+        columns: (manySiblings ? 3 : 1),
+        columnWidth: self.nodeWidth,
+        rowHeight: self.nodeHeight
+      })
+      self.layouts.push(lSiblings);
+  
+      const rootNode = new Node({
+        page: self.centralPage,
+        isInferred: false,
+        isCentral: true,
+        isSibling: false,
+        friendGateOnLeft: true
+      });
+  
+      self.nodesMap.set(self.centralPage.path,rootNode);
+      lCenter.nodes.push(rootNode);
+    
+      self.addNodes({
+        neighbours: parents,
+        layout: lParents,
+        isCentral: false,
+        isSibling: false,
+        friendGateOnLeft: true
+      });
+    
+      self.addNodes({
+        neighbours: children,
+        layout: lChildren,
+        isCentral: false,
+        isSibling: false,
+        friendGateOnLeft: true
+      });
+    
+      self.addNodes({
+        neighbours: friends,
+        layout: lFriends,
+        isCentral: false,
+        isSibling: false,
+        friendGateOnLeft: false
+      });
+  
+      self.addNodes({
+        neighbours: siblings,
+        layout: lSiblings,
+        isCentral: false,
+        isSibling: true,
+        friendGateOnLeft: true
+      });
+      
+      //-------------------------------------------------------
+      // Generate links for all displayed nodes
+      const addLinks = (nodeA: Node, neighbours:Neighbour[],role: Role) => {
+        neighbours.forEach(neighbour=>{
+          const nodeB = self.nodesMap.get(neighbour.page.path);
+          if(!nodeB) {
+            return;
+          }
+          self.links.addLink(
+            nodeA,
+            nodeB,
+            role,
+            neighbour.relationType,
+            neighbour.typeDefinition,
+            self.ea,
+            self.settings
+          )
+        })
+      }
+  
+      Array.from(self.nodesMap.values()).forEach(nodeA => {
+        addLinks(nodeA, nodeA.page.getChildren(),Role.CHILD);
+        addLinks(nodeA, nodeA.page.getParents(),Role.PARENT);
+        addLinks(nodeA, nodeA.page.getFriends(),Role.FRIEND);
+      });
+    
+      //-------------------------------------------------------
+      // Render
+      self.layouts.forEach(layout => layout.render());
+      self.links.render();    
+     
+      const elements = self.ea.getElements();
+      self.ea.getExcalidrawAPI().updateScene({
+        elements: elements.filter(
+          el=>el.type==="arrow"
+        ).concat(elements.filter(el=>el.type!=="arrow"))
+      })
+      self.ea.getExcalidrawAPI().zoomToFit();
+    }
+
+    app.workspace.on("active-leaf-change", brainEventHandler);
+    this.removeEH = () => app.workspace.off("active-leaf-change",brainEventHandler);
+    
+    const leaves: WorkspaceLeaf[] = [];
+    app.workspace.iterateAllLeaves(l=>{
+      if( (l.view instanceof FileView) && l.view.file && l.view.file.path !== this.ea.targetView.file.path) {
+        leaves.push(l);
+      }
+    })
+
+    if(leaves.length>0) {
+      brainEventHandler(leaves[0]);
+    }
+  }
+
+  private removeEventHandler() {
+
+    if(this.removeEH) {
+      this.removeEH();
+    }
+    
+    if(isBoolean(this.ea.targetView?.linksAlwaysOpenInANewPane)) {
+      this.ea.targetView.linksAlwaysOpenInANewPane = false;
+    }
+    
+    if(this.ea.targetView?.excalidrawAPI) {
+      try {
+        this.ea.targetView.semaphores.saving = false;
+        this.ea.getExcalidrawAPI().updateScene({appState:{viewModeEnabled:false}});
+      } catch {}
+    }
+
+    this.ea.targetView = undefined;
+    this.leaf = undefined;
+    new Notice("Brain Graph Off");
+  }
+
+  public static terminate() {
+    if(this._instance && this._instance.removeEH) {
+      this._instance.removeEventHandler();
+      this._instance = undefined;
+    }
+  }
+}

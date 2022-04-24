@@ -4,11 +4,12 @@ import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './
 import { errorlog, log } from './utils/utils';
 import { getAPI } from "obsidian-dataview"
 import { t } from './lang/helpers';
-import { PLUGIN_NAME } from './constants';
+import { PLUGIN_NAME } from './constants/constants';
 import { DvAPIInterface } from 'obsidian-dataview/lib/typings/api';
 import { Pages } from './graph/Pages';
 import { getEA } from "obsidian-excalidraw-plugin";
 import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
+import { Scene } from './Scene';
 
 declare module "obsidian" {
   interface App {
@@ -20,7 +21,7 @@ declare module "obsidian" {
 
 export default class ExcaliBrain extends Plugin {
   public settings:ExcaliBrainSettings;
-  private pages: Pages;
+  public pages: Pages;
   public DVAPI: DvAPIInterface;
   public EA: ExcalidrawAutomate;
   public initialized: boolean = false;
@@ -121,13 +122,17 @@ export default class ExcaliBrain extends Plugin {
       id: "excalibrain-start",
       name: t("COMMAND_START"),
       callback: () => {
-
+        if(Scene._instance) {
+          Scene.terminate();
+        } else {
+          Scene.show(this,true);
+        }
       },
     });
   }
 
 	onunload() {
-    Object.keys(app.metadataCache.unresolvedLinks)
+    Scene.terminate();
 	}
 
 	async loadSettings() {

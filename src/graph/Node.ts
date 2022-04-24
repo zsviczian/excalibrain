@@ -15,31 +15,38 @@ export class Node {
   public parentGateId: string;
   public childGateId: string;
   private friendGateOnLeft: boolean;
+  public title: string;
 
-  constructor(page:Page, isInferred: boolean, isCentral: boolean, isSibling: boolean, friendGateOnLeft:boolean) {
-    this.page = page;
-    this.settings = page.plugin.settings;
-    this.ea = page.plugin.EA;
+  constructor(x:{page:Page, isInferred: boolean, isCentral: boolean, isSibling: boolean, friendGateOnLeft:boolean}) {
+    this.page = x.page;
+    this.settings = x.page.plugin.settings;
+    this.ea = x.page.plugin.EA;
     this.style = {
       ...this.settings.baseNodeStyle,
       ...this.getTagStyle(),
-      ...isInferred?this.settings.inferredNodeStyle:{},
-      ...page.file?this.settings.virtualNodeStyle:{},
-      ...isCentral?this.settings.centralNodeStyle:{},
-      ...isSibling?this.settings.siblingNodeStyle:{}
+      ...x.isInferred?this.settings.inferredNodeStyle:{},
+      ...x.page.file?{}:this.settings.virtualNodeStyle,
+      ...x.isCentral?this.settings.centralNodeStyle:{},
+      ...x.isSibling?this.settings.siblingNodeStyle:{}
     };
-    this.friendGateOnLeft = friendGateOnLeft;
+    this.friendGateOnLeft = x.friendGateOnLeft;
+    this.title = this.getTitle();
   }
 
-  public get displayName(): string {
+  private getTitle(): string {
     const aliases = (this.page.file && this.settings.renderAlias)
       ? (this.page.dvPage?.file?.aliases?.values??[])
       : [];
-    const label = (this.style.prefix??"") + (aliases.length > 0 
+    return aliases.length > 0 
       ? aliases[0] 
       : (this.page.file
         ? (this.page.file.extension === "md" ? this.page.file.basename : this.page.file.name)
-        : getFilenameFromPath(this.page.path)));
+        : getFilenameFromPath(this.page.path));
+  }
+
+
+  private displayText(): string {
+    const label = (this.style.prefix??"") + this.title;
     return label.length > this.style.maxLabelLength
       ? label.substring(0,this.style.maxLabelLength-1) + "..."
       : label;
@@ -60,10 +67,14 @@ export class Node {
 
   render() {
     const ea = this.ea;
-    const label = this.displayName;
+    const label = this.displayText();
     ea.style.fontSize = this.style.fontSize;
     ea.style.fontFamily = this.style.fontFamily;
     const labelSize = ea.measureText(label);
+    ea.style.fillStyle = this.style.fillStyle;
+    ea.style.roughness = this.style.roughness;
+    ea.style.strokeSharpness = this.style.strokeShaprness;
+    ea.style.strokeWidth = this.style.strokeWidth;
     ea.style.strokeColor = this.style.textColor;
     ea.style.backgroundColor = "transparent";
     this.id = ea.addText(
@@ -83,6 +94,7 @@ export class Node {
     box.strokeColor = this.style.borderColor;
     box.strokeStyle = this.style.strokeStyle;
 
+    ea.style.fillStyle = this.style.gateFillStyle;
     ea.style.strokeColor = this.style.gateStrokeColor;
     ea.style.backgroundColor =  this.page.hasFriends() ? this.style.gateBackgroundColor : "transparent";
     this.friendGateId = ea.addEllipse(
