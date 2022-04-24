@@ -21,6 +21,7 @@ export interface ExcaliBrainSettings {
   renderAlias: boolean;
   backgroundColor: string;
   showInferredNodes: boolean;
+  showAttachments: boolean;
   maxItemCount: number;
   baseNodeStyle: NodeStyle;
   centralNodeStyle: NodeStyle;
@@ -45,6 +46,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   renderAlias: true,
   backgroundColor: "#0c3e6aff",
   showInferredNodes: true,
+  showAttachments: true,
   maxItemCount: 30,
   baseNodeStyle: {
     prefix: "",
@@ -133,7 +135,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     this.plugin.settings.tagStyleList = Object.keys(this.plugin.settings.tagNodeStyles);
     if(this.hierarchy) {
       this.plugin.settings.hierarchy = JSON.parse(this.hierarchy);
-      this.plugin.initializeIndex();
+      //this.plugin.initializeIndex();
     }
     await this.plugin.saveSettings();
   }
@@ -720,6 +722,18 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           })
       );
     
+    new Setting(containerEl)
+      .setName(t("SHOWATTACHMENTS_NAME"))
+      .setDesc(fragWithHTML(t("SHOWATTACHMENTS_DESC")))
+      .addToggle(toggle=>
+        toggle
+          .setValue(this.plugin.settings.showAttachments)
+          .onChange(value => {
+            this.plugin.settings.showAttachments = value;
+            this.dirty = true;
+          })
+      );
+
     this.numberslider(
       containerEl,
       t("MAX_ITEMCOUNT_NAME"),

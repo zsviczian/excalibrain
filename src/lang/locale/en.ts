@@ -18,6 +18,9 @@ export default {
   SHOWINFERRED_DESC: "<b>Toggle ON</b>: Display both explicitly defined and inferred links. Forward links are children, backlinks are parents, " +
     "if two page mutually referes to one another then relationship is inferred to be a friendship. Explicitly defined relationships always " +
     "take priority.<br><b>Toggle OFF</b>: Display only explicitely defined relationships.",
+  SHOWATTACHMENTS_NAME: "Include attachments",
+  SHOWATTACHMENTS_DESC: "<b>Toggle ON</b>: Display every type of file on the graph. " +
+    "<br><b>Toggle OFF</b>: Display only markdown files.",
   STYLE_HEAD: "Styling",
   STYLE_DESC: "Styles are applied in sequence.<br><ol><li>Base node style</li><li>Optional tag based style</li>" +
     "<li>Inferred node style (only applied if the node is inferred)</li><li>Virtual node style (only applied if the node is virtual)</li></ol> " +

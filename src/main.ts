@@ -10,6 +10,7 @@ import { Pages } from './graph/Pages';
 import { getEA } from "obsidian-excalidraw-plugin";
 import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
 import { Scene } from './Scene';
+import { fileURLToPath } from 'url';
 
 declare module "obsidian" {
   interface App {
@@ -24,7 +25,6 @@ export default class ExcaliBrain extends Plugin {
   public pages: Pages;
   public DVAPI: DvAPIInterface;
   public EA: ExcalidrawAutomate;
-  public initialized: boolean = false;
   
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
@@ -48,14 +48,11 @@ export default class ExcaliBrain extends Plugin {
         this.app.plugins.disablePlugin(PLUGIN_NAME)
         return;
       }
-      await this.initializeIndex();
-      this.registerDataviewEventHandlers();
       this.registerCommands();
     });
 	}
 
-  public async initializeIndex() {
-    this.initialized = false;
+  public async createIndex() {
     this.pages = new Pages(this);
 
     //wait for Dataview to complete reloading the index
@@ -67,10 +64,8 @@ export default class ExcaliBrain extends Plugin {
       await sleep(100);
     }
 
-    const start = Date.now();
-
     //Add all existing files
-    for(const f of this.app.vault.getFiles()) {
+    for(const f of this.app.vault.getFiles().filter(f=>this.settings.showAttachments || f.extension === "md")) {
       this.pages.add(f.path,new Page(f.path,f,this));
     }
     //Add all unresolved links and make child of page where it was found
@@ -83,12 +78,35 @@ export default class ExcaliBrain extends Plugin {
       if(!page?.file) return;
       this.pages.addDVFieldLinksToPage(page);
     })
-
-    log(`ExcaliBrain initialized ${this.pages.size} number of pages in ${Date.now()-start}ms`);  
-    this.initialized = true;
   }
 
-  private registerDataviewEventHandlers() {
+  private registerCommands() {
+    this.addCommand({
+      id: "excalibrain-start",
+      name: t("COMMAND_START"),
+      callback: () => {
+        if(Scene.isActive()) {
+          Scene.terminate();
+        } else {
+          Scene.show(this,true);
+        }
+      },
+    });
+  }
+
+	onunload() {
+    Scene.terminate();
+	}
+
+	async loadSettings() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
+	}
+
+  /*  private registerDataviewEventHandlers() {
     const metaCache: MetadataCache = self.app.metadataCache;
     this.registerEvent(
       metaCache.on("dataview:metadata-change",(type:string, file: TAbstractFile|TFile, oldPath?: string) => {
@@ -115,32 +133,6 @@ export default class ExcaliBrain extends Plugin {
         log({type, path:file.path});       
       })
     );
-  }
-
-  private registerCommands() {
-    this.addCommand({
-      id: "excalibrain-start",
-      name: t("COMMAND_START"),
-      callback: () => {
-        if(Scene._instance) {
-          Scene.terminate();
-        } else {
-          Scene.show(this,true);
-        }
-      },
-    });
-  }
-
-	onunload() {
-    Scene.terminate();
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
+  }*/
 }
 

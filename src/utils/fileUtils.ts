@@ -1,4 +1,5 @@
-import { normalizePath } from "obsidian";
+import { App, normalizePath, TAbstractFile, TFile, TFolder, Vault } from "obsidian";
+import { errorlog } from "./utils";
 
 export const getFilenameFromPath = (path:string) => {
   const mdFile = path.endsWith(".md");
@@ -24,4 +25,39 @@ export function splitFolderAndFilename(filepath: string): {
     filename,
     basename: filename.replace(/\.[^/.]+$/, ""),
   };
+}
+
+export function resolveTFolder(app: App, folder_str: string): TFolder {
+  folder_str = normalizePath(folder_str);
+
+  const folder = app.vault.getAbstractFileByPath(folder_str);
+  if (!folder) {
+    errorlog({fn: resolveTFolder,message: `Folder "${folder_str}" doesn't exist`,where:"resolveTFolder"});
+    return null;
+  }
+  if (!(folder instanceof TFolder)) {
+    errorlog({fn: resolveTFolder,message: `${folder_str} is a file, not a folder`,where:"resolveTFolder"});
+    return null;
+  }
+  return folder;
+}
+
+export function getTFilesFromFolder(
+  app: App,
+  folder_str: string
+): Array<TFile> {
+  const folder = resolveTFolder(app, folder_str);
+
+  const files: Array<TFile> = [];
+  Vault.recurseChildren(folder, (file: TAbstractFile) => {
+      if (file instanceof TFile) {
+          files.push(file);
+      }
+  });
+
+  files.sort((a, b) => {
+      return a.basename.localeCompare(b.basename);
+  });
+
+  return files;
 }

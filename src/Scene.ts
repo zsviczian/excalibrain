@@ -1,11 +1,13 @@
 import { App, FileView, MarkdownView, Notice, TextFileView, TFile, WorkspaceLeaf } from "obsidian";
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
+import { EMPTYBRAIN } from "./constants/emptyBrainFile";
 import { Layout } from "./graph/Layout";
 import { Links } from "./graph/Links";
 import { Node } from "./graph/Node";
 import { Page } from "./graph/Page";
 import ExcaliBrain from "./main";
 import { ExcaliBrainSettings } from "./Settings";
+import { SearchBox } from "./Suggesters/SearchBox";
 import { Neighbour, RelationType, Role } from "./Types";
 
 export class Scene {
@@ -16,6 +18,7 @@ export class Scene {
   app: App;
   leaf: WorkspaceLeaf;
   centralPage: Page;
+  centralLeaf: WorkspaceLeaf;
   textSize: {width:number, height:number};
   nodeWidth: number;
   nodeHeight: number;
@@ -23,11 +26,18 @@ export class Scene {
   private links: Links = new Links();
   private layouts: Layout[] = [];
   private removeEH: Function;
+  private removeTimer: Function;
+  private blockTimer: boolean = false;
+  private searchBox: SearchBox;
   
 
-  public static async show(plugin: ExcaliBrain,newLeaf: boolean) {
+  public static isActive() {
     //@ts-ignore
-    if(!this._instance ||(this._instance && !app.workspace.getLeafById(this._instance.leaf?.id))) {
+    return this._instance && app.workspace.getLeafById(this._instance.leaf?.id)
+  }
+
+  public static async show(plugin: ExcaliBrain,newLeaf: boolean) {
+    if(!this.isActive()) {
       let brainLeaf: WorkspaceLeaf;
       app.workspace.iterateAllLeaves(leaf=>{
         if(
@@ -41,6 +51,48 @@ export class Scene {
       (this._instance = new this(plugin,newLeaf,brainLeaf));      
     }
     await this._instance.initilizeScene();
+    this._instance.searchBox = new SearchBox((this._instance.leaf.view as TextFileView).contentEl,plugin);
+  }
+
+  public static async renderGraphForFile(path: string) {
+    //@ts-ignore
+    if(!this._instance ||(this._instance && !app.workspace.getLeafById(this._instance.leaf?.id))) {
+      return;
+    }
+    const self = this._instance;
+    self.blockTimer = true;
+
+    const page = self.plugin.pages.get(path);
+    if(!page || !page.file) {
+      self.blockTimer = false;
+      return;
+    }
+
+    if(!self.ea.targetView?.file || self.ea.targetView.file.path !== self.settings.excalibrainFilepath) {
+      self.removeEventHandler();
+      self.blockTimer = false;
+      return;
+    }
+    
+    if (page.file.path === self.ea.targetView.file.path) { //brainview drawing is the active leaf
+      self.blockTimer = false;
+      return; 
+    }
+  
+    if(
+      self.centralPage &&
+      self.centralPage.path === page.path &&
+      page.file.stat.mtime === self.centralPage.mtime
+    ) {
+      self.blockTimer = false;
+      return; //don't reload the file if it has not changed
+    }
+
+    
+    self.centralLeaf.openFile(page.file);
+    await self.plugin.createIndex();
+    self.centralPage = self.plugin.pages.get(path)
+    await self.render();
   }
 
   constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
@@ -79,7 +131,8 @@ export class Scene {
         return;
       }
     }
-    await this.leaf.openFile(file as TFile);
+    await this.leaf.openFile(file as TFile);   
+
     ea.setView(this.leaf.view as any)
     ea.clear();
     counter = 0;
@@ -142,202 +195,237 @@ export class Scene {
     });
   }
 
+  private async render() {
+    this.ea.clear();
+    this.ea.getExcalidrawAPI().updateScene({elements:[]});
+    this.ea.style.verticalAlign = "middle";
+  
+    const parents = this.centralPage.getParents()
+      .filter(p=>this.settings.showInferredNodes || p.relationType === RelationType.DEFINED)
+      .slice(0,this.plugin.settings.maxItemCount);
+    const children = this.centralPage.getChildren()
+      .filter(c=>this.settings.showInferredNodes || c.relationType === RelationType.DEFINED)
+      .slice(0,this.plugin.settings.maxItemCount);
+    const friends = this.centralPage.getFriends()
+      .filter(f=>this.settings.showInferredNodes || f.relationType === RelationType.DEFINED)    
+      .slice(0,this.plugin.settings.maxItemCount);
+    const siblings = this.centralPage.getSiblings()
+      .filter(s => !(parents.some(p=>p.page.path === s.page.path) &&
+        children.some(c=>c.page.path === s.page.path) &&
+        friends.some(f=>f.page.path === s.page.path)) && 
+        (this.settings.showInferredNodes || s.relationType === RelationType.DEFINED))
+      .slice(0,this.plugin.settings.maxItemCount);
+
+    //-------------------------------------------------------
+    // Generate layout and nodes
+    this.nodesMap = new Map<string,Node>();
+    this.links = new Links();
+    this.layouts = [];
+    const manyChildren = children.length >10;
+    const manySiblings = siblings.length > 10;
+    const singleParent = parents.length <= 1
+    
+    const lCenter = new Layout({
+      origoX: 0,
+      origoY: 0,
+      top: null,
+      bottom: null,
+      columns: 1,
+      columnWidth: this.nodeWidth,
+      rowHeight: this.nodeHeight
+    });
+    this.layouts.push(lCenter);
+    
+    const lChildren = new Layout({
+      origoX: 0,
+      origoY: 2.5 * this.nodeHeight,
+      top: 2 * this.nodeHeight,
+      bottom: null,
+      columns: manyChildren ? 5 : 3,
+      columnWidth: this.nodeWidth,
+      rowHeight: this.nodeHeight
+    });
+    this.layouts.push(lChildren);
+  
+    const lFriends = new Layout({
+      origoX: (manyChildren ? -3 : -2)  * this.nodeWidth,
+      origoY: 0,
+      top: null,
+      bottom: null,
+      columns: 1,
+      columnWidth: this.nodeWidth,
+      rowHeight: this.nodeHeight
+    });
+    this.layouts.push(lFriends);
+
+    const lParents = new Layout({
+      origoX: 0,
+      origoY: -2.5 * this.nodeHeight,
+      top: null,
+      bottom: -2 * this.nodeHeight,
+      columns: 3,
+      columnWidth: this.nodeWidth,
+      rowHeight: this.nodeHeight
+    });
+    this.layouts.push(lParents);
+    
+    const lSiblings = new Layout({
+      origoX: this.nodeWidth * ((singleParent ? 0 : 1) + (manySiblings ? 2 : 1)),
+      origoY: -2.5 * this.nodeHeight,
+      top: null,
+      bottom: this.nodeHeight,
+      columns: (manySiblings ? 3 : 1),
+      columnWidth: this.nodeWidth,
+      rowHeight: this.nodeHeight
+    })
+    this.layouts.push(lSiblings);
+
+    const rootNode = new Node({
+      page: this.centralPage,
+      isInferred: false,
+      isCentral: true,
+      isSibling: false,
+      friendGateOnLeft: true
+    });
+
+    this.nodesMap.set(this.centralPage.path,rootNode);
+    lCenter.nodes.push(rootNode);
+  
+    this.addNodes({
+      neighbours: parents,
+      layout: lParents,
+      isCentral: false,
+      isSibling: false,
+      friendGateOnLeft: true
+    });
+  
+    this.addNodes({
+      neighbours: children,
+      layout: lChildren,
+      isCentral: false,
+      isSibling: false,
+      friendGateOnLeft: true
+    });
+  
+    this.addNodes({
+      neighbours: friends,
+      layout: lFriends,
+      isCentral: false,
+      isSibling: false,
+      friendGateOnLeft: false
+    });
+
+    this.addNodes({
+      neighbours: siblings,
+      layout: lSiblings,
+      isCentral: false,
+      isSibling: true,
+      friendGateOnLeft: true
+    });
+    
+    //-------------------------------------------------------
+    // Generate links for all displayed nodes
+    const addLinks = (nodeA: Node, neighbours:Neighbour[],role: Role) => {
+      neighbours.forEach(neighbour=>{
+        const nodeB = this.nodesMap.get(neighbour.page.path);
+        if(!nodeB) {
+          return;
+        }
+        this.links.addLink(
+          nodeA,
+          nodeB,
+          role,
+          neighbour.relationType,
+          neighbour.typeDefinition,
+          this.ea,
+          this.settings
+        )
+      })
+    }
+
+    Array.from(this.nodesMap.values()).forEach(nodeA => {
+      addLinks(nodeA, nodeA.page.getChildren(),Role.CHILD);
+      addLinks(nodeA, nodeA.page.getParents(),Role.PARENT);
+      addLinks(nodeA, nodeA.page.getFriends(),Role.FRIEND);
+    });
+  
+    //-------------------------------------------------------
+    // Render
+    this.layouts.forEach(layout => layout.render());
+    this.links.render();    
+   
+    const elements = this.ea.getElements();
+    this.ea.getExcalidrawAPI().updateScene({
+      elements: elements.filter(
+        el=>el.type==="arrow"
+      ).concat(elements.filter(el=>el.type!=="arrow"))
+    })
+    this.ea.getExcalidrawAPI().zoomToFit();
+    this.blockTimer = false;
+  }
+
   private addEventHandler() {
     const self = this;
+    
     const brainEventHandler = async (leaf:WorkspaceLeaf) => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      self.blockTimer = true;
+      await self.plugin.createIndex();
+      //await new Promise((resolve) => setTimeout(resolve, 100));
       //-------------------------------------------------------
       //terminate event handler if view no longer exists or file has changed
-      if(!self.ea.targetView?.file || self.ea.targetView.file.path !== self.ea.targetView.file.path) {
+      if(!self.ea.targetView?.file || self.ea.targetView.file.path !== self.settings.excalibrainFilepath) {
         self.removeEventHandler();
+        self.blockTimer = false;
         return;
       }
       
       if(!(leaf?.view && (leaf.view instanceof FileView) && leaf.view.file)) {
+        self.blockTimer = false;
         return;
       }
   
       const rootFile = leaf.view.file;
       
       if (rootFile.path === self.ea.targetView.file.path) { //brainview drawing is the active leaf
+        self.blockTimer = false;
         return; 
       }
     
-      if(self.centralPage && self.centralPage.path === rootFile.path) {
+      if(
+        self.centralPage &&
+        self.centralPage.path === rootFile.path &&
+        rootFile.stat.mtime === self.centralPage.mtime
+      ) {
+        self.blockTimer = false;
         return; //don't reload the file if it has not changed
       }
   
       self.centralPage = self.plugin.pages.get(rootFile.path);
-      self.ea.clear();
-      self.ea.getExcalidrawAPI().updateScene({elements:[]});
-      self.ea.style.verticalAlign = "middle";
-    
-      const parents = self.centralPage.getParents()
-        .filter(p=>self.settings.showInferredNodes || p.relationType === RelationType.DEFINED)
-        .slice(0,self.plugin.settings.maxItemCount);
-      const children = self.centralPage.getChildren()
-        .filter(c=>self.settings.showInferredNodes || c.relationType === RelationType.DEFINED)
-        .slice(0,self.plugin.settings.maxItemCount);
-      const friends = self.centralPage.getFriends()
-        .filter(f=>self.settings.showInferredNodes || f.relationType === RelationType.DEFINED)    
-        .slice(0,self.plugin.settings.maxItemCount);
-      const siblings = self.centralPage.getSiblings()
-        .filter(s => !(parents.some(p=>p.page.path === s.page.path) &&
-          children.some(c=>c.page.path === s.page.path) &&
-          friends.some(f=>f.page.path === s.page.path)) && 
-          (self.settings.showInferredNodes || s.relationType === RelationType.DEFINED))
-        .slice(0,self.plugin.settings.maxItemCount);
-  
-      //-------------------------------------------------------
-      // Generate layout and nodes
-      self.nodesMap = new Map<string,Node>();
-      self.links = new Links();
-      self.layouts = [];
-      const manyChildren = children.length >10;
-      const manySiblings = siblings.length > 10;
-      const singleParent = parents.length <= 1
-      
-      const lCenter = new Layout({
-        origoX: 0,
-        origoY: 0,
-        top: null,
-        bottom: null,
-        columns: 1,
-        columnWidth: self.nodeWidth,
-        rowHeight: self.nodeHeight
-      });
-      self.layouts.push(lCenter);
-      
-      const lChildren = new Layout({
-        origoX: 0,
-        origoY: 2.5 * self.nodeHeight,
-        top: 2 * self.nodeHeight,
-        bottom: null,
-        columns: manyChildren ? 5 : 3,
-        columnWidth: self.nodeWidth,
-        rowHeight: self.nodeHeight
-      });
-      self.layouts.push(lChildren);
-    
-      const lFriends = new Layout({
-        origoX: (manyChildren ? -3 : -2)  * self.nodeWidth,
-        origoY: 0,
-        top: null,
-        bottom: null,
-        columns: 1,
-        columnWidth: self.nodeWidth,
-        rowHeight: self.nodeHeight
-      });
-      self.layouts.push(lFriends);
-  
-      const lParents = new Layout({
-        origoX: 0,
-        origoY: -2.5 * self.nodeHeight,
-        top: null,
-        bottom: -2 * self.nodeHeight,
-        columns: 3,
-        columnWidth: self.nodeWidth,
-        rowHeight: self.nodeHeight
-      });
-      self.layouts.push(lParents);
-      
-      const lSiblings = new Layout({
-        origoX: self.nodeWidth * ((singleParent ? 0 : 1) + (manySiblings ? 2 : 1)),
-        origoY: -2.5 * self.nodeHeight,
-        top: null,
-        bottom: self.nodeHeight,
-        columns: (manySiblings ? 3 : 1),
-        columnWidth: self.nodeWidth,
-        rowHeight: self.nodeHeight
-      })
-      self.layouts.push(lSiblings);
-  
-      const rootNode = new Node({
-        page: self.centralPage,
-        isInferred: false,
-        isCentral: true,
-        isSibling: false,
-        friendGateOnLeft: true
-      });
-  
-      self.nodesMap.set(self.centralPage.path,rootNode);
-      lCenter.nodes.push(rootNode);
-    
-      self.addNodes({
-        neighbours: parents,
-        layout: lParents,
-        isCentral: false,
-        isSibling: false,
-        friendGateOnLeft: true
-      });
-    
-      self.addNodes({
-        neighbours: children,
-        layout: lChildren,
-        isCentral: false,
-        isSibling: false,
-        friendGateOnLeft: true
-      });
-    
-      self.addNodes({
-        neighbours: friends,
-        layout: lFriends,
-        isCentral: false,
-        isSibling: false,
-        friendGateOnLeft: false
-      });
-  
-      self.addNodes({
-        neighbours: siblings,
-        layout: lSiblings,
-        isCentral: false,
-        isSibling: true,
-        friendGateOnLeft: true
-      });
-      
-      //-------------------------------------------------------
-      // Generate links for all displayed nodes
-      const addLinks = (nodeA: Node, neighbours:Neighbour[],role: Role) => {
-        neighbours.forEach(neighbour=>{
-          const nodeB = self.nodesMap.get(neighbour.page.path);
-          if(!nodeB) {
-            return;
-          }
-          self.links.addLink(
-            nodeA,
-            nodeB,
-            role,
-            neighbour.relationType,
-            neighbour.typeDefinition,
-            self.ea,
-            self.settings
-          )
-        })
+      self.centralLeaf = leaf;
+
+      self.render();
+    }
+
+    const updateTimer = async () => {
+      if(this.blockTimer) {
+        return;
       }
-  
-      Array.from(self.nodesMap.values()).forEach(nodeA => {
-        addLinks(nodeA, nodeA.page.getChildren(),Role.CHILD);
-        addLinks(nodeA, nodeA.page.getParents(),Role.PARENT);
-        addLinks(nodeA, nodeA.page.getFriends(),Role.FRIEND);
-      });
-    
-      //-------------------------------------------------------
-      // Render
-      self.layouts.forEach(layout => layout.render());
-      self.links.render();    
-     
-      const elements = self.ea.getElements();
-      self.ea.getExcalidrawAPI().updateScene({
-        elements: elements.filter(
-          el=>el.type==="arrow"
-        ).concat(elements.filter(el=>el.type!=="arrow"))
-      })
-      self.ea.getExcalidrawAPI().zoomToFit();
+      for(const node of this.nodesMap.values()) {
+        const { file, mtime } = node.page;
+        if(file && file.stat.mtime !== mtime) {
+          await this.plugin.createIndex();
+          this.centralPage = this.plugin.pages.get(file.path);
+          this.render();
+          return;
+        }
+      }
     }
 
     app.workspace.on("active-leaf-change", brainEventHandler);
     this.removeEH = () => app.workspace.off("active-leaf-change",brainEventHandler);
-    
+    const timer = setInterval(updateTimer,5000);
+    this.removeTimer = () => clearInterval(timer);
+
     const leaves: WorkspaceLeaf[] = [];
     app.workspace.iterateAllLeaves(l=>{
       if( (l.view instanceof FileView) && l.view.file && l.view.file.path !== this.ea.targetView.file.path) {
@@ -354,6 +442,12 @@ export class Scene {
 
     if(this.removeEH) {
       this.removeEH();
+      this.removeEH = undefined;
+    }
+
+    if(this.removeTimer) {
+      this.removeTimer();
+      this.removeTimer = undefined;
     }
     
     if(isBoolean(this.ea.targetView?.linksAlwaysOpenInANewPane)) {
@@ -367,8 +461,12 @@ export class Scene {
       } catch {}
     }
 
+    this.searchBox.terminate();
+    this.searchBox = undefined;
     this.ea.targetView = undefined;
     this.leaf = undefined;
+    this.centralLeaf = undefined;
+    this.centralPage = undefined;
     new Notice("Brain Graph Off");
   }
 

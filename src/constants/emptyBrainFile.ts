@@ -1,4 +1,4 @@
-const EMPTYBRAIN = `---
+export const EMPTYBRAIN = `---
 
 excalidraw-plugin: parsed
 excalidraw-default-mode: view
@@ -50,13 +50,13 @@ ${String.fromCharCode(96,96,96)}json
 			"locked": false,
 			"fontSize": 20,
 			"fontFamily": 3,
-			"text": "Open a document in another pane and click it to get started.\n\nFor the best experience enable 'Open in adjacent pane'\nin Excalidraw settings under 'Links and Transclusion'.",
-			"rawText": "Open a document in another pane and click it to get started.\n\nFor the best experience enable 'Open in adjacent pane'\nin Excalidraw settings under 'Links and Transclusion'.",
+			"text": "Open a document in another pane and click it to get started.\\n\\nFor the best experience enable 'Open in adjacent pane'\\nin Excalidraw settings under 'Links and Transclusion'.",
+			"rawText": "Open a document in another pane and click it to get started.\\n\\nFor the best experience enable 'Open in adjacent pane'\\nin Excalidraw settings under 'Links and Transclusion'.",
 			"baseline": 91,
 			"textAlign": "center",
 			"verticalAlign": "top",
 			"containerId": null,
-			"originalText": "Open a document in another pane and click it to get started.\n\nFor the best experience enable 'Open in adjacent pane'\nin Excalidraw settings under 'Links and Transclusion'."
+			"originalText": "Open a document in another pane and click it to get started.\\n\\nFor the best experience enable 'Open in adjacent pane'\\nin Excalidraw settings under 'Links and Transclusion'."
 		}
 	],
 	"appState": {

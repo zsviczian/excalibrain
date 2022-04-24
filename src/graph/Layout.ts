@@ -58,14 +58,14 @@ export class Layout {
       y: top
     };
     this.renderedNodes.forEach((nodes,row) =>
-    nodes.forEach((node,idx) => {
-      if(!node) return;
-      node.setCenter({
-        x: center00.x + idx*this.spec.columnWidth,
-        y: center00.y + row*this.spec.rowHeight
-      });
-      node.render();
-    })
+      nodes.forEach((node,idx) => {
+        if(!node) return;
+        node.setCenter({
+          x: center00.x + idx*this.spec.columnWidth,
+          y: center00.y + row*this.spec.rowHeight
+        });
+        node.render();
+      })
     );
   }
 }

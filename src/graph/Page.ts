@@ -12,6 +12,7 @@ const DEFAULT_RELATION:Relation = {
 }
 
 export class Page {
+  public mtime: number;
   public path: string;
   public file: TFile;
   public neighbours: Map<string,Relation>;
@@ -21,6 +22,7 @@ export class Page {
   constructor(path:string, file:TFile, plugin: ExcaliBrain) {
     this.path = path;
     this.file = file;
+    this.mtime = file ? file.stat.mtime : null;
     this.neighbours = new Map<string,Relation>();
     this.plugin = plugin;
   }
@@ -140,7 +142,7 @@ export class Page {
     //case E, J, K, L, M, N, O, P, Q  
     relation.isFriend ||
     //case H, I
-    (relation.isParent && relation.isChild && !relation.isFriend);
+    (relation.isParent && relation.isChild);
 
   hasFriends = ():boolean => Array.from(this.neighbours)
     .some(x => this.isFriend(x[1]))
