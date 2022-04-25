@@ -56,16 +56,20 @@ export default class ExcaliBrain extends Plugin {
     this.pages = new Pages(this);
 
     //wait for Dataview to complete reloading the index
+    let counter = 0;
     while(
       //@ts-ignore
       this.app.metadataCache.inProgressTaskCount > 0 ||
       this.DVAPI.index.importer.reloadQueue.length > 0
     ) {
+      if(counter++ % 100 === 0) {
+        new Notice("ExcaliBrain is waiting for Dataview initialization",1000);
+      }
       await sleep(100);
     }
 
     //Add all existing files
-    for(const f of this.app.vault.getFiles().filter(f=>this.settings.showAttachments || f.extension === "md")) {
+    for(const f of this.app.vault.getFiles()) {
       this.pages.add(f.path,new Page(f.path,f,this));
     }
     //Add all unresolved links and make child of page where it was found

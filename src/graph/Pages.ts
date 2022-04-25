@@ -75,9 +75,6 @@ export class Pages {
         return;
       }
       Object.keys(resolvedLinks[parentPath]).forEach(childPath=>{
-        if(!(this.plugin.settings.showAttachments || childPath.endsWith(".md"))) {
-          return;
-        }
         const child = this.pages.get(childPath);
         const parent = this.pages.get(parentPath);
         child.addParent(parent,RelationType.INFERRED);
@@ -112,7 +109,7 @@ export class Pages {
     }
     page.dvPage = dvPage;
     const parentFields = this.plugin.settings.hierarchy.parents;
-    getDVFieldLinksForPage(this.plugin,dvPage,parentFields,this.plugin.settings.showAttachments).forEach(item=>{
+    getDVFieldLinksForPage(this.plugin,dvPage,parentFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
         log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
@@ -122,7 +119,7 @@ export class Pages {
       referencedPage.addChild(page,RelationType.DEFINED,item.field);
     });
     const childFields = this.plugin.settings.hierarchy.children;
-    getDVFieldLinksForPage(this.plugin,dvPage,childFields,this.plugin.settings.showAttachments).forEach(item=>{
+    getDVFieldLinksForPage(this.plugin,dvPage,childFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
         log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
@@ -132,7 +129,7 @@ export class Pages {
       referencedPage.addParent(page,RelationType.DEFINED,item.field);
     });
     const friendFields = this.plugin.settings.hierarchy.friends;
-    getDVFieldLinksForPage(this.plugin,dvPage,friendFields,this.plugin.settings.showAttachments).forEach(item=>{
+    getDVFieldLinksForPage(this.plugin,dvPage,friendFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
         log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);

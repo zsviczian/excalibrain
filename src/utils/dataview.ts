@@ -2,21 +2,19 @@ import { App, TFile } from "obsidian";
 import { Page } from "src/graph/Page";
 import ExcaliBrain from "src/main";
 
-const getPathOrSelf = (app: App, link:string, hostPath:string, includeAttachments:boolean):string => {
+const getPathOrSelf = (app: App, link:string, hostPath:string):string => {
   const f = app.metadataCache.getFirstLinkpathDest(link,hostPath);
-  return f
-    ? ((includeAttachments || f.extension === "md") ? f.path : null)
-    : link;
+  return f ? f.path : link;
 }
 
-const readDVField = (app: App, field: any, file:TFile, includeAttachments:boolean):string[] => {
+const readDVField = (app: App, field: any, file:TFile):string[] => {
   const res = new Set<string>();
 
   //the field is a list of links
   if(field.values) {
     field.values.forEach((l:any)=>{
       if(l.type === "file") {
-        const path = getPathOrSelf(app, l.path,file.path, includeAttachments);
+        const path = getPathOrSelf(app, l.path,file.path);
         if(path) {
           res.add(path);
         }
@@ -27,7 +25,7 @@ const readDVField = (app: App, field: any, file:TFile, includeAttachments:boolea
 
   //the field is a single link
   if(field.path) {
-    const path = getPathOrSelf(app,field.path,file.path, includeAttachments); 
+    const path = getPathOrSelf(app,field.path,file.path); 
     return path ? [path] : [];
   }
 
@@ -36,7 +34,7 @@ const readDVField = (app: App, field: any, file:TFile, includeAttachments:boolea
   let r;
   while(!(r=m.next()).done) {
     if(r.value[1]) {
-      const path = getPathOrSelf(app, r.value[1],file.path, includeAttachments);
+      const path = getPathOrSelf(app, r.value[1],file.path);
       if(path) { 
         res.add(path);
       }
@@ -45,13 +43,13 @@ const readDVField = (app: App, field: any, file:TFile, includeAttachments:boolea
   return Array.from(res);
 }
 
-export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<string, any>, fields: string[],includeAttachments: boolean):{link:string,field:string}[] => {
+export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<string, any>, fields: string[]):{link:string,field:string}[] => {
   const links:{link:string,field:string}[] = [];
   const processed = new Set();
   fields.forEach(f => {
     if(dvPage[f] && !processed.has(f)) {
       processed.add(f);
-      readDVField(plugin.app,dvPage[f],dvPage.file, includeAttachments).forEach(l=>links.push({link:l,field:f}))
+      readDVField(plugin.app,dvPage[f],dvPage.file).forEach(l=>links.push({link:l,field:f}))
     };
   });
   return links;

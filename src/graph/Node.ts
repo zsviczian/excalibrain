@@ -66,6 +66,8 @@ export class Node {
   }
 
   render() {
+    const includeVirtual = this.settings.showInferredNodes;
+    const includeAttachments = this.settings.showAttachments;
     const ea = this.ea;
     const label = this.displayText();
     ea.style.fontSize = this.style.fontSize;
@@ -96,7 +98,9 @@ export class Node {
 
     ea.style.fillStyle = this.style.gateFillStyle;
     ea.style.strokeColor = this.style.gateStrokeColor;
-    ea.style.backgroundColor =  this.page.hasFriends() ? this.style.gateBackgroundColor : "transparent";
+    ea.style.backgroundColor =  this.page.hasFriends(includeVirtual, includeAttachments) 
+      ? this.style.gateBackgroundColor
+      : "transparent";
     this.friendGateId = ea.addEllipse(
       this.friendGateOnLeft
         ? this.center.x - this.style.gateRadius * 2 - this.style.padding - labelSize.width / 2
@@ -105,14 +109,18 @@ export class Node {
       this.style.gateRadius * 2,
       this.style.gateRadius * 2
     );
-    ea.style.backgroundColor =  this.page.hasParents() ? this.style.gateBackgroundColor : "transparent";
+    ea.style.backgroundColor =  this.page.hasParents(includeVirtual, includeAttachments)
+      ? this.style.gateBackgroundColor
+      : "transparent";
     this.parentGateId = ea.addEllipse(
       this.center.x - this.style.gateRadius - this.style.gateOffset,
       this.center.y - 2 * this.style.gateRadius - this.style.padding - labelSize.height / 2,
       this.style.gateRadius * 2,
       this.style.gateRadius * 2
     );
-    ea.style.backgroundColor =  this.page.hasChildren() ? this.style.gateBackgroundColor : "transparent";
+    ea.style.backgroundColor =  this.page.hasChildren(includeVirtual, includeAttachments)
+      ? this.style.gateBackgroundColor
+      : "transparent";
     this.childGateId = ea.addEllipse(
       this.center.x - this.style.gateRadius + this.style.gateOffset,
       this.center.y + this.style.padding + labelSize.height / 2,

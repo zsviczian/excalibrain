@@ -17,7 +17,7 @@ export class Page {
   public file: TFile;
   public neighbours: Map<string,Relation>;
   public plugin: ExcaliBrain;
-  public dvPage: Record<string, any>; 
+  public dvPage: Record<string, any>;
   
   constructor(path:string, file:TFile, plugin: ExcaliBrain) {
     this.path = path;
@@ -27,8 +27,17 @@ export class Page {
     this.plugin = plugin;
   }
 
+  private getNeighbours(includeVirtual: boolean, includeAttachments:boolean): [string, Relation][] {
+    return Array.from(this.neighbours)
+      .filter(x=> (includeVirtual || !x[1].target.isVirtual) && (includeAttachments || !x[1].target.isAttachment))
+  }
+  
   public get isVirtual(): boolean {
     return this.file === null;
+  }
+
+  public get isAttachment(): boolean {
+    return this.file ? (this.file.extension !== "md") : false;
   }
 
   public get isMarkdown(): boolean {
@@ -104,10 +113,12 @@ export class Page {
     (relation.isParent && relation.parentType === RelationType.INFERRED &&
       relation.childType === RelationType.DEFINED && !relation.isFriend));
 
-  hasChildren = ():boolean => Array.from(this.neighbours)
+  hasChildren = (includeVirtual: boolean, includeAttachments: boolean):boolean =>
+    this.getNeighbours(includeVirtual, includeAttachments)
     .some(x => this.isChild(x[1]));
 
-  getChildren = ():Neighbour[] => Array.from(this.neighbours)
+  getChildren = (includeVirtual: boolean, includeAttachments: boolean):Neighbour[] =>
+    this.getNeighbours(includeVirtual, includeAttachments)
     .filter(x => this.isChild(x[1]))
     .map(x=>{
       return {
@@ -125,10 +136,12 @@ export class Page {
       relation.parentType === RelationType.DEFINED && !relation.isFriend));
   
 
-  hasParents = ():boolean => Array.from(this.neighbours)
+  hasParents = (includeVirtual: boolean, includeAttachments: boolean):boolean => 
+    this.getNeighbours(includeVirtual, includeAttachments)
     .some(x => this.isParent(x[1]));
 
-  getParents = ():Neighbour[] => Array.from(this.neighbours)
+  getParents = (includeVirtual: boolean, includeAttachments: boolean):Neighbour[] =>
+    this.getNeighbours(includeVirtual, includeAttachments)
     .filter(x => this.isParent(x[1]))
     .map(x => {
       return {
@@ -142,12 +155,15 @@ export class Page {
     //case E, J, K, L, M, N, O, P, Q  
     relation.isFriend ||
     //case H, I
-    (relation.isParent && relation.isChild);
+    ((relation.parentType === RelationType.DEFINED && relation.childType === RelationType.DEFINED) ||
+      (relation.parentType !== RelationType.INFERRED && relation.childType !== RelationType.INFERRED));
 
-  hasFriends = ():boolean => Array.from(this.neighbours)
+  hasFriends = (includeVirtual: boolean, includeAttachments: boolean):boolean =>
+    this.getNeighbours(includeVirtual, includeAttachments)
     .some(x => this.isFriend(x[1]))
 
-  getFriends = ():Neighbour[] => Array.from(this.neighbours)
+  getFriends = (includeVirtual: boolean, includeAttachments: boolean):Neighbour[] =>
+    this.getNeighbours(includeVirtual, includeAttachments)
     .filter(x => this.isFriend(x[1]))
     .map(x => {
       return {
@@ -193,9 +209,9 @@ export class Page {
     }
   }
 
-  getSiblings():Neighbour[] {
+  getSiblings(includeVirtual: boolean, includeAttachments: boolean):Neighbour[] {
     const siblings = new Map<string,Neighbour>();
-    this.getParents().forEach(p => {
+    this.getParents(includeVirtual, includeAttachments).forEach(p => {
       if(siblings.has(p.page.path)) {
         if(p.relationType === RelationType.DEFINED) {
           siblings.get(p.page.path).relationType = RelationType.DEFINED;

@@ -4,7 +4,7 @@ import { App, TAbstractFile, TFile } from "obsidian";
 import ExcaliBrain from "src/main";
 import { getTFilesFromFolder } from "src/utils/fileUtils";
 import { fileURLToPath } from "url";
-import { TextInputSuggest } from "./suggest";
+import { TextInputSuggest } from "./Suggest";
 
 export enum FileSuggestMode {
     TemplateFiles,

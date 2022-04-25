@@ -199,17 +199,19 @@ export class Scene {
     this.ea.clear();
     this.ea.getExcalidrawAPI().updateScene({elements:[]});
     this.ea.style.verticalAlign = "middle";
-  
-    const parents = this.centralPage.getParents()
+    const includeVirtual = this.settings.showInferredNodes;
+    const includeAttachments = this.settings.showAttachments;
+    
+    const parents = this.centralPage.getParents(includeVirtual, includeAttachments)
       .filter(p=>this.settings.showInferredNodes || p.relationType === RelationType.DEFINED)
       .slice(0,this.plugin.settings.maxItemCount);
-    const children = this.centralPage.getChildren()
+    const children = this.centralPage.getChildren(includeVirtual, includeAttachments)
       .filter(c=>this.settings.showInferredNodes || c.relationType === RelationType.DEFINED)
       .slice(0,this.plugin.settings.maxItemCount);
-    const friends = this.centralPage.getFriends()
+    const friends = this.centralPage.getFriends(includeVirtual, includeAttachments)
       .filter(f=>this.settings.showInferredNodes || f.relationType === RelationType.DEFINED)    
       .slice(0,this.plugin.settings.maxItemCount);
-    const siblings = this.centralPage.getSiblings()
+    const siblings = this.centralPage.getSiblings(includeVirtual, includeAttachments)
       .filter(s => !(parents.some(p=>p.page.path === s.page.path) &&
         children.some(c=>c.page.path === s.page.path) &&
         friends.some(f=>f.page.path === s.page.path)) && 
@@ -344,9 +346,9 @@ export class Scene {
     }
 
     Array.from(this.nodesMap.values()).forEach(nodeA => {
-      addLinks(nodeA, nodeA.page.getChildren(),Role.CHILD);
-      addLinks(nodeA, nodeA.page.getParents(),Role.PARENT);
-      addLinks(nodeA, nodeA.page.getFriends(),Role.FRIEND);
+      addLinks(nodeA, nodeA.page.getChildren(includeVirtual, includeAttachments),Role.CHILD);
+      addLinks(nodeA, nodeA.page.getParents(includeVirtual, includeAttachments),Role.PARENT);
+      addLinks(nodeA, nodeA.page.getFriends(includeVirtual, includeAttachments),Role.FRIEND);
     });
   
     //-------------------------------------------------------
