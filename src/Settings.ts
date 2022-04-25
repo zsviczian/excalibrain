@@ -12,6 +12,7 @@ import { FillStyle, getEA, StrokeSharpness, StrokeStyle } from "obsidian-excalid
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 import { t } from "./lang/helpers";
 import ExcaliBrain from "./main";
+import { Scene } from "./Scene";
 import { Hierarchy, NodeStyle, LinkStyle } from "./Types";
 import { WarningPrompt } from "./utils/Prompts";
 
@@ -22,12 +23,14 @@ export interface ExcaliBrainSettings {
   backgroundColor: string;
   showInferredNodes: boolean;
   showAttachments: boolean;
+  showVirtualNodes: boolean;
   maxItemCount: number;
   baseNodeStyle: NodeStyle;
   centralNodeStyle: NodeStyle;
   inferredNodeStyle: NodeStyle;
   virtualNodeStyle: NodeStyle;
   siblingNodeStyle: NodeStyle;
+  attachmentNodeStyle: NodeStyle;
   tagNodeStyles: {[key: string]: NodeStyle};
   tagStyleList: string[];
   baseLinkStyle: LinkStyle;
@@ -47,6 +50,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   backgroundColor: "#0c3e6aff",
   showInferredNodes: true,
   showAttachments: true,
+  showVirtualNodes: true,
   maxItemCount: 30,
   baseNodeStyle: {
     prefix: "",
@@ -84,6 +88,9 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   },
   siblingNodeStyle: {
     fontSize: 15,
+  },
+  attachmentNodeStyle: {
+    prefix: "📎 ",
   },
   tagNodeStyles: {},
   tagStyleList: [],
@@ -137,7 +144,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       this.plugin.settings.hierarchy = JSON.parse(this.hierarchy);
       //this.plugin.initializeIndex();
     }
-    await this.plugin.saveSettings();
+    this.plugin.saveSettings();
+    Scene.reRender();
   }
 
   colorpicker(
@@ -734,6 +742,18 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           })
       );
 
+    new Setting(containerEl)
+      .setName(t("SHOWVIRTUAL_NAME"))
+      .setDesc(fragWithHTML(t("SHOWVIRTUAL_DESC")))
+      .addToggle(toggle=>
+        toggle
+          .setValue(this.plugin.settings.showVirtualNodes)
+          .onChange(value => {
+            this.plugin.settings.showVirtualNodes = value;
+            this.dirty = true;
+          })
+      );
+
     this.numberslider(
       containerEl,
       t("MAX_ITEMCOUNT_NAME"),
@@ -768,11 +788,6 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     )
 
     this.nodeSettings(
-      t("NODESTYLE_CENTRAL"),
-      this.plugin.settings.centralNodeStyle
-    )
-
-    this.nodeSettings(
       t("NODESTYLE_INFERRED"),
       this.plugin.settings.inferredNodeStyle
     )
@@ -783,8 +798,18 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     )
 
     this.nodeSettings(
+      t("NODESTYLE_CENTRAL"),
+      this.plugin.settings.centralNodeStyle
+    )
+
+    this.nodeSettings(
       t("NODESTYLE_SIBLING"),
       this.plugin.settings.siblingNodeStyle
+    )
+
+    this.nodeSettings(
+      t("NODESTYLE_ATTACHMENT"),
+      this.plugin.settings.attachmentNodeStyle
     )
   }
 }

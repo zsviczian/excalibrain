@@ -30,6 +30,13 @@ export class Scene {
   private blockTimer: boolean = false;
   private searchBox: SearchBox;
   
+  constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
+    this.settings = plugin.settings;
+    this.ea = plugin.EA;
+    this.plugin = plugin;
+    this.app = plugin.app;
+    this.leaf = leaf ?? app.workspace.getLeaf(newLeaf);
+  }
 
   public static isActive() {
     //@ts-ignore
@@ -53,10 +60,22 @@ export class Scene {
     await this._instance.initilizeScene();
     this._instance.searchBox = new SearchBox((this._instance.leaf.view as TextFileView).contentEl,plugin);
   }
+  public static async reRender() {
+    if(!this.isActive()) {
+      return;
+    }
+    const self = this._instance;
+    if(!self.centralLeaf || !self.centralPage) {
+      return;
+    }
+    const path = self.centralPage.path;
+    await self.plugin.createIndex();
+    self.centralPage = self.plugin.pages.get(path)
+    await self.render();
+  }
 
   public static async renderGraphForFile(path: string) {
-    //@ts-ignore
-    if(!this._instance ||(this._instance && !app.workspace.getLeafById(this._instance.leaf?.id))) {
+    if(!this.isActive()) {
       return;
     }
     const self = this._instance;
@@ -93,14 +112,6 @@ export class Scene {
     await self.plugin.createIndex();
     self.centralPage = self.plugin.pages.get(path)
     await self.render();
-  }
-
-  constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
-    this.settings = plugin.settings;
-    this.ea = plugin.EA;
-    this.plugin = plugin;
-    this.app = plugin.app;
-    this.leaf = leaf ?? app.workspace.getLeaf(newLeaf);
   }
 
   public async initilizeScene() {
@@ -199,23 +210,15 @@ export class Scene {
     this.ea.clear();
     this.ea.getExcalidrawAPI().updateScene({elements:[]});
     this.ea.style.verticalAlign = "middle";
-    const includeVirtual = this.settings.showInferredNodes;
-    const includeAttachments = this.settings.showAttachments;
     
-    const parents = this.centralPage.getParents(includeVirtual, includeAttachments)
-      .filter(p=>this.settings.showInferredNodes || p.relationType === RelationType.DEFINED)
-      .slice(0,this.plugin.settings.maxItemCount);
-    const children = this.centralPage.getChildren(includeVirtual, includeAttachments)
-      .filter(c=>this.settings.showInferredNodes || c.relationType === RelationType.DEFINED)
-      .slice(0,this.plugin.settings.maxItemCount);
-    const friends = this.centralPage.getFriends(includeVirtual, includeAttachments)
-      .filter(f=>this.settings.showInferredNodes || f.relationType === RelationType.DEFINED)    
-      .slice(0,this.plugin.settings.maxItemCount);
-    const siblings = this.centralPage.getSiblings(includeVirtual, includeAttachments)
+    const parents = this.centralPage.getParents().filter(x=>x.page.path !== this.centralPage.path).slice(0,this.plugin.settings.maxItemCount);
+    const children = this.centralPage.getChildren().filter(x=>x.page.path !== this.centralPage.path).slice(0,this.plugin.settings.maxItemCount);
+    const friends = this.centralPage.getFriends().filter(x=>x.page.path !== this.centralPage.path).slice(0,this.plugin.settings.maxItemCount);
+    const siblings = this.centralPage.getSiblings()
       .filter(s => !(parents.some(p=>p.page.path === s.page.path) &&
         children.some(c=>c.page.path === s.page.path) &&
         friends.some(f=>f.page.path === s.page.path)) && 
-        (this.settings.showInferredNodes || s.relationType === RelationType.DEFINED))
+        (s.page.path !== this.centralPage.path))
       .slice(0,this.plugin.settings.maxItemCount);
 
     //-------------------------------------------------------
@@ -346,9 +349,9 @@ export class Scene {
     }
 
     Array.from(this.nodesMap.values()).forEach(nodeA => {
-      addLinks(nodeA, nodeA.page.getChildren(includeVirtual, includeAttachments),Role.CHILD);
-      addLinks(nodeA, nodeA.page.getParents(includeVirtual, includeAttachments),Role.PARENT);
-      addLinks(nodeA, nodeA.page.getFriends(includeVirtual, includeAttachments),Role.FRIEND);
+      addLinks(nodeA, nodeA.page.getChildren(),Role.CHILD);
+      addLinks(nodeA, nodeA.page.getParents(),Role.PARENT);
+      addLinks(nodeA, nodeA.page.getFriends(),Role.FRIEND);
     });
   
     //-------------------------------------------------------

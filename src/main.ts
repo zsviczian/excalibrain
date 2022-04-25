@@ -62,7 +62,7 @@ export default class ExcaliBrain extends Plugin {
       this.app.metadataCache.inProgressTaskCount > 0 ||
       this.DVAPI.index.importer.reloadQueue.length > 0
     ) {
-      if(counter++ % 100 === 0) {
+      if(counter++ % 100 === 10) {
         new Notice("ExcaliBrain is waiting for Dataview initialization",1000);
       }
       await sleep(100);

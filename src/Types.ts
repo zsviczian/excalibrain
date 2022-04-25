@@ -3,8 +3,8 @@ import { StrokeSharpness, StrokeStyle } from "obsidian-excalidraw-plugin";
 import { Page } from "./graph/Page";
 
 export enum RelationType {
-  DEFINED,
-  INFERRED
+  DEFINED = 1,
+  INFERRED = 2
 }
 
 export enum Role {

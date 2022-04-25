@@ -1,6 +1,8 @@
 import { TFile } from "obsidian";
 import ExcaliBrain from "src/main";
+import { ExcaliBrainSettings } from "src/Settings";
 import { Neighbour, Relation, RelationType } from "src/Types";
+import { pipeline } from "stream";
 
 
 
@@ -11,12 +13,50 @@ const DEFAULT_RELATION:Relation = {
   isFriend: false
 }
 
+const getRelationVector = (r:Relation):{
+  pi: boolean,
+  pd: boolean,
+  ci: boolean,
+  cd: boolean,
+  fd: boolean
+} => {
+  return {
+    pi: r.isParent && r.parentType === RelationType.INFERRED,
+    pd: r.isParent && r.parentType === RelationType.DEFINED,
+    ci: r.isChild && r.childType === RelationType.INFERRED,
+    cd: r.isChild && r.childType === RelationType.DEFINED,
+    fd: r.isFriend
+  }
+}
+
+const concat = (s1: string, s2: string): string => {
+  return s1 && s2 
+    ? (s1 +", " + s2)
+    : s1 
+      ? s1
+      : s2
+}
+
+const relationTypeToSet = (currentType: RelationType, newType: RelationType):RelationType => {
+  if(currentType === RelationType.DEFINED) {
+    return RelationType.DEFINED
+  }
+  if(currentType === RelationType.INFERRED) {
+    if(newType === RelationType.DEFINED) {
+      return RelationType.DEFINED;
+    }
+    return RelationType.INFERRED;
+  }
+  return newType;
+}
+
 export class Page {
   public mtime: number;
   public path: string;
   public file: TFile;
   public neighbours: Map<string,Relation>;
   public plugin: ExcaliBrain;
+  public settings: ExcaliBrainSettings;
   public dvPage: Record<string, any>;
   
   constructor(path:string, file:TFile, plugin: ExcaliBrain) {
@@ -25,11 +65,14 @@ export class Page {
     this.mtime = file ? file.stat.mtime : null;
     this.neighbours = new Map<string,Relation>();
     this.plugin = plugin;
+    this.settings = plugin.settings;
   }
 
-  private getNeighbours(includeVirtual: boolean, includeAttachments:boolean): [string, Relation][] {
+  private getNeighbours(): [string, Relation][] {
+    const { showVirtualNodes, showAttachments, showInferredNodes } = this.settings
     return Array.from(this.neighbours)
-      .filter(x=> (includeVirtual || !x[1].target.isVirtual) && (includeAttachments || !x[1].target.isAttachment))
+      .filter(x=> (showVirtualNodes || !x[1].target.isVirtual) && 
+        (showAttachments || !x[1].target.isAttachment))
   }
   
   public get isVirtual(): boolean {
@@ -49,11 +92,14 @@ export class Page {
   // add relationships
   //-----------------------------------------------
   addParent(page: Page, relationType:RelationType, definition?: string) {
+    if(page.path === this.plugin.settings.excalibrainFilepath) {
+      return;
+    };
     const neighbour = this.neighbours.get(page.path);
     if(neighbour) {
       neighbour.isParent = true;
-      neighbour.parentType = relationType;
-      neighbour.parentTypeDefinition = definition;
+      neighbour.parentType = relationTypeToSet(neighbour.parentType,relationType);
+      neighbour.parentTypeDefinition = concat(definition, neighbour.parentTypeDefinition);
       return;
     }
     this.neighbours.set(page.path, {
@@ -66,11 +112,14 @@ export class Page {
   }
 
   addChild(page: Page, relationType:RelationType, definition?: string) {
+    if(page.path === this.plugin.settings.excalibrainFilepath) {
+      return;
+    };
     const neighbour = this.neighbours.get(page.path);
     if(neighbour) {
       neighbour.isChild = true;
-      neighbour.childType = relationType;
-      neighbour.childTypeDefinition = definition;
+      neighbour.childType = relationTypeToSet(neighbour.childType,relationType);
+      neighbour.childTypeDefinition = concat(definition,neighbour.childTypeDefinition);
       return;
     }
     this.neighbours.set(page.path, {
@@ -83,11 +132,14 @@ export class Page {
   }
 
   addFriend(page: Page, relationType:RelationType, definition?: string) {
+    if(page.path === this.plugin.settings.excalibrainFilepath) {
+      return;
+    };
     const neighbour = this.neighbours.get(page.path);
     if(neighbour) {
       neighbour.isFriend = true;
-      neighbour.friendType = relationType;
-      neighbour.friendTypeDefinition = definition;
+      neighbour.friendType = relationTypeToSet(neighbour.friendType,relationType);
+      neighbour.friendTypeDefinition = concat(definition,neighbour.friendTypeDefinition);;
       return;
     }
     this.neighbours.set(page.path, {
@@ -106,43 +158,61 @@ export class Page {
   //-----------------------------------------------
   //see: getRelationLogic.excalidraw
   //-----------------------------------------------
-  isChild = (relation: Relation):boolean => relation.isChild && 
-    //case: A, B
-    ((!relation.isParent && !relation.isFriend) ||
-    //case: F
-    (relation.isParent && relation.parentType === RelationType.INFERRED &&
-      relation.childType === RelationType.DEFINED && !relation.isFriend));
+  isChild = (relation: Relation):RelationType => {
+    const {pi,pd,ci,cd,fd} = getRelationVector(relation);
+    return (cd && !pd && !fd) 
+      ? RelationType.DEFINED 
+      : (!pi && !pd && ci && !cd && !fd)
+        ? RelationType.INFERRED
+        : null;
+  };
 
-  hasChildren = (includeVirtual: boolean, includeAttachments: boolean):boolean =>
-    this.getNeighbours(includeVirtual, includeAttachments)
-    .some(x => this.isChild(x[1]));
+  hasChildren ():boolean {
+    return this.getNeighbours()
+    .some(x => {
+      const rt = this.isChild(x[1]);
+      return (rt && this.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+    });
+  }
 
-  getChildren = (includeVirtual: boolean, includeAttachments: boolean):Neighbour[] =>
-    this.getNeighbours(includeVirtual, includeAttachments)
-    .filter(x => this.isChild(x[1]))
-    .map(x=>{
-      return {
-        page: x[1].target,
-        relationType: x[1].childType,
-        typeDefinition: x[1].childTypeDefinition
-      }
-    });//.sort
+  getChildren():Neighbour[] {
+    return this.getNeighbours()
+      .filter(x => {
+        const rt = this.isChild(x[1]);
+        return (rt && this.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+      }).map(x=>{
+        return {
+          page: x[1].target,
+          relationType: x[1].childType,
+          typeDefinition: x[1].childTypeDefinition
+        }
+      });//.sort
+  }
 
-  isParent = (relation: Relation):boolean => relation.isParent && 
-    //case: C, D
-    ((!relation.isChild && !relation.isFriend) ||
-    //case: G
-    (relation.isChild && relation.childType === RelationType.INFERRED &&
-      relation.parentType === RelationType.DEFINED && !relation.isFriend));
+  isParent (relation: Relation):RelationType {
+    const {pi,pd,ci,cd,fd} = getRelationVector(relation);
+    return (!cd && pd && !fd) 
+      ? RelationType.DEFINED 
+      : (pi && !pd && !ci && !cd && !fd)
+        ? RelationType.INFERRED
+        : null;
+  }
   
 
-  hasParents = (includeVirtual: boolean, includeAttachments: boolean):boolean => 
-    this.getNeighbours(includeVirtual, includeAttachments)
-    .some(x => this.isParent(x[1]));
+  hasParents():boolean { 
+    return this.getNeighbours()
+    .some(x => {
+      const rt = this.isParent(x[1]);
+      return (rt && this.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+    });
+  }
 
-  getParents = (includeVirtual: boolean, includeAttachments: boolean):Neighbour[] =>
-    this.getNeighbours(includeVirtual, includeAttachments)
-    .filter(x => this.isParent(x[1]))
+  getParents():Neighbour[] {
+    return this.getNeighbours()
+    .filter(x => {
+      const rt = this.isParent(x[1]);
+      return (rt && this.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+    })
     .map(x => {
       return {
         page: x[1].target,
@@ -150,25 +220,36 @@ export class Page {
         typeDefinition: x[1].parentTypeDefinition
       }
     });//.sort
+  }
 
-  isFriend = (relation: Relation):boolean =>
-    //case E, J, K, L, M, N, O, P, Q  
-    relation.isFriend ||
-    //case H, I
-    ((relation.parentType === RelationType.DEFINED && relation.childType === RelationType.DEFINED) ||
-      (relation.parentType !== RelationType.INFERRED && relation.childType !== RelationType.INFERRED));
+  isFriend (relation: Relation):RelationType {
+    const {pi,pd,ci,cd,fd} = getRelationVector(relation);
+    return fd 
+      ? RelationType.DEFINED 
+      : (pi && !pd && ci && !cd && !fd)
+        ? RelationType.INFERRED
+        : null;
+  }
+    
 
-  hasFriends = (includeVirtual: boolean, includeAttachments: boolean):boolean =>
-    this.getNeighbours(includeVirtual, includeAttachments)
-    .some(x => this.isFriend(x[1]))
+  hasFriends():boolean {
+    return this.getNeighbours()
+    .some(x => {
+      const rt = this.isFriend(x[1]);
+      return (rt && this.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+    })
+  }
 
-  getFriends = (includeVirtual: boolean, includeAttachments: boolean):Neighbour[] =>
-    this.getNeighbours(includeVirtual, includeAttachments)
-    .filter(x => this.isFriend(x[1]))
+  getFriends():Neighbour[] {
+    return this.getNeighbours()
+    .filter(x => {
+      const rt = this.isFriend(x[1]);
+      return (rt && this.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+    })
     .map(x => {
       return {
         page: x[1].target,
-        relationType: x[1].friendType??
+        relationType: x[1].friendType ??
           (x[1].parentType === RelationType.DEFINED && x[1].childType === RelationType.DEFINED)
           //case H
           ? RelationType.DEFINED
@@ -177,6 +258,7 @@ export class Page {
         typeDefinition: x[1].friendTypeDefinition
       }
     });//.sort
+  }
   
 
   getRelationToPage(otherPage:Page):null|{
@@ -209,9 +291,9 @@ export class Page {
     }
   }
 
-  getSiblings(includeVirtual: boolean, includeAttachments: boolean):Neighbour[] {
+  getSiblings():Neighbour[] {
     const siblings = new Map<string,Neighbour>();
-    this.getParents(includeVirtual, includeAttachments).forEach(p => {
+    this.getParents().forEach(p => {
       if(siblings.has(p.page.path)) {
         if(p.relationType === RelationType.DEFINED) {
           siblings.get(p.page.path).relationType = RelationType.DEFINED;

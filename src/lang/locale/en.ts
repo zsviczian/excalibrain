@@ -18,12 +18,16 @@ export default {
   SHOWINFERRED_DESC: "<b>Toggle ON</b>: Display both explicitly defined and inferred links. Forward links are children, backlinks are parents, " +
     "if two page mutually referes to one another then relationship is inferred to be a friendship. Explicitly defined relationships always " +
     "take priority.<br><b>Toggle OFF</b>: Display only explicitely defined relationships.",
+  SHOWVIRTUAL_NAME: "Display virtual child nodes",
+  SHOWVIRTUAL_DESC: "<b>Toggle ON</b>: Display unresolved links.<br><b>Toggle OFF</b>: Do not display unresolved links.",
   SHOWATTACHMENTS_NAME: "Include attachments",
   SHOWATTACHMENTS_DESC: "<b>Toggle ON</b>: Display every type of file on the graph. " +
     "<br><b>Toggle OFF</b>: Display only markdown files.",
   STYLE_HEAD: "Styling",
-  STYLE_DESC: "Styles are applied in sequence.<br><ol><li>Base node style</li><li>Optional tag based style</li>" +
-    "<li>Inferred node style (only applied if the node is inferred)</li><li>Virtual node style (only applied if the node is virtual)</li></ol> " +
+  STYLE_DESC: "Styles are applied in sequence.<br><ol><li><b>Base</b> node style</li><li><b>Optional</b> tag based style</li>" +
+    "<li><b>Inferred</b> node style (only applied if the node is inferred)</li><li><b>Virtual</b> node style (only applied if the node is virtual)</li> " +
+    "<li><b>Central</b> node style (only applied if the node is in the center)</li><li><b>Sibling</b> node style (only applied if the node is a sibling)</li> " +
+    "<li><b>Attachment</b> node style (only applied if the node is an attachment)</li></ol>" +
     "All the attributes of the base node style must be specified. " +
     "All other styles may have partial definitions. e.g. You may add a prefix and override the base node-background color in the tag-based style, " + 
     "override the font color in the inferred-node style and set the border stroke style to dotted in the virtual-node style.",
@@ -61,6 +65,7 @@ export default {
   NODESTYLE_INFERRED: "Style of inferred nodes",
   NODESTYLE_VIRTUAL: "Style of virtual nodes",
   NODESTYLE_SIBLING: "Style of sibling nodes",
+  NODESTYLE_ATTACHMENT: "Style of attachment nodes",
   //main
   DATAVIEW_NOT_FOUND: `Dataview plugin not found. Please install or enable Dataview, then try restarting ${APPNAME}`,
   EXCALIDRAW_NOT_FOUND: `Excalidraw plugin not found. Please install or enable Excalidraw, then try restarting ${APPNAME}`,

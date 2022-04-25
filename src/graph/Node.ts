@@ -25,9 +25,10 @@ export class Node {
       ...this.settings.baseNodeStyle,
       ...this.getTagStyle(),
       ...x.isInferred?this.settings.inferredNodeStyle:{},
-      ...x.page.file?{}:this.settings.virtualNodeStyle,
+      ...x.page.isVirtual?this.settings.virtualNodeStyle:{},
       ...x.isCentral?this.settings.centralNodeStyle:{},
-      ...x.isSibling?this.settings.siblingNodeStyle:{}
+      ...x.isSibling?this.settings.siblingNodeStyle:{},
+      ...x.page.isAttachment?this.settings.attachmentNodeStyle:{}
     };
     this.friendGateOnLeft = x.friendGateOnLeft;
     this.title = this.getTitle();
@@ -98,7 +99,7 @@ export class Node {
 
     ea.style.fillStyle = this.style.gateFillStyle;
     ea.style.strokeColor = this.style.gateStrokeColor;
-    ea.style.backgroundColor =  this.page.hasFriends(includeVirtual, includeAttachments) 
+    ea.style.backgroundColor =  this.page.hasFriends() 
       ? this.style.gateBackgroundColor
       : "transparent";
     this.friendGateId = ea.addEllipse(
@@ -109,7 +110,7 @@ export class Node {
       this.style.gateRadius * 2,
       this.style.gateRadius * 2
     );
-    ea.style.backgroundColor =  this.page.hasParents(includeVirtual, includeAttachments)
+    ea.style.backgroundColor =  this.page.hasParents()
       ? this.style.gateBackgroundColor
       : "transparent";
     this.parentGateId = ea.addEllipse(
@@ -118,7 +119,7 @@ export class Node {
       this.style.gateRadius * 2,
       this.style.gateRadius * 2
     );
-    ea.style.backgroundColor =  this.page.hasChildren(includeVirtual, includeAttachments)
+    ea.style.backgroundColor =  this.page.hasChildren()
       ? this.style.gateBackgroundColor
       : "transparent";
     this.childGateId = ea.addEllipse(
