@@ -1,4 +1,4 @@
-import { App, MetadataCache, Notice, Plugin, PluginManifest, TAbstractFile, TFile, TFolder } from 'obsidian';
+import { App, FileView, MetadataCache, Notice, Plugin, PluginManifest, TAbstractFile, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { Page } from './graph/Page';
 import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './Settings';
 import { errorlog, log } from './utils/utils';
@@ -10,7 +10,6 @@ import { Pages } from './graph/Pages';
 import { getEA } from "obsidian-excalidraw-plugin";
 import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
 import { Scene } from './Scene';
-import { fileURLToPath } from 'url';
 
 declare module "obsidian" {
   interface App {
@@ -25,6 +24,8 @@ export default class ExcaliBrain extends Plugin {
   public pages: Pages;
   public DVAPI: DvAPIInterface;
   public EA: ExcalidrawAutomate;
+  public scene: Scene = null;
+  private disregardLeafChangeTimer: NodeJS.Timeout;
   
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
@@ -49,6 +50,37 @@ export default class ExcaliBrain extends Plugin {
         return;
       }
       this.registerCommands();
+      this.EA.onViewModeChangeHook = (isViewModeEnabled) => {
+        if(!this.EA.targetView || this.EA.targetView.file?.path !== this.settings.excalibrainFilepath) {
+          return;
+        }
+        if(!isViewModeEnabled) {
+          this.stop();
+        }
+      }
+
+      this.EA.onLinkHoverHook = (element,linkText) => {
+        if(
+          !this.scene ||
+          !this.EA.targetView ||
+          this.EA.targetView.file?.path !== this.settings.excalibrainFilepath ||
+          !this.EA.targetView.excalidrawAPI.getAppState().viewModeEnabled
+        ) {
+          return true;
+        }
+        this.scene.disregardLeafChange = true;
+        if(this.disregardLeafChangeTimer) {
+          clearTimeout(this.disregardLeafChangeTimer);
+        }
+        this.disregardLeafChangeTimer = setTimeout(()=>{
+          this.disregardLeafChangeTimer = null;
+          if(!this.scene) {
+            return;
+          }
+          this.scene.disregardLeafChange = false;
+        },2000);
+        return true;
+      }
     });
 	}
 
@@ -89,17 +121,37 @@ export default class ExcaliBrain extends Plugin {
       id: "excalibrain-start",
       name: t("COMMAND_START"),
       callback: () => {
-        if(Scene.isActive()) {
-          Scene.terminate();
+        if(this.scene && !this.scene.terminated) {
+          this.scene.unloadScene();
+          this.scene = null;
         } else {
-          Scene.show(this,true);
+          this.scene = new Scene(this,true,this.getBrainLeaf())
+          this.scene.initialize();
         }
       },
     });
   }
 
+  getBrainLeaf():WorkspaceLeaf {
+    let brainLeaf: WorkspaceLeaf;
+    app.workspace.iterateAllLeaves(leaf=>{
+      if(
+        leaf.view &&
+        this.EA.isExcalidrawView(leaf.view) &&
+        //@ts-ignore
+        leaf.view.file.path === this.settings.excalibrainFilepath
+      ) {
+        brainLeaf = leaf;
+      }
+    });
+    return brainLeaf;
+  }
+
 	onunload() {
-    Scene.terminate();
+    if(this.scene) {
+      this.scene.unloadScene();
+      this.scene = null;
+    }
 	}
 
 	async loadSettings() {
@@ -109,6 +161,19 @@ export default class ExcaliBrain extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
+
+  public stop() {
+    if(this.scene && !this.scene.terminated) {
+      this.scene.unloadScene();
+      this.scene = null;
+    } 
+  }
+
+  public start(leaf: WorkspaceLeaf) {
+    this.stop();
+    this.scene = new Scene(this,true,leaf??this.getBrainLeaf())
+    this.scene.initialize();
+  }
 
   /*  private registerDataviewEventHandlers() {
     const metaCache: MetadataCache = self.app.metadataCache;

@@ -145,7 +145,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       //this.plugin.initializeIndex();
     }
     this.plugin.saveSettings();
-    Scene.reRender();
+    this.plugin.scene?.reRender();
   }
 
   colorpicker(

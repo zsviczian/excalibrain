@@ -4,30 +4,30 @@ import { EMPTYBRAIN } from "./constants/emptyBrainFile";
 import { Layout } from "./graph/Layout";
 import { Links } from "./graph/Links";
 import { Node } from "./graph/Node";
-import { Page } from "./graph/Page";
 import ExcaliBrain from "./main";
 import { ExcaliBrainSettings } from "./Settings";
 import { SearchBox } from "./Suggesters/SearchBox";
 import { Neighbour, RelationType, Role } from "./Types";
 
 export class Scene {
-  public static _instance: Scene;
   settings: ExcaliBrainSettings;
   ea: ExcalidrawAutomate;
   plugin: ExcaliBrain;
   app: App;
   leaf: WorkspaceLeaf;
-  centralPage: Page;
+  centralPagePath: string;
   centralLeaf: WorkspaceLeaf;
   textSize: {width:number, height:number};
   nodeWidth: number;
   nodeHeight: number;
+  public disregardLeafChange: boolean = false;
+  public terminated: boolean;
   private nodesMap: Map<string,Node> = new Map<string,Node>();
   private links: Links = new Links();
   private layouts: Layout[] = [];
   private removeEH: Function;
   private removeTimer: Function;
-  private blockTimer: boolean = false;
+  private blockUpdateTimer: boolean = false;
   private searchBox: SearchBox;
   
   constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
@@ -36,85 +36,85 @@ export class Scene {
     this.plugin = plugin;
     this.app = plugin.app;
     this.leaf = leaf ?? app.workspace.getLeaf(newLeaf);
+    this.terminated = false;
   }
 
-  public static isActive() {
+  public async initialize() {
+    await this.initilizeScene();
+    this.searchBox = new SearchBox((this.leaf.view as TextFileView).contentEl,this.plugin);
+  }
+
+  /**
+   * Check if ExcaliBrain is currently active
+   * @returns boolean; true if active
+   */
+  public isActive() {
     //@ts-ignore
-    return this._instance && app.workspace.getLeafById(this._instance.leaf?.id)
+    return !this.terminated && app.workspace.getLeafById(this._instance.leaf?.id)
   }
 
-  public static async show(plugin: ExcaliBrain,newLeaf: boolean) {
-    if(!this.isActive()) {
-      let brainLeaf: WorkspaceLeaf;
-      app.workspace.iterateAllLeaves(leaf=>{
-        if(
-          leaf.view &&
-          (leaf.view instanceof FileView) &&
-          leaf.view.file.path === plugin.settings.excalibrainFilepath
-        ) {
-          brainLeaf = leaf;
-        }
-      });
-      (this._instance = new this(plugin,newLeaf,brainLeaf));      
-    }
-    await this._instance.initilizeScene();
-    this._instance.searchBox = new SearchBox((this._instance.leaf.view as TextFileView).contentEl,plugin);
-  }
-  public static async reRender() {
+  /**
+   * Updates the current Scene applying changes in the Index
+   * @returns 
+   */
+  public async reRender() {
     if(!this.isActive()) {
       return;
     }
-    const self = this._instance;
-    if(!self.centralLeaf || !self.centralPage) {
+    if(!this.centralLeaf || !this.centralPagePath) {
       return;
     }
-    const path = self.centralPage.path;
-    await self.plugin.createIndex();
-    self.centralPage = self.plugin.pages.get(path)
-    await self.render();
+    await this.plugin.createIndex(); //temporary
+    await this.render();
   }
 
-  public static async renderGraphForFile(path: string) {
+  /**
+   * Renders the ExcaliBrain graph for the file provided by its path
+   * @param path 
+   * @returns 
+   */
+  public async renderGraphForFile(path: string) {
     if(!this.isActive()) {
       return;
     }
-    const self = this._instance;
-    self.blockTimer = true;
 
-    const page = self.plugin.pages.get(path);
+    this.blockUpdateTimer = true; //blocks the updateTimer
+
+    const page = this.plugin.pages.get(path);
     if(!page || !page.file) {
-      self.blockTimer = false;
+      this.blockUpdateTimer = false;
       return;
     }
 
-    if(!self.ea.targetView?.file || self.ea.targetView.file.path !== self.settings.excalibrainFilepath) {
-      self.removeEventHandler();
-      self.blockTimer = false;
+    if(!this.ea.targetView?.file || this.ea.targetView.file.path !== this.settings.excalibrainFilepath) {
+      this.unloadScene();
       return;
     }
     
-    if (page.file.path === self.ea.targetView.file.path) { //brainview drawing is the active leaf
-      self.blockTimer = false;
+    if (page.file.path === this.ea.targetView.file.path) { //brainview drawing is the active leaf
+      this.blockUpdateTimer = false;
       return; 
     }
   
+    const centralPage = this.plugin.pages.get(this.centralPagePath)
+
     if(
-      self.centralPage &&
-      self.centralPage.path === page.path &&
-      page.file.stat.mtime === self.centralPage.mtime
+      centralPage &&
+      centralPage.path === path &&
+      page.file.stat.mtime === centralPage.mtime
     ) {
-      self.blockTimer = false;
+      this.blockUpdateTimer = false;
       return; //don't reload the file if it has not changed
     }
 
-    
-    self.centralLeaf.openFile(page.file);
-    await self.plugin.createIndex();
-    self.centralPage = self.plugin.pages.get(path)
-    await self.render();
+    this.centralLeaf.openFile(page.file);
+    this.centralPagePath = path;
+    await this.plugin.createIndex();
+    await this.render();
   }
 
   public async initilizeScene() {
+    this.disregardLeafChange = false;
     const ea = this.ea;
     const style = this.settings.baseNodeStyle;
     let file = this.app.vault.getAbstractFileByPath(this.settings.excalibrainFilepath);
@@ -154,6 +154,7 @@ export class Scene {
       new Notice(`Error initializing Excalidraw view`);
       return;
     }
+    this.ea.targetView.hookServer = this.ea;
     this.ea.targetView.semaphores.saving = true; //disable saving by setting this Excalidraw flag (not published API)
     ea.style.fontFamily = style.fontFamily;
     ea.style.fontSize = style.fontSize;
@@ -210,15 +211,15 @@ export class Scene {
     this.ea.clear();
     this.ea.getExcalidrawAPI().updateScene({elements:[]});
     this.ea.style.verticalAlign = "middle";
-    
-    const parents = this.centralPage.getParents().filter(x=>x.page.path !== this.centralPage.path).slice(0,this.plugin.settings.maxItemCount);
-    const children = this.centralPage.getChildren().filter(x=>x.page.path !== this.centralPage.path).slice(0,this.plugin.settings.maxItemCount);
-    const friends = this.centralPage.getFriends().filter(x=>x.page.path !== this.centralPage.path).slice(0,this.plugin.settings.maxItemCount);
-    const siblings = this.centralPage.getSiblings()
+    const centralPage = this.plugin.pages.get(this.centralPagePath);
+    const parents = centralPage.getParents().filter(x=>x.page.path !== centralPage.path).slice(0,this.plugin.settings.maxItemCount);
+    const children =centralPage.getChildren().filter(x=>x.page.path !==centralPage.path).slice(0,this.plugin.settings.maxItemCount);
+    const friends = centralPage.getFriends().filter(x=>x.page.path !== centralPage.path).slice(0,this.plugin.settings.maxItemCount);
+    const siblings = centralPage.getSiblings()
       .filter(s => !(parents.some(p=>p.page.path === s.page.path) &&
         children.some(c=>c.page.path === s.page.path) &&
         friends.some(f=>f.page.path === s.page.path)) && 
-        (s.page.path !== this.centralPage.path))
+        (s.page.path !== centralPage.path))
       .slice(0,this.plugin.settings.maxItemCount);
 
     //-------------------------------------------------------
@@ -286,14 +287,14 @@ export class Scene {
     this.layouts.push(lSiblings);
 
     const rootNode = new Node({
-      page: this.centralPage,
+      page: centralPage,
       isInferred: false,
       isCentral: true,
       isSibling: false,
       friendGateOnLeft: true
     });
 
-    this.nodesMap.set(this.centralPage.path,rootNode);
+    this.nodesMap.set(centralPage.path,rootNode);
     lCenter.nodes.push(rootNode);
   
     this.addNodes({
@@ -366,60 +367,63 @@ export class Scene {
       ).concat(elements.filter(el=>el.type!=="arrow"))
     })
     this.ea.getExcalidrawAPI().zoomToFit();
-    this.blockTimer = false;
+    this.blockUpdateTimer = false;
   }
 
   private addEventHandler() {
     const self = this;
     
     const brainEventHandler = async (leaf:WorkspaceLeaf) => {
-      self.blockTimer = true;
+      if(this.disregardLeafChange) {
+        return;
+      }
+      self.blockUpdateTimer = true;
       await self.plugin.createIndex();
       //await new Promise((resolve) => setTimeout(resolve, 100));
       //-------------------------------------------------------
       //terminate event handler if view no longer exists or file has changed
       if(!self.ea.targetView?.file || self.ea.targetView.file.path !== self.settings.excalibrainFilepath) {
-        self.removeEventHandler();
-        self.blockTimer = false;
+        self.unloadScene();
         return;
       }
       
       if(!(leaf?.view && (leaf.view instanceof FileView) && leaf.view.file)) {
-        self.blockTimer = false;
+        self.blockUpdateTimer = false;
         return;
       }
   
       const rootFile = leaf.view.file;
       
       if (rootFile.path === self.ea.targetView.file.path) { //brainview drawing is the active leaf
-        self.blockTimer = false;
+        self.blockUpdateTimer = false;
         return; 
       }
     
+      const centralPage = self.plugin.pages.get(self.centralPagePath);
       if(
-        self.centralPage &&
-        self.centralPage.path === rootFile.path &&
-        rootFile.stat.mtime === self.centralPage.mtime
+        centralPage &&
+        centralPage.path === rootFile.path &&
+        rootFile.stat.mtime === centralPage.mtime
       ) {
-        self.blockTimer = false;
+        self.blockUpdateTimer = false;
         return; //don't reload the file if it has not changed
       }
   
-      self.centralPage = self.plugin.pages.get(rootFile.path);
+      self.centralPagePath = rootFile.path;
       self.centralLeaf = leaf;
 
       self.render();
     }
 
     const updateTimer = async () => {
-      if(this.blockTimer) {
+      if(this.blockUpdateTimer) {
         return;
       }
       for(const node of this.nodesMap.values()) {
         const { file, mtime } = node.page;
         if(file && file.stat.mtime !== mtime) {
           await this.plugin.createIndex();
-          this.centralPage = this.plugin.pages.get(file.path);
+          this.centralPagePath = file.path;
           this.render();
           return;
         }
@@ -443,8 +447,7 @@ export class Scene {
     }
   }
 
-  private removeEventHandler() {
-
+  public unloadScene() {
     if(this.removeEH) {
       this.removeEH();
       this.removeEH = undefined;
@@ -462,23 +465,20 @@ export class Scene {
     if(this.ea.targetView?.excalidrawAPI) {
       try {
         this.ea.targetView.semaphores.saving = false;
-        this.ea.getExcalidrawAPI().updateScene({appState:{viewModeEnabled:false}});
+        this.ea.targetView.excalidrawAPI.updateScene({appState:{viewModeEnabled:false}});
       } catch {}
     }
 
-    this.searchBox.terminate();
+    if(this.ea.targetView) {
+      this.ea.targetView.hookServer = null;
+    }
+    this.searchBox?.terminate();
     this.searchBox = undefined;
     this.ea.targetView = undefined;
     this.leaf = undefined;
     this.centralLeaf = undefined;
-    this.centralPage = undefined;
+    this.centralPagePath = undefined;
+    this.terminated = true;
     new Notice("Brain Graph Off");
-  }
-
-  public static terminate() {
-    if(this._instance && this._instance.removeEH) {
-      this._instance.removeEventHandler();
-      this._instance = undefined;
-    }
   }
 }

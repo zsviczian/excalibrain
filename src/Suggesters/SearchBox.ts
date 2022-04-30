@@ -1,4 +1,4 @@
-import { fuzzySearch, Setting, TFile } from "obsidian";
+import { TFile } from "obsidian";
 import ExcaliBrain from "src/main";
 import { Scene } from "src/Scene";
 import { FileSuggest } from "./FileSuggester";
@@ -22,7 +22,7 @@ export class SearchBox {
     inputEl.oninput = () => {
       const file = app.vault.getAbstractFileByPath(inputEl.value);
       if(file && file instanceof TFile) {
-        Scene.renderGraphForFile(inputEl.value);
+        this.plugin.scene?.renderGraphForFile(inputEl.value);
         inputEl.value = file.basename;
       }
     }
@@ -38,7 +38,9 @@ export class SearchBox {
 
   terminate() {
     if(this.wrapperDiv) {
-      this.contentEl.removeChild(this.wrapperDiv);
+      try{
+        this.contentEl?.removeChild(this.wrapperDiv);
+      } catch{}
       this.wrapperDiv = null;
     }
   }
