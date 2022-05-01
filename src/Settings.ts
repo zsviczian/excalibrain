@@ -136,7 +136,6 @@ const addStylesheet = (stylesheet: string, classname: string) => {
 export class ExcaliBrainSettingTab extends PluginSettingTab {
   plugin: ExcaliBrain;
   ea: ExcalidrawAutomate;
-  private hierarchy: string = null;
   private dirty:boolean = false;
   private demoNode: Node;
   private demoImg: HTMLImageElement;
@@ -145,28 +144,6 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
   constructor(app: App, plugin: ExcaliBrain) {
     super(app, plugin);
     this.plugin = plugin;
-    this.ea = getEA();
-
-    const page = new Page(
-      "This is a demo node that is 46 characters long",
-      null,
-      this.plugin
-    )
-    const page2 = new Page(
-      "Dummy child",
-      null,
-      this.plugin
-    )
-    page.addChild(page2,RelationType.DEFINED);
-
-    this.demoNode = new Node({
-      page,
-      isInferred: false,
-      isCentral: false,
-      isSibling: false,
-      friendGateOnLeft: false
-    })
-    this.demoNode.ea = this.ea;  
   }
 
   async updateDemoImg() {
@@ -810,6 +787,29 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
 
   async display() {
     await this.plugin.loadSettings(); //in case sync loaded changed settings in the background
+    this.ea = getEA();
+
+    //initialize sample 
+    const page = new Page(
+      "This is a demo node that is 46 characters long",
+      null,
+      this.plugin
+    )
+    const page2 = new Page(
+      "Dummy child",
+      null,
+      this.plugin
+    )
+    page.addChild(page2,RelationType.DEFINED);
+    this.demoNode = new Node({
+      page,
+      isInferred: false,
+      isCentral: false,
+      isSibling: false,
+      friendGateOnLeft: false
+    })
+    this.demoNode.ea = this.ea;  
+
     const { containerEl } = this;
     this.containerEl.empty();
 
@@ -987,9 +987,75 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       this.plugin.settings.backgroundColor
     )
 
+    let nodeStylesDropdown: DropdownComponent;
+    let nodeStyleDiv: HTMLDivElement;
+    const nodeDropdownOnChange = (value:string) => {
+      nodeStyleDiv.empty();
+      const nodeStyle = this.plugin.nodeStyles[value];
+      this.nodeSettings(
+        nodeStyleDiv,
+        nodeStyle.display,
+        nodeStyle.style,
+        nodeStyle.allowOverride,
+        nodeStyle.getInheritedStyle()
+      )
+      this.demoNodeStyle = nodeStyle;
+      this.updateDemoImg();
+    }
+
+    const taglist = new Setting(containerEl)
+      .setName(t("TAGLIST_NAME"))
+      .setDesc(t("TAGLIST_DESC"))
+      .addTextArea((text)=> {
+        text.inputEl.style.height = "200px";
+        text.inputEl.style.width = "100%";
+        text
+          .setValue(this.plugin.settings.tagStyleList.join(", "))
+          .onChange(value => {
+            const tagStyles = this.plugin.settings.tagNodeStyles
+            const nodeStyles = this.plugin.nodeStyles;
+            value = value.replaceAll("\n"," ");
+            const tags = value.split(",").map(s=>s.trim());
+            this.plugin.settings.tagStyleList = tags;
+            Object.keys(tagStyles).forEach(key => {
+              if(!tags.contains(key)) {
+                delete tagStyles[key];
+                delete nodeStyles[key];
+              }
+            });
+            tags.forEach(tag => {
+              if(!Object.keys(tagStyles).contains(tag)) {
+                tagStyles[tag] = {};
+                nodeStyles[tag] = {
+                  style: tagStyles[tag],
+                  allowOverride: true,
+                  userStyle: true,
+                  display: tag,
+                  getInheritedStyle: () => this.plugin.settings.baseNodeStyle
+                }
+              }
+            });
+            const selectedItem = nodeStylesDropdown.getValue();
+            for(let i=nodeStylesDropdown.selectEl.options.length-1;i>=0;i--) {
+              nodeStylesDropdown.selectEl.remove(i);
+            }
+            Object.entries(nodeStyles).forEach(item=>{
+              nodeStylesDropdown.addOption(item[0],item[1].display)
+            })
+            if(nodeStyles[selectedItem]) {
+              nodeStylesDropdown.setValue(selectedItem);
+            } else {
+              nodeStylesDropdown.setValue("base");
+              nodeDropdownOnChange("base");
+            }
+            this.dirty = true;
+        })
+    })
+
+    taglist.descEl.style.maxWidth="400px";
     const nodeStylesWrapper = containerEl.createDiv({cls:"setting-item"});
     const dropodownWrapper = nodeStylesWrapper.createDiv({cls:"setting-item-info"});
-    const nodeStylesDropdown = new DropdownComponent(dropodownWrapper);
+    nodeStylesDropdown = new DropdownComponent(dropodownWrapper);
     
     const toggleLabel = nodeStylesWrapper.createDiv({
       text: "Show inherited",
@@ -1015,44 +1081,13 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
 
     this.demoImg = containerEl.createEl("img",{cls: "excalibrain-settings-demoimg"});
 
-    const nodeStyleDiv = containerEl.createDiv({
+    nodeStyleDiv = containerEl.createDiv({
       cls: "excalibrain-setting-nodestyle-section"
     });
     removeStylesheet(HIDE_DISABLED_STYLE);
     nodeStylesDropdown
       .setValue("base")
-      .onChange(value => {
-        nodeStyleDiv.empty();
-        let nodeStyle = this.plugin.nodeStyles[value];
-        if(!nodeStyle) {
-          this.plugin.nodeStyles[value] = {
-            style: {},
-            allowOverride: true,
-            userStyle: true,
-            display: value,
-            getInheritedStyle: ()=>{
-              return {
-                ...this.plugin.settings.baseNodeStyle,
-                //...this.plugin.settings.inferredLinkStyle,
-                //...this.plugin.settings.virtualNodeStyle,
-                //...this.plugin.settings.centralNodeStyle,
-                //...this.plugin.settings.siblingNodeStyle,
-                //...this.plugin.settings.attachmentNodeStyle
-              }
-            }
-          }
-          nodeStyle = this.plugin.nodeStyles[value];
-        }
-        this.nodeSettings(
-          nodeStyleDiv,
-          nodeStyle.display,
-          nodeStyle.style,
-          nodeStyle.allowOverride,
-          nodeStyle.getInheritedStyle()
-        )
-        this.demoNodeStyle = nodeStyle;
-        this.updateDemoImg();
-      })
+      .onChange(nodeDropdownOnChange)
       const nodeStyle = this.plugin.nodeStyles["base"];
       this.nodeSettings(
         nodeStyleDiv,

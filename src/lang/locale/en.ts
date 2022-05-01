@@ -36,6 +36,10 @@ export default {
     "All other styles may have partial definitions. e.g. You may add a prefix and override the base node-background color in the tag-based style, " + 
     "override the font color in the inferred-node style and set the border stroke style to dotted in the virtual-node style.",
   CANVAS_BGCOLOR: "Canvas color",
+  TAGLIST_NAME: "Formatted tags",
+  TAGLIST_DESC: "You can specify special formatting rules for Nodes based on tags. If multiple tags are present on the page the first matching a specification " +
+    "will be used. <br>Tagnames should start with <mark>#</mark> and may be incomplete. i.e. <code>#book</code> will match #books, #book/fiction, etc.<br>" +
+    "Enter a comma separated list of tags here, then select from the dropdown list to change the formatting.",
   MAX_ITEMCOUNT_DESC: "Maximum node count",
   MAX_ITEMCOUNT_NAME: "Maximum number of nodes to display in a given area of the layout." + 
     "i.e. the maximum number of parents, the maximum number of children, the maximum number of friends, and " +

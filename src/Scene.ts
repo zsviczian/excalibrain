@@ -32,7 +32,6 @@ export class Scene {
   private searchBox: SearchBox;
   
   constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
-    log("construct scene");
     this.settings = plugin.settings;
     this.ea = plugin.EA;
     this.plugin = plugin;
@@ -42,7 +41,6 @@ export class Scene {
   }
 
   public async initialize() {
-    log("initialize");
     await this.initilizeScene();
     this.searchBox = new SearchBox((this.leaf.view as TextFileView).contentEl,this.plugin);
   }

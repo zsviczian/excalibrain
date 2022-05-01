@@ -107,9 +107,9 @@ export default class ExcaliBrain extends Plugin {
           this.scene = null;
         } else {
           const leaf = this.getBrainLeaf();
-          this.scene = new Scene(this,true,this.getBrainLeaf());
+          this.scene = new Scene(this,true,leaf);
           //@ts-ignore
-          if(leaf.view && leaf.view.file && leaf.view.file.path == this.settings.excalibrainFilepath) {
+          if(leaf && leaf.view && leaf.view.file && leaf.view.file.path == this.settings.excalibrainFilepath) {
             this.scene.initialize();
             return;
           }
@@ -300,7 +300,6 @@ export default class ExcaliBrain extends Plugin {
       errorlog({where: "ExcaliBrain.start()", fn: this.start, message: "ExcaliBrain did not load. Aborting after 5000ms of trying"});
       return;
     }
-    log("start");
     this.stop();
     if(!leaf) {
       this.scene = new Scene(this,true,this.getBrainLeaf())
