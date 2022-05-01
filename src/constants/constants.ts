@@ -1,2 +1,3 @@
-export const APPNAME = "NeoroGraph";
-export const PLUGIN_NAME = "obsidian-excalibrain"
+export const APPNAME = "ExcaliBrain";
+export const PLUGIN_NAME = "excalibrain"
+export const MINEXCALIDRAWVERSION = "1.6.26"

@@ -293,15 +293,17 @@ export class Page {
 
   getSiblings():Neighbour[] {
     const siblings = new Map<string,Neighbour>();
-    this.getParents().forEach(p => {
-      if(siblings.has(p.page.path)) {
-        if(p.relationType === RelationType.DEFINED) {
-          siblings.get(p.page.path).relationType = RelationType.DEFINED;
+    this.getParents().forEach(p => 
+      p.page.getChildren().forEach(s => {
+        if(siblings.has(s.page.path)) {
+          if(s.relationType === RelationType.DEFINED) {
+            siblings.get(s.page.path).relationType = RelationType.DEFINED;
+          }
+          return;
         }
-        return;
-      }
-      siblings.set(p.page.path,p);
-    })
-    return Object.values(siblings);
+        siblings.set(s.page.path,s);
+      })
+    );
+    return Array.from(siblings.values());
   }
 }

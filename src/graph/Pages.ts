@@ -95,9 +95,9 @@ export class Pages {
       Object.keys(unresolvedLinks[parentPath]).forEach(childPath=>{
         const newPage = new Page(childPath,null,this.plugin);
         const parent = this.pages.get(parentPath);
-        this.add(childPath,newPage);
         newPage.addParent(parent,RelationType.INFERRED);
         parent.addChild(newPage,RelationType.INFERRED);
+        this.add(childPath,newPage);
       })
     });
   }

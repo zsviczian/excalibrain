@@ -8,6 +8,7 @@ import ExcaliBrain from "./main";
 import { ExcaliBrainSettings } from "./Settings";
 import { SearchBox } from "./Suggesters/SearchBox";
 import { Neighbour, RelationType, Role } from "./Types";
+import { log } from "./utils/utils";
 
 export class Scene {
   settings: ExcaliBrainSettings;
@@ -31,6 +32,7 @@ export class Scene {
   private searchBox: SearchBox;
   
   constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
+    log("construct scene");
     this.settings = plugin.settings;
     this.ea = plugin.EA;
     this.plugin = plugin;
@@ -40,6 +42,7 @@ export class Scene {
   }
 
   public async initialize() {
+    log("initialize");
     await this.initilizeScene();
     this.searchBox = new SearchBox((this.leaf.view as TextFileView).contentEl,this.plugin);
   }
@@ -50,7 +53,7 @@ export class Scene {
    */
   public isActive() {
     //@ts-ignore
-    return !this.terminated && app.workspace.getLeafById(this._instance.leaf?.id)
+    return !this.terminated && app.workspace.getLeafById(this.leaf?.id)
   }
 
   /**
@@ -113,16 +116,16 @@ export class Scene {
     await this.render();
   }
 
-  public async initilizeScene() {
-    this.disregardLeafChange = false;
+  public async openExcalidrawLeaf() {
+    log("openExcalidrawLeaf")
     const ea = this.ea;
-    const style = this.settings.baseNodeStyle;
+    let counter = 0;
+
     let file = this.app.vault.getAbstractFileByPath(this.settings.excalibrainFilepath);
     if(file && !(file instanceof TFile)) {
       new Notice(`Please check settings. ExcaliBrain path (${this.settings.excalibrainFilepath}) points to a folder, not a file`);
       return;
     }
-    let counter = 0;
     if(!file) {
       file = await app.vault.create(this.settings.excalibrainFilepath,EMPTYBRAIN);
       //an ugly temporary hack waiting for metadataCache to index the new file
@@ -143,6 +146,13 @@ export class Scene {
       }
     }
     await this.leaf.openFile(file as TFile);   
+  }
+
+  public async initilizeScene() {
+    this.disregardLeafChange = false;
+    const ea = this.ea;
+    const style = this.settings.baseNodeStyle;
+    let counter = 0;
 
     ea.setView(this.leaf.view as any)
     ea.clear();
@@ -154,7 +164,7 @@ export class Scene {
       new Notice(`Error initializing Excalidraw view`);
       return;
     }
-    this.ea.targetView.hookServer = this.ea;
+    this.ea.registerThisAsViewEA();
     this.ea.targetView.semaphores.saving = true; //disable saving by setting this Excalidraw flag (not published API)
     ea.style.fontFamily = style.fontFamily;
     ea.style.fontSize = style.fontSize;
@@ -216,8 +226,8 @@ export class Scene {
     const children =centralPage.getChildren().filter(x=>x.page.path !==centralPage.path).slice(0,this.plugin.settings.maxItemCount);
     const friends = centralPage.getFriends().filter(x=>x.page.path !== centralPage.path).slice(0,this.plugin.settings.maxItemCount);
     const siblings = centralPage.getSiblings()
-      .filter(s => !(parents.some(p=>p.page.path === s.page.path) &&
-        children.some(c=>c.page.path === s.page.path) &&
+      .filter(s => !(parents.some(p=>p.page.path === s.page.path) ||
+        children.some(c=>c.page.path === s.page.path) ||
         friends.some(f=>f.page.path === s.page.path)) && 
         (s.page.path !== centralPage.path))
       .slice(0,this.plugin.settings.maxItemCount);
@@ -458,11 +468,11 @@ export class Scene {
       this.removeTimer = undefined;
     }
     
-    if(isBoolean(this.ea.targetView?.linksAlwaysOpenInANewPane)) {
+    if(this.ea.targetView && isBoolean(this.ea.targetView.linksAlwaysOpenInANewPane)) {
       this.ea.targetView.linksAlwaysOpenInANewPane = false;
     }
     
-    if(this.ea.targetView?.excalidrawAPI) {
+    if(this.ea.targetView && this.ea.targetView.excalidrawAPI) {
       try {
         this.ea.targetView.semaphores.saving = false;
         this.ea.targetView.excalidrawAPI.updateScene({appState:{viewModeEnabled:false}});
@@ -470,7 +480,7 @@ export class Scene {
     }
 
     if(this.ea.targetView) {
-      this.ea.targetView.hookServer = null;
+      this.ea.deregisterThisAsViewEA();
     }
     this.searchBox?.terminate();
     this.searchBox = undefined;

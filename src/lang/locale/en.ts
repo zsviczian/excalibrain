@@ -1,4 +1,4 @@
-import { APPNAME } from "src/constants/constants";
+import { APPNAME, MINEXCALIDRAWVERSION } from "src/constants/constants";
 
 //English
 export default {
@@ -10,8 +10,12 @@ export default {
   EXCALIBRAIN_FILE_DESC: "⚠ This file will be overwritten by the plugin. If you stop the script and make changes to the graph, you " +
     "should rename the file so your edits are preserved, because the next time you initiate ExcaliBrain your edits will be overwritten by " +
     "the automatically generated ExcaliBrain graph.",
-  HIERARCHY_NAME: "Hierarchy",
-  HIERARCHY_DESC: "User hierarchy JSON",
+  HIERARCHY_HEAD: "Hierarchy",
+  HIERARCHY_DESC: "Enter the Dataview field names separated by comma (,) that you will use to define link directions in your graph.",
+  PARENTS_NAME: "Parents",
+  CHILDREN_NAME: "Children",
+  FRIENDS_NAME: "Friends",
+  DISPLAY_HEAD: "Display",
   RENDERALIAS_NAME: "Display alias if available",
   RENDERALIAS_DESC: "Displays the page alias instead of the filename if it is specified in the page's front matter.",
   SHOWINFERRED_NAME: "Display inferred relationships",
@@ -24,10 +28,10 @@ export default {
   SHOWATTACHMENTS_DESC: "<b>Toggle ON</b>: Display every type of file on the graph. " +
     "<br><b>Toggle OFF</b>: Display only markdown files.",
   STYLE_HEAD: "Styling",
-  STYLE_DESC: "Styles are applied in sequence.<br><ol><li><b>Base</b> node style</li><li><b>Optional</b> tag based style</li>" +
+  STYLE_DESC: "Styles are applied in sequence.<br><ol><li><b>Base</b> node style</li>" +
     "<li><b>Inferred</b> node style (only applied if the node is inferred)</li><li><b>Virtual</b> node style (only applied if the node is virtual)</li> " +
     "<li><b>Central</b> node style (only applied if the node is in the center)</li><li><b>Sibling</b> node style (only applied if the node is a sibling)</li> " +
-    "<li><b>Attachment</b> node style (only applied if the node is an attachment)</li></ol>" +
+    "<li><b>Attachment</b> node style (only applied if the node is an attachment)</li><li><b>Optional</b> tag based style</li></ol>" +
     "All the attributes of the base node style must be specified. " +
     "All other styles may have partial definitions. e.g. You may add a prefix and override the base node-background color in the tag-based style, " + 
     "override the font color in the inferred-node style and set the border stroke style to dotted in the virtual-node style.",
@@ -69,5 +73,6 @@ export default {
   //main
   DATAVIEW_NOT_FOUND: `Dataview plugin not found. Please install or enable Dataview, then try restarting ${APPNAME}`,
   EXCALIDRAW_NOT_FOUND: `Excalidraw plugin not found. Please install or enable Excalidraw, then try restarting ${APPNAME}`,
+  EXCALIDRAW_MINAPP_VERSION: `ExcaliBrain requires Excalidraw ${MINEXCALIDRAWVERSION} or higher. Please upgrade Excalidraw`,
   COMMAND_START: "Open ExcaliBrain"
 }

@@ -7,3 +7,22 @@
 .excalibrain-prompt-center {
   text-align: center;
 }
+
+.excalibrain-settings-folding-L1 {
+  font-size: large;
+    font-weight: bold;
+    color: var(--text-title-h3);
+}
+
+.excalibrain-settings-h1 {
+  color: var(--text-title-h1);
+}
+
+.excalibrain-setting-nodestyle-section {
+  padding-left: 30px;
+  border-left: 10px solid var(--background-modifier-border);
+}
+
+.excalibrain-settings-demoimg {
+  max-width: 400px;
+}

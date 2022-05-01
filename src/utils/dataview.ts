@@ -47,6 +47,7 @@ export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<strin
   const links:{link:string,field:string}[] = [];
   const processed = new Set();
   fields.forEach(f => {
+    f = f.toLowerCase().replaceAll(" ","-");
     if(dvPage[f] && !processed.has(f)) {
       processed.add(f);
       readDVField(plugin.app,dvPage[f],dvPage.file).forEach(l=>links.push({link:l,field:f}))

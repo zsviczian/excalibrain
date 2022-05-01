@@ -17,18 +17,24 @@ export class Node {
   private friendGateOnLeft: boolean;
   public title: string;
 
-  constructor(x:{page:Page, isInferred: boolean, isCentral: boolean, isSibling: boolean, friendGateOnLeft:boolean}) {
+  constructor(x:{
+    page:Page,
+    isInferred: boolean,
+    isCentral: boolean,
+    isSibling: boolean,
+    friendGateOnLeft:boolean
+  }) {
     this.page = x.page;
     this.settings = x.page.plugin.settings;
     this.ea = x.page.plugin.EA;
     this.style = {
       ...this.settings.baseNodeStyle,
-      ...this.getTagStyle(),
       ...x.isInferred?this.settings.inferredNodeStyle:{},
       ...x.page.isVirtual?this.settings.virtualNodeStyle:{},
       ...x.isCentral?this.settings.centralNodeStyle:{},
       ...x.isSibling?this.settings.siblingNodeStyle:{},
-      ...x.page.isAttachment?this.settings.attachmentNodeStyle:{}
+      ...x.page.isAttachment?this.settings.attachmentNodeStyle:{},
+      ...this.getTagStyle(),
     };
     this.friendGateOnLeft = x.friendGateOnLeft;
     this.title = this.getTitle();
@@ -67,8 +73,6 @@ export class Node {
   }
 
   render() {
-    const includeVirtual = this.settings.showInferredNodes;
-    const includeAttachments = this.settings.showAttachments;
     const ea = this.ea;
     const label = this.displayText();
     ea.style.fontSize = this.style.fontSize;

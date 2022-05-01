@@ -1,15 +1,17 @@
-import { App, FileView, MetadataCache, Notice, Plugin, PluginManifest, TAbstractFile, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
+import { App, Notice, Plugin, PluginManifest, TAbstractFile, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { Page } from './graph/Page';
 import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './Settings';
 import { errorlog, log } from './utils/utils';
 import { getAPI } from "obsidian-dataview"
 import { t } from './lang/helpers';
-import { PLUGIN_NAME } from './constants/constants';
+import { MINEXCALIDRAWVERSION, PLUGIN_NAME } from './constants/constants';
 import { DvAPIInterface } from 'obsidian-dataview/lib/typings/api';
 import { Pages } from './graph/Pages';
 import { getEA } from "obsidian-excalidraw-plugin";
 import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
 import { Scene } from './Scene';
+import { NodeStyle, NodeStyles } from './Types';
+
 
 declare module "obsidian" {
   interface App {
@@ -21,11 +23,13 @@ declare module "obsidian" {
 
 export default class ExcaliBrain extends Plugin {
   public settings:ExcaliBrainSettings;
+  public nodeStyles: NodeStyles;
   public pages: Pages;
   public DVAPI: DvAPIInterface;
   public EA: ExcalidrawAutomate;
   public scene: Scene = null;
   private disregardLeafChangeTimer: NodeJS.Timeout;
+  private pluginLoaded: boolean = false;
   
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
@@ -34,7 +38,7 @@ export default class ExcaliBrain extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new ExcaliBrainSettingTab(this.app, this));
-    this.app.workspace.onLayoutReady(async()=>{
+    this.app.workspace.onLayoutReady(()=>{
       this.DVAPI = getAPI();
       if(!this.DVAPI) {
         new Notice(t("DATAVIEW_NOT_FOUND"),4000);
@@ -49,38 +53,15 @@ export default class ExcaliBrain extends Plugin {
         this.app.plugins.disablePlugin(PLUGIN_NAME)
         return;
       }
+      if(!this.EA.verifyMinimumPluginVersion(MINEXCALIDRAWVERSION)) {
+        new Notice(t("EXCALIDRAW_MINAPP_VERSION"), 4000);
+        errorlog({fn:this.onload, where:"main.ts/onload()", message:"ExcaliBrain requires a new version of Excalidraw"});
+        this.app.plugins.disablePlugin(PLUGIN_NAME)
+        return;
+      }
       this.registerCommands();
-      this.EA.onViewModeChangeHook = (isViewModeEnabled) => {
-        if(!this.EA.targetView || this.EA.targetView.file?.path !== this.settings.excalibrainFilepath) {
-          return;
-        }
-        if(!isViewModeEnabled) {
-          this.stop();
-        }
-      }
-
-      this.EA.onLinkHoverHook = (element,linkText) => {
-        if(
-          !this.scene ||
-          !this.EA.targetView ||
-          this.EA.targetView.file?.path !== this.settings.excalibrainFilepath ||
-          !this.EA.targetView.excalidrawAPI.getAppState().viewModeEnabled
-        ) {
-          return true;
-        }
-        this.scene.disregardLeafChange = true;
-        if(this.disregardLeafChangeTimer) {
-          clearTimeout(this.disregardLeafChangeTimer);
-        }
-        this.disregardLeafChangeTimer = setTimeout(()=>{
-          this.disregardLeafChangeTimer = null;
-          if(!this.scene) {
-            return;
-          }
-          this.scene.disregardLeafChange = false;
-        },2000);
-        return true;
-      }
+      this.registerExcalidrawAutomateHooks();
+      this.pluginLoaded = true;
     });
 	}
 
@@ -125,8 +106,14 @@ export default class ExcaliBrain extends Plugin {
           this.scene.unloadScene();
           this.scene = null;
         } else {
-          this.scene = new Scene(this,true,this.getBrainLeaf())
-          this.scene.initialize();
+          const leaf = this.getBrainLeaf();
+          this.scene = new Scene(this,true,this.getBrainLeaf());
+          //@ts-ignore
+          if(leaf.view && leaf.view.file && leaf.view.file.path == this.settings.excalibrainFilepath) {
+            this.scene.initialize();
+            return;
+          }
+          this.scene.openExcalidrawLeaf();
         }
       },
     });
@@ -147,6 +134,47 @@ export default class ExcaliBrain extends Plugin {
     return brainLeaf;
   }
 
+  registerExcalidrawAutomateHooks() {
+    this.EA.onViewModeChangeHook = (isViewModeEnabled) => {
+      if(!this.EA.targetView || this.EA.targetView.file?.path !== this.settings.excalibrainFilepath) {
+        return;
+      }
+      if(!isViewModeEnabled) {
+        this.stop();
+      }
+    }
+
+    this.EA.onLinkHoverHook = (element,linkText) => {
+      if(
+        !this.scene ||
+        !this.EA.targetView ||
+        this.EA.targetView.file?.path !== this.settings.excalibrainFilepath ||
+        !this.EA.targetView.excalidrawAPI ||
+        !this.EA.targetView.excalidrawAPI.getAppState().viewModeEnabled
+      ) {
+        return true;
+      }
+      this.scene.disregardLeafChange = true;
+      if(this.disregardLeafChangeTimer) {
+        clearTimeout(this.disregardLeafChangeTimer);
+      }
+      this.disregardLeafChangeTimer = setTimeout(()=>{
+        this.disregardLeafChangeTimer = null;
+        if(!this.scene) {
+          return;
+        }
+        this.scene.disregardLeafChange = false;
+      },1000);
+      return true;
+    }
+
+    this.EA.onViewUnloadHook = (view) => {    
+      if(this.scene && this.scene.leaf === view.leaf) {
+        this.stop();
+      }
+    }
+  }
+
 	onunload() {
     if(this.scene) {
       this.scene.unloadScene();
@@ -156,6 +184,101 @@ export default class ExcaliBrain extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.nodeStyles = {};
+    this.nodeStyles["base"] = {
+      style: this.settings.baseNodeStyle,
+      allowOverride: false,
+      userStyle: false,
+      display: t("NODESTYLE_BASE"),
+      getInheritedStyle: ()=>{
+        return {
+          ...this.settings.baseNodeStyle,
+        }
+      }
+    };
+    this.nodeStyles["inferred"] = {
+      style: this.settings.inferredNodeStyle,
+      allowOverride: true,
+      userStyle: false,
+      display: t("NODESTYLE_INFERRED"),
+      getInheritedStyle: ()=>{
+        return {
+          ...this.settings.baseNodeStyle,
+        }
+      }
+    };
+    this.nodeStyles["virtual"] = {
+      style: this.settings.virtualNodeStyle,
+      allowOverride: true,
+      userStyle: false,
+      display: t("NODESTYLE_VIRTUAL"),
+      getInheritedStyle: ()=>{
+        return {
+          ...this.settings.baseNodeStyle,
+          //...this.settings.inferredLinkStyle
+        }
+      }
+    };
+    this.nodeStyles["central"] = {
+      style: this.settings.centralNodeStyle,
+      allowOverride: true,
+      userStyle: false,
+      display: t("NODESTYLE_CENTRAL"),
+      getInheritedStyle: ()=>{
+        return {
+          ...this.settings.baseNodeStyle,
+          //...this.settings.inferredLinkStyle,
+          //...this.settings.virtualNodeStyle
+        }
+      }
+    };
+    this.nodeStyles["sibling"] = {
+      style: this.settings.siblingNodeStyle,
+      allowOverride: true,
+      userStyle: false,
+      display: t("NODESTYLE_SIBLING"),
+      getInheritedStyle: ()=>{
+        return {
+          ...this.settings.baseNodeStyle,
+          //...this.settings.inferredLinkStyle,
+          //...this.settings.virtualNodeStyle,
+          //...this.settings.centralNodeStyle
+        }
+      }
+    };
+    this.nodeStyles["attachment"] = {
+      style: this.settings.attachmentNodeStyle,
+      allowOverride: true,
+      userStyle: false,
+      display: t("NODESTYLE_ATTACHMENT"),
+      getInheritedStyle: ()=>{
+        return {
+          ...this.settings.baseNodeStyle,
+          //...this.settings.inferredLinkStyle,
+          //...this.settings.virtualNodeStyle,
+          //...this.settings.centralNodeStyle,
+          //...this.settings.siblingNodeStyle
+        }
+      }      
+    };
+    Object.entries(this.settings.tagNodeStyles).forEach(item=>{
+      this.nodeStyles[item[0]] = {
+        style: item[1],
+        allowOverride: true,
+        userStyle: true,
+        display: item[0],
+        getInheritedStyle: ()=>{
+          return {
+            ...this.settings.baseNodeStyle,
+            //...this.settings.inferredLinkStyle,
+            //...this.settings.virtualNodeStyle,
+            //...this.settings.centralNodeStyle,
+            //...this.settings.siblingNodeStyle,
+            //...this.settings.attachmentNodeStyle
+          }
+        }
+      }
+    })
 	}
 
 	async saveSettings() {
@@ -169,9 +292,22 @@ export default class ExcaliBrain extends Plugin {
     } 
   }
 
-  public start(leaf: WorkspaceLeaf) {
+  public async start(leaf: WorkspaceLeaf) {
+    let counter = 0;
+    while(!this.pluginLoaded && counter++<100) await sleep(50);
+    if(!this.pluginLoaded) {
+      new Notice("ExcaliBrain plugin did not load - aborting start()");
+      errorlog({where: "ExcaliBrain.start()", fn: this.start, message: "ExcaliBrain did not load. Aborting after 5000ms of trying"});
+      return;
+    }
+    log("start");
     this.stop();
-    this.scene = new Scene(this,true,leaf??this.getBrainLeaf())
+    if(!leaf) {
+      this.scene = new Scene(this,true,this.getBrainLeaf())
+      this.scene.openExcalidrawLeaf();
+      return;
+    }
+    this.scene = new Scene(this,true,leaf)
     this.scene.initialize();
   }
 

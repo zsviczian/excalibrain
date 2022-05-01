@@ -26,7 +26,11 @@ export type Relation = {
   friendTypeDefinition?: string;
 }
 
-export type Hierarchy = {[key:string]: string[]}
+export type Hierarchy = {
+  parents: string[],
+  children: string[],
+  friends: string[]
+}
 
 export type NodeStyle = {
   prefix?: string
@@ -48,6 +52,18 @@ export type NodeStyle = {
   gateBackgroundColor?: string,
   gateFillStyle?: FillStyle,
 }
+
+export type NodeStyleData = {
+  style: NodeStyle,
+  allowOverride:boolean,
+  userStyle: boolean,
+  display: string,
+  getInheritedStyle: ()=>NodeStyle
+}
+
+export type NodeStyles = {
+  [key:string]: NodeStyleData
+};
 
 export type LinkStyle = {
   strokeColor?: string,

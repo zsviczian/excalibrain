@@ -1,4 +1,3 @@
-import { settings } from "cluster";
 import {
   App,
   DropdownComponent,
@@ -10,11 +9,13 @@ import {
 } from "obsidian";
 import { FillStyle, getEA, StrokeSharpness, StrokeStyle } from "obsidian-excalidraw-plugin";
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
+import { Page } from "./graph/Page";
 import { t } from "./lang/helpers";
 import ExcaliBrain from "./main";
-import { Scene } from "./Scene";
-import { Hierarchy, NodeStyle, LinkStyle } from "./Types";
+import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData } from "./Types";
 import { WarningPrompt } from "./utils/Prompts";
+import { Node } from "./graph/Node";
+import { svgToBase64 } from "./utils/utils";
 
 export interface ExcaliBrainSettings {
   excalibrainFilepath: string;
@@ -107,6 +108,9 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   hierarchyStyleList: []
 };
 
+const HIDE_DISABLED_STYLE = "excalibrain-hide-disabled";
+const HIDE_DISABLED_CLASS = "excalibrain-settings-disabled";
+
 const getHex = (color:string) => color.substring(0,7);
 const getAlphaFloat = (color:string) => parseInt(color.substring(7,9),16)/255;
 const getAlphaHex = (a: number) => ((a * 255) | 1 << 8).toString(16).slice(1)
@@ -114,36 +118,76 @@ const getAlphaHex = (a: number) => ((a * 255) | 1 << 8).toString(16).slice(1)
 const fragWithHTML = (html: string) =>
   createFragment((frag) => (frag.createDiv().innerHTML = html));
 
-const details = (text: string, parent: HTMLElement) =>
-  parent.createEl("details", {}, (d) => d.createEl("summary", { text }));
+const removeStylesheet = (name:string) => {
+  const sheetToBeRemoved = document.getElementById(name);
+  if(!sheetToBeRemoved) return;
+  const sheetParent = sheetToBeRemoved.parentNode;
+  if(!sheetParent) return;
+  sheetParent.removeChild(sheetToBeRemoved);
+}
+
+const addStylesheet = (stylesheet: string, classname: string) => {
+  const sheet = document.createElement('style');
+  sheet.id = stylesheet;
+  sheet.innerHTML = `.${classname} {display: none;}`;
+  document.body.appendChild(sheet);
+}
 
 export class ExcaliBrainSettingTab extends PluginSettingTab {
   plugin: ExcaliBrain;
   ea: ExcalidrawAutomate;
   private hierarchy: string = null;
   private dirty:boolean = false;
+  private demoNode: Node;
+  private demoImg: HTMLImageElement;
+  private demoNodeStyle: NodeStyleData;
 
   constructor(app: App, plugin: ExcaliBrain) {
     super(app, plugin);
     this.plugin = plugin;
     this.ea = getEA();
+
+    const page = new Page(
+      "This is a demo node that is 46 characters long",
+      null,
+      this.plugin
+    )
+    const page2 = new Page(
+      "Dummy child",
+      null,
+      this.plugin
+    )
+    page.addChild(page2,RelationType.DEFINED);
+
+    this.demoNode = new Node({
+      page,
+      isInferred: false,
+      isCentral: false,
+      isSibling: false,
+      friendGateOnLeft: false
+    })
+    this.demoNode.ea = this.ea;  
   }
 
-  async sampleNode(style: NodeStyle):Promise<HTMLElement> {
-    this.ea.canvas.viewBackgroundColor = style.backgroundColor;
-
-    return;
-  }
+  async updateDemoImg() {
+    this.ea.reset();
+    this.ea.canvas.viewBackgroundColor = this.plugin.settings.backgroundColor;
+    this.demoNode.style = {
+      ...this.demoNodeStyle.getInheritedStyle(),
+      ...this.demoNodeStyle.style
+    }
+    this.demoNode.render();
+    const svg = await this.ea.createSVG(null,true,{withBackground:true, withTheme:false},null,"",40);
+    svg.removeAttribute("width");
+    svg.removeAttribute("height");
+    this.demoImg.setAttribute("src", svgToBase64(svg.outerHTML));
+  };
 
   async hide() {
     if(!this.dirty) {
       return;
     }
     this.plugin.settings.tagStyleList = Object.keys(this.plugin.settings.tagNodeStyles);
-    if(this.hierarchy) {
-      this.plugin.settings.hierarchy = JSON.parse(this.hierarchy);
-      //this.plugin.initializeIndex();
-    }
     this.plugin.saveSettings();
     this.plugin.scene?.reRender();
   }
@@ -156,7 +200,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     setValue:(val:string)=>void,
     deleteValue:()=>void,
     allowOverride: boolean,
-    defaultValue: string
+    defaultValue: string,
+    heading:string = ""
   ) {
     let sliderComponent: SliderComponent;
     let picker: HTMLInputElement;
@@ -173,6 +218,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     }
 
     const setDisabled = (isDisabled:boolean) => {
+      if(isDisabled) {
+        setting.settingEl.addClass(HIDE_DISABLED_CLASS);
+      } else {
+        setting.settingEl.removeClass(HIDE_DISABLED_CLASS);
+      }      
       picker.disabled = isDisabled;
       picker.style.opacity = isDisabled ? "0.3" : "1";
       sliderComponent.setDisabled(isDisabled);
@@ -252,7 +302,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     setValue:(val:number)=>void,
     deleteValue:()=>void,
     allowOverride: boolean,
-    defaultValue: number
+    defaultValue: number,
+    heading: string = ""
   ) {
     let displayText: HTMLDivElement;
     let toggleComponent: ToggleComponent;
@@ -261,6 +312,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     const setting = new Setting(containerEl).setName(name);
 
     const setDisabled = (isDisabled:boolean) => {
+      if(isDisabled) {
+        setting.settingEl.addClass(HIDE_DISABLED_CLASS);
+      } else {
+        setting.settingEl.removeClass(HIDE_DISABLED_CLASS);
+      }
       sliderComponent.setDisabled(isDisabled);
       sliderComponent.sliderEl.style.opacity = isDisabled ? "0.3" : "1";
       displayText.style.opacity = isDisabled ? "0.3" : "1";
@@ -321,7 +377,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     setValue:(val:string)=>void,
     deleteValue:()=>void,
     allowOverride: boolean,
-    defaultValue: string
+    defaultValue: string,
+    heading:string = ""
   ) {
     let dropdownComponent: DropdownComponent;
     let toggleComponent: ToggleComponent;
@@ -329,6 +386,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     const setting = new Setting(containerEl).setName(name);
 
     const setDisabled = (isDisabled:boolean) => {
+      if(isDisabled) {
+        setting.settingEl.addClass(HIDE_DISABLED_CLASS);
+      } else {
+        setting.settingEl.removeClass(HIDE_DISABLED_CLASS);
+      }
       dropdownComponent.setDisabled(isDisabled);
       dropdownComponent.selectEl.style.opacity = isDisabled ? "0.3" : "1";
     }
@@ -371,18 +433,29 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     setDisabled(allowOverride && !toggleComponent.getValue());
   }
 
-  nodeSettings(heading: string, setting: NodeStyle, allowOverride: boolean = true) {
-    const containerEl = details(heading,this.containerEl);
-
+  nodeSettings(
+    containerEl: HTMLElement,
+    heading: string,
+    setting: NodeStyle,
+    allowOverride: boolean = true,
+    inheritedStyle: NodeStyle
+  ) {
+   
     let textComponent: TextComponent;
     let toggleComponent: ToggleComponent;
-    const setDisabled = (isDisabled: boolean) => {
-      textComponent.setDisabled(isDisabled);
-      textComponent.inputEl.style.opacity = isDisabled ? "0.3": "1"; 
-    }
     const prefixSetting = new Setting(containerEl)
       .setName(t("NODESTYLE_PREFIX_NAME"))
       .setDesc(fragWithHTML(t("NODESTYLE_PREFIX_DESC")));
+
+    const setDisabled = (isDisabled: boolean) => {
+      if(isDisabled) {
+        prefixSetting.settingEl.addClass(HIDE_DISABLED_CLASS);
+      } else {
+        prefixSetting.settingEl.removeClass(HIDE_DISABLED_CLASS);
+      }
+      textComponent.setDisabled(isDisabled);
+      textComponent.inputEl.style.opacity = isDisabled ? "0.3": "1"; 
+    }
     if(allowOverride) {
       prefixSetting.addToggle(toggle => {
         toggleComponent = toggle;
@@ -395,6 +468,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             if(!value) {
               setDisabled(true);
               setting.prefix = undefined;
+              this.updateDemoImg();
               return;
             }
             setDisabled(false);
@@ -405,23 +479,31 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       .addText(text => {
         textComponent = text;
         text
-          .setValue(setting.prefix??"")
+          .setValue(setting.prefix??inheritedStyle.prefix)
           .onChange(value => {
             setting.prefix = value;
+            this.updateDemoImg();
             this.dirty = true;
           })
       })  
-    textComponent.setDisabled(allowOverride && !toggleComponent.getValue());
+    setDisabled(allowOverride && !toggleComponent.getValue());
 
     this.colorpicker(
       containerEl,
       t("NODESTYLE_BGCOLOR"),
       null,
       ()=>setting.backgroundColor,
-      val=>setting.backgroundColor=val,
-      ()=>delete setting.backgroundColor,
+      val=>{ 
+        setting.backgroundColor=val;
+        this.updateDemoImg();
+      },
+      ()=>{
+        delete setting.backgroundColor;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.backgroundColor
+      inheritedStyle.backgroundColor,
+      heading
     );
 
     this.dropdownpicker(
@@ -430,10 +512,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       {"hachure": "Hachure", "cross-hatch": "Cross-hatch", "solid": "Solid"},
       () => setting.fillStyle?.toString(),
-      (val) => setting.fillStyle = val as FillStyle,
-      ()=>delete setting.fillStyle,
+      (val) => {
+        setting.fillStyle = val as FillStyle;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.fillStyle;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.fillStyle.toString()
+      inheritedStyle.fillStyle.toString(),
+      heading
     )
 
     this.colorpicker(
@@ -441,10 +530,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       t("NODESTYLE_TEXTCOLOR"),
       null,
       ()=>setting.textColor,
-      val=>setting.textColor=val,
-      ()=>delete setting.textColor,
+      val=> {
+        setting.textColor=val;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.textColor;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.textColor
+      inheritedStyle.textColor,
+      heading
     );
 
     this.colorpicker(
@@ -452,10 +548,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       t("NODESTYLE_BORDERCOLOR"),
       null,
       ()=>setting.borderColor,
-      val=>setting.borderColor=val,
-      ()=>delete setting.borderColor,
+      val=> {
+        setting.borderColor=val;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.borderColor;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.borderColor
+      inheritedStyle.borderColor,
+      heading
     );
 
     this.numberslider(
@@ -464,10 +567,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       {min:10,max:50,step:5},
       () => setting.fontSize,
-      (val) => setting.fontSize = val,
-      ()=>delete setting.fontSize,
+      (val) => {
+        setting.fontSize = val;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.fontSize;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.fontSize
+      inheritedStyle.fontSize,
+      heading
     )
 
     this.dropdownpicker(
@@ -476,10 +586,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       {1:"Hand-drawn",2:"Normal",3:"Code",4:"Fourth (custom) Font"},
       () => setting.fontFamily?.toString(),
-      (val) => setting.fontFamily =  parseInt(val),
-      ()=>delete setting.fontFamily,
+      (val) => {
+        setting.fontFamily =  parseInt(val);
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.fontFamily;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.fontFamily.toString()
+      inheritedStyle.fontFamily.toString(),
+      heading
     )
 
     this.numberslider(
@@ -488,10 +605,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       t("NODESTYLE_MAXLABELLENGTH_DESC"),
       {min:15,max:100,step:5},
       () => setting.maxLabelLength,
-      (val) => setting.maxLabelLength = val,
-      ()=>delete setting.maxLabelLength,
+      (val) => {
+        setting.maxLabelLength = val;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.maxLabelLength;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.maxLabelLength
+      inheritedStyle.maxLabelLength,
+      heading
     )
     
     this.dropdownpicker(
@@ -500,10 +624,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       {0:"Architect",1:"Artist",2:"Cartoonist"},
       () => setting.roughness?.toString(),
-      (val) => setting.roughness =  parseInt(val),
-      ()=>delete setting.roughness,
+      (val) => {
+        setting.roughness =  parseInt(val);
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.roughness;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.toString()
+      inheritedStyle.toString(),
+      heading
     )
 
     this.dropdownpicker(
@@ -512,10 +643,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       {"sharp":"Sharp","round":"Round"},
       () => setting.strokeShaprness,
-      (val) => setting.strokeShaprness = val as StrokeSharpness,
-      ()=>delete setting.strokeShaprness,
+      (val) => {
+        setting.strokeShaprness = val as StrokeSharpness;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.strokeShaprness;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.strokeShaprness
+      inheritedStyle.strokeShaprness,
+      heading
     )
 
     this.numberslider(
@@ -524,10 +662,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       {min:0.5,max:6,step:0.5},
       () => setting.strokeWidth,
-      (val) => setting.strokeWidth = val,
-      ()=>delete setting.strokeWidth,
+      (val) => {
+        setting.strokeWidth = val;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.strokeWidth;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.strokeWidth
+      inheritedStyle.strokeWidth,
+      heading
     )
 
     this.dropdownpicker(
@@ -536,10 +681,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       {"solid":"Solid","dashed":"Dashed","dotted":"Dotted"},
       () => setting.strokeStyle,
-      (val) => setting.strokeStyle = val as StrokeStyle,
-      ()=>delete setting.strokeStyle,
+      (val) => {
+        setting.strokeStyle = val as StrokeStyle;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.strokeStyle;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.strokeStyle
+      inheritedStyle.strokeStyle,
+      heading
     )
 
     this.numberslider(
@@ -548,10 +700,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       {min:5,max:50,step:5},
       () => setting.padding,
-      (val) => setting.padding = val,
-      ()=>delete setting.padding,
+      (val) => {
+        setting.padding = val;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.padding;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.padding
+      inheritedStyle.padding,
+      heading
     )
 
 
@@ -561,10 +720,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       t("NODESTYLE_GATE_RADIUS_DESC"),
       {min:3,max:10,step:1},
       () => setting.gateRadius,
-      (val) => setting.gateRadius = val,
-      ()=>delete setting.gateRadius,
+      (val) => {
+        setting.gateRadius = val;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.gateRadius;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.gateRadius
+      inheritedStyle.gateRadius,
+      heading
     )
     
     this.numberslider(
@@ -573,10 +739,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       t("NODESTYLE_GATE_OFFSET_DESC"),
       {min:0,max:25,step:1},
       () => setting.gateOffset,
-      (val) => setting.gateOffset = val,
-      ()=>delete setting.gateOffset,
+      (val) => {
+        setting.gateOffset = val;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.gateOffset;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.gateOffset
+      inheritedStyle.gateOffset,
+      heading
     )
 
     this.colorpicker(
@@ -584,10 +757,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       t("NODESTYLE_GATE_COLOR"),
       null,
       ()=>setting.gateStrokeColor,
-      val=>setting.gateStrokeColor=val,
-      ()=>delete setting.gateStrokeColor,
+      val=> {
+        setting.gateStrokeColor=val;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.gateStrokeColor;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.gateStrokeColor
+      inheritedStyle.gateStrokeColor,
+      heading
     );
     
     this.colorpicker(
@@ -595,10 +775,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       t("NODESTYLE_GATE_BGCOLOR_NAME"),
       t("NODESTYLE_GATE_BGCOLOR_DESC"),
       ()=>setting.gateBackgroundColor,
-      val=>setting.gateBackgroundColor=val,
-      ()=>delete setting.gateBackgroundColor,
+      val=> {
+        setting.gateBackgroundColor=val;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.gateBackgroundColor;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.gateBackgroundColor
+      inheritedStyle.gateBackgroundColor,
+      heading
     );
 
     this.dropdownpicker(
@@ -607,10 +794,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       {"hachure": "Hachure", "cross-hatch": "Cross-hatch", "solid": "Solid"},
       () => setting.gateFillStyle?.toString(),
-      (val) => setting.gateFillStyle = val as FillStyle,
-      ()=>delete setting.gateFillStyle,
+      (val) => {
+        setting.gateFillStyle = val as FillStyle;
+        this.updateDemoImg();
+      },
+      ()=> {
+        delete setting.gateFillStyle;
+        this.updateDemoImg();
+      },
       allowOverride,
-      this.plugin.settings.baseNodeStyle.gateFillStyle.toString()
+      inheritedStyle.gateFillStyle.toString(),
+      heading
     )
   }
 
@@ -662,50 +856,53 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           .inputEl.onblur = () => {text.setValue(this.plugin.settings.excalibrainFilepath)}
       )
     
-    const malformedJSON = containerEl.createEl("p", { text: t("JSON_MALFORMED"), cls:"excalibrain-warning" });
-    malformedJSON.hide();
-    new Setting(containerEl)
-      .setName(t("HIERARCHY_NAME"))
-      .setDesc(fragWithHTML(t("HIERARCHY_DESC")))
-      .addTextArea((text) => {
-        text.inputEl.style.minHeight = "300px";
-        text.inputEl.style.minWidth = "400px";
-        text
-          .setValue(JSON.stringify(this.plugin.settings.hierarchy,null,2))
-          .onChange((value) => {
-            try {
-              const j = JSON.parse(value);
-              if(!(j.hasOwnProperty("parents") && j.hasOwnProperty("children") && j.hasOwnProperty("friends"))) {
-                malformedJSON.setText(t("JSON_MISSING_KEYS"));
-                malformedJSON.show();
-                return;
-              }
-              if(!(Array.isArray(j.parents) && Array.isArray(j.children) && Array.isArray(j.friends))) {
-                malformedJSON.setText(t("JSON_VALUES_NOT_STRING_ARRAYS"));
-                malformedJSON.show();
-                return;  
-              }
-              if(j.parents.length===0 || j.children.length===0 || j.friends.length === 0) {
-                malformedJSON.setText(t("JSON_VALUES_NOT_STRING_ARRAYS"));
-                malformedJSON.show();
-                return;
-              }
-              if(!(j.parents.every((v:any)=>typeof v === "string") && j.children.every((v:any)=>typeof v === "string") && j.friends.every((v:any)=>typeof v === "string"))) {
-                malformedJSON.setText(t("JSON_VALUES_NOT_STRING_ARRAYS"));
-                malformedJSON.show();
-                return;
-              }
-              malformedJSON.hide();
-              this.hierarchy = value;
-              this.dirty = true;
-            }
-            catch {
-              malformedJSON.setText(t("JSON_MALFORMED"));
-              malformedJSON.show();
-            }
-        });
+    this.containerEl.createEl("h1", {
+      cls: "excalibrain-settings-h1",
+      text: t("HIERARCHY_HEAD")
     });
+    const hierarchyDesc = this.containerEl.createEl("p", {});
+    hierarchyDesc.innerHTML =  t("HIERARCHY_DESC");
 
+    new Setting(containerEl)
+      .setName(t("PARENTS_NAME"))
+      .addText((text)=> {
+        text.inputEl.style.width = "100%";
+        text
+          .setValue(this.plugin.settings.hierarchy.parents.join(", "))
+          .onChange(value => {
+            this.plugin.settings.hierarchy.parents = value.split(",").map(s=>s.trim());
+            this.dirty = true;
+          })
+      })
+
+    new Setting(containerEl)
+      .setName(t("CHILDREN_NAME"))
+      .addText((text)=> {
+        text.inputEl.style.width = "100%";
+        text
+          .setValue(this.plugin.settings.hierarchy.children.join(", "))
+          .onChange(value => {
+            this.plugin.settings.hierarchy.children = value.split(",").map(s=>s.trim());
+            this.dirty = true;
+          })
+      })
+
+    new Setting(containerEl)
+      .setName(t("FRIENDS_NAME"))
+      .addText((text)=> {
+        text.inputEl.style.width = "100%";
+        text
+          .setValue(this.plugin.settings.hierarchy.friends.join(", "))
+          .onChange(value => {
+            this.plugin.settings.hierarchy.friends = value.split(",").map(s=>s.trim());
+            this.dirty = true;
+          })
+      })
+
+    this.containerEl.createEl("h1", {
+      cls: "excalibrain-settings-h1",
+      text: t("DISPLAY_HEAD") 
+    });
     new Setting(containerEl)
       .setName(t("RENDERALIAS_NAME"))
       .setDesc(fragWithHTML(t("RENDERALIAS_DESC")))
@@ -765,8 +962,14 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       false,
       30
     )
-      
-    this.containerEl.createEl("h1", { text: t("STYLE_HEAD") });
+     
+    //-----------------------------
+    //Node Style settings
+    //-----------------------------
+    containerEl.createEl("h1", {
+      cls: "excalibrain-settings-h1",
+      text: t("STYLE_HEAD")
+    });
     const styleDesc = this.containerEl.createEl("p", {});
     styleDesc.innerHTML =  t("STYLE_DESC");
 
@@ -775,41 +978,90 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       t("CANVAS_BGCOLOR"),
       null,
       ()=>this.plugin.settings.backgroundColor,
-      (val)=>this.plugin.settings.backgroundColor=val,
+      (val)=> {
+        this.plugin.settings.backgroundColor=val;
+        this.updateDemoImg();
+      },
       ()=>{},
       false,
       this.plugin.settings.backgroundColor
     )
 
-    this.nodeSettings(
-      t("NODESTYLE_BASE"),
-      this.plugin.settings.baseNodeStyle,
-      false
-    )
+    const nodeStylesWrapper = containerEl.createDiv({cls:"setting-item"});
+    const dropodownWrapper = nodeStylesWrapper.createDiv({cls:"setting-item-info"});
+    const nodeStylesDropdown = new DropdownComponent(dropodownWrapper);
+    
+    const toggleLabel = nodeStylesWrapper.createDiv({
+      text: "Show inherited",
+      cls: "setting-item-name"
+    });
+    toggleLabel.style.marginRight = "10px";
+    
+    const toggle = new ToggleComponent(nodeStylesWrapper)
+    toggle
+      .setValue(true)
+      .setTooltip("Show/Hide Inherited Properties")
+      .onChange(value => {
+        if(value) {
+          removeStylesheet(HIDE_DISABLED_STYLE);
+        } else {
+          addStylesheet(HIDE_DISABLED_STYLE, HIDE_DISABLED_CLASS);
+        }
+      });
 
-    this.nodeSettings(
-      t("NODESTYLE_INFERRED"),
-      this.plugin.settings.inferredNodeStyle
-    )
+    Object.entries(this.plugin.nodeStyles).forEach(item=>{
+      nodeStylesDropdown.addOption(item[0],item[1].display)
+    })
 
-    this.nodeSettings(
-      t("NODESTYLE_VIRTUAL"),
-      this.plugin.settings.virtualNodeStyle
-    )
+    this.demoImg = containerEl.createEl("img",{cls: "excalibrain-settings-demoimg"});
 
-    this.nodeSettings(
-      t("NODESTYLE_CENTRAL"),
-      this.plugin.settings.centralNodeStyle
-    )
-
-    this.nodeSettings(
-      t("NODESTYLE_SIBLING"),
-      this.plugin.settings.siblingNodeStyle
-    )
-
-    this.nodeSettings(
-      t("NODESTYLE_ATTACHMENT"),
-      this.plugin.settings.attachmentNodeStyle
-    )
+    const nodeStyleDiv = containerEl.createDiv({
+      cls: "excalibrain-setting-nodestyle-section"
+    });
+    removeStylesheet(HIDE_DISABLED_STYLE);
+    nodeStylesDropdown
+      .setValue("base")
+      .onChange(value => {
+        nodeStyleDiv.empty();
+        let nodeStyle = this.plugin.nodeStyles[value];
+        if(!nodeStyle) {
+          this.plugin.nodeStyles[value] = {
+            style: {},
+            allowOverride: true,
+            userStyle: true,
+            display: value,
+            getInheritedStyle: ()=>{
+              return {
+                ...this.plugin.settings.baseNodeStyle,
+                //...this.plugin.settings.inferredLinkStyle,
+                //...this.plugin.settings.virtualNodeStyle,
+                //...this.plugin.settings.centralNodeStyle,
+                //...this.plugin.settings.siblingNodeStyle,
+                //...this.plugin.settings.attachmentNodeStyle
+              }
+            }
+          }
+          nodeStyle = this.plugin.nodeStyles[value];
+        }
+        this.nodeSettings(
+          nodeStyleDiv,
+          nodeStyle.display,
+          nodeStyle.style,
+          nodeStyle.allowOverride,
+          nodeStyle.getInheritedStyle()
+        )
+        this.demoNodeStyle = nodeStyle;
+        this.updateDemoImg();
+      })
+      const nodeStyle = this.plugin.nodeStyles["base"];
+      this.nodeSettings(
+        nodeStyleDiv,
+        nodeStyle.display,
+        nodeStyle.style,
+        nodeStyle.allowOverride,
+        nodeStyle.getInheritedStyle()
+      )
+      this.demoNodeStyle = nodeStyle;
+      this.updateDemoImg();
   }
 }

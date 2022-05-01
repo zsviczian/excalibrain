@@ -4,7 +4,9 @@ excalidraw-plugin: parsed
 excalidraw-default-mode: view
 excalidraw-export-dark: false
 excalidraw-export-transparent: false
-excalidraw-export-svgpadding: 30
+excalidraw-linkbutton-opacity: 0.3
+excalidraw-onload-script: "app.plugins.plugins[${String.fromCharCode(96)}excalibrain${String.fromCharCode(96)}].start(ea.targetView.leaf);"
+
 tags: [excalidraw]
 
 ---
