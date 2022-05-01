@@ -1,4 +1,4 @@
-import { App, FileView, MarkdownView, Notice, TextFileView, TFile, WorkspaceLeaf } from "obsidian";
+import { App, FileView, MarkdownView, Notice, TextFileView, TFile, Vault, WorkspaceLeaf } from "obsidian";
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 import { EMPTYBRAIN } from "./constants/emptyBrainFile";
 import { Layout } from "./graph/Layout";
@@ -114,18 +114,16 @@ export class Scene {
     await this.render();
   }
 
-  public async openExcalidrawLeaf() {
-    log("openExcalidrawLeaf")
-    const ea = this.ea;
+  public static async openExcalidrawLeaf(ea: ExcalidrawAutomate, settings: ExcaliBrainSettings, leaf: WorkspaceLeaf) {
     let counter = 0;
 
-    let file = this.app.vault.getAbstractFileByPath(this.settings.excalibrainFilepath);
+    let file = app.vault.getAbstractFileByPath(settings.excalibrainFilepath);
     if(file && !(file instanceof TFile)) {
-      new Notice(`Please check settings. ExcaliBrain path (${this.settings.excalibrainFilepath}) points to a folder, not a file`);
+      new Notice(`Please check settings. ExcaliBrain path (${settings.excalibrainFilepath}) points to a folder, not a file`);
       return;
     }
     if(!file) {
-      file = await app.vault.create(this.settings.excalibrainFilepath,EMPTYBRAIN);
+      file = await app.vault.create(settings.excalibrainFilepath,EMPTYBRAIN);
       //an ugly temporary hack waiting for metadataCache to index the new file
       while(file instanceof TFile && !ea.isExcalidrawFile(file) && counter++<10) {
         await sleep(50);
@@ -133,17 +131,17 @@ export class Scene {
     }
     counter = 0;
     if(file && file instanceof TFile && !ea.isExcalidrawFile(file)) {
-      file = await app.vault.create(this.settings.excalibrainFilepath,EMPTYBRAIN);
+      file = await app.vault.create(settings.excalibrainFilepath,EMPTYBRAIN);
       //an ugly temporary hack waiting for metadataCache to index the new file
       while(file instanceof TFile && !ea.isExcalidrawFile(file) && counter++<10) {
         await sleep(50);
       }
       if(!ea.isExcalidrawFile(file as TFile)) {
-        new Notice(`Couldn't open ${this.settings.excalibrainFilepath}. Please try again later.`);
+        new Notice(`Couldn't open ${settings.excalibrainFilepath}. Please try again later.`);
         return;
       }
     }
-    await this.leaf.openFile(file as TFile);   
+    await (leaf ?? app.workspace.getLeaf(true)).openFile(file as TFile);   
   }
 
   public async initilizeScene() {
@@ -180,11 +178,11 @@ export class Scene {
     });
     
     ea.style.strokeColor = style.textColor;
-    ea.addText(0,0,"Open a document in another pane and click it to get started.\n\n" +
+    ea.addText(0,0,"xxxxOpen a document in another pane and click it to get started.\n\n" +
       "For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
       "under 'Links and Transclusion'.", {textAlign:"center"});
     await ea.addElementsToView();
-    ea.getExcalidrawAPI().zoomToFit();
+    ea.getExcalidrawAPI().zoomToFit(null, 5);
     
     ea.targetView.linksAlwaysOpenInANewPane = true;
     
@@ -374,7 +372,7 @@ export class Scene {
         el=>el.type==="arrow"
       ).concat(elements.filter(el=>el.type!=="arrow"))
     })
-    this.ea.getExcalidrawAPI().zoomToFit();
+    this.ea.getExcalidrawAPI().zoomToFit(null,5);
     this.blockUpdateTimer = false;
   }
 
@@ -478,7 +476,9 @@ export class Scene {
     }
 
     if(this.ea.targetView) {
-      this.ea.deregisterThisAsViewEA();
+      try {
+        this.ea.deregisterThisAsViewEA();
+      } catch {}
     }
     this.searchBox?.terminate();
     this.searchBox = undefined;

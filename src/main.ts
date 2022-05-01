@@ -10,7 +10,7 @@ import { Pages } from './graph/Pages';
 import { getEA } from "obsidian-excalidraw-plugin";
 import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
 import { Scene } from './Scene';
-import { NodeStyle, NodeStyles } from './Types';
+import { NodeStyles } from './Types';
 
 
 declare module "obsidian" {
@@ -107,13 +107,13 @@ export default class ExcaliBrain extends Plugin {
           this.scene = null;
         } else {
           const leaf = this.getBrainLeaf();
-          this.scene = new Scene(this,true,leaf);
           //@ts-ignore
           if(leaf && leaf.view && leaf.view.file && leaf.view.file.path == this.settings.excalibrainFilepath) {
+            this.scene = new Scene(this,true,leaf);
             this.scene.initialize();
             return;
           }
-          this.scene.openExcalidrawLeaf();
+          Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,leaf);
         }
       },
     });
@@ -300,10 +300,12 @@ export default class ExcaliBrain extends Plugin {
       errorlog({where: "ExcaliBrain.start()", fn: this.start, message: "ExcaliBrain did not load. Aborting after 5000ms of trying"});
       return;
     }
+    if(counter<4) { //sleep as a temp workaround for a race condition starting Excalidraw
+      while(counter++<8) await sleep(50);
+    }
     this.stop();
     if(!leaf) {
-      this.scene = new Scene(this,true,this.getBrainLeaf())
-      this.scene.openExcalidrawLeaf();
+      await Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,this.getBrainLeaf());
       return;
     }
     this.scene = new Scene(this,true,leaf)
