@@ -10,12 +10,9 @@ export class SearchBox {
     private contentEl: HTMLElement,
     private plugin: ExcaliBrain
   ) {
-    contentEl.style.position = "relative";
+    contentEl.addClass("excalibrain-contentEl");
     this.wrapperDiv = this.contentEl.createDiv();
-    this.wrapperDiv.style.zIndex = "1";
-    this.wrapperDiv.style.position = "absolute";
-    this.wrapperDiv.style.top = "10px";
-    this.wrapperDiv.style.left = "10px";
+    this.wrapperDiv.addClass("excalibrain-search-wrapper");
     const inputEl = this.wrapperDiv.createEl("input",{type: "text"});
     inputEl.style.width = "400px";
 

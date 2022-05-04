@@ -74,6 +74,18 @@ export type LinkStyle = {
   endArrowHead?: Arrowhead,
 }
 
+export type LinkStyleData = {
+  style: LinkStyle,
+  allowOverride:boolean,
+  userStyle: boolean,
+  display: string,
+  getInheritedStyle: ()=>LinkStyle
+}
+
+export type LinkStyles = {
+  [key:string]: LinkStyleData
+};
+
 export type Neighbour = {
   page: Page;
   relationType: RelationType;

@@ -26,3 +26,14 @@
 .excalibrain-settings-demoimg {
   max-width: 400px;
 }
+
+.excalibrain-contentEl {
+  position: relative;
+}
+
+.excalibrain-search-wrapper {
+  z-index: 1;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}

@@ -10,7 +10,7 @@ import { Pages } from './graph/Pages';
 import { getEA } from "obsidian-excalidraw-plugin";
 import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
 import { Scene } from './Scene';
-import { NodeStyles } from './Types';
+import { LinkStyles, NodeStyles, LinkStyle } from './Types';
 
 
 declare module "obsidian" {
@@ -24,6 +24,7 @@ declare module "obsidian" {
 export default class ExcaliBrain extends Plugin {
   public settings:ExcaliBrainSettings;
   public nodeStyles: NodeStyles;
+  public linkStyles: LinkStyles;
   public pages: Pages;
   public DVAPI: DvAPIInterface;
   public EA: ExcalidrawAutomate;
@@ -184,82 +185,76 @@ export default class ExcaliBrain extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+
+    this.linkStyles = {};
+    this.linkStyles["base"] = {
+      style: this.settings.baseLinkStyle,
+      allowOverride: false,
+      userStyle: false,
+      display: t("LINKSTYLE_BASE"),
+      getInheritedStyle: () => this.settings.baseLinkStyle,
+    }
+
+    this.linkStyles["inferred"] = {
+      style: this.settings.inferredLinkStyle,
+      allowOverride: true,
+      userStyle: false,
+      display: t("LINKSTYLE_INFERRED"),
+      getInheritedStyle: () => this.settings.baseLinkStyle,
+    }
+
+    Object.entries(this.settings.hierarchyLinkStyles).forEach((item:[string,LinkStyle])=>{
+      this.linkStyles[item[0]] = {
+        style: item[1],
+        allowOverride: true,
+        userStyle: true,
+        display: item[0],
+        getInheritedStyle: ()=> this.settings.baseNodeStyle
+      }
+    })
+
     this.nodeStyles = {};
     this.nodeStyles["base"] = {
       style: this.settings.baseNodeStyle,
       allowOverride: false,
       userStyle: false,
       display: t("NODESTYLE_BASE"),
-      getInheritedStyle: ()=>{
-        return {
-          ...this.settings.baseNodeStyle,
-        }
-      }
+      getInheritedStyle: ()=> this.settings.baseNodeStyle,
     };
     this.nodeStyles["inferred"] = {
       style: this.settings.inferredNodeStyle,
       allowOverride: true,
       userStyle: false,
       display: t("NODESTYLE_INFERRED"),
-      getInheritedStyle: ()=>{
-        return {
-          ...this.settings.baseNodeStyle,
-        }
-      }
+      getInheritedStyle: ()=> this.settings.baseNodeStyle
     };
     this.nodeStyles["virtual"] = {
       style: this.settings.virtualNodeStyle,
       allowOverride: true,
       userStyle: false,
       display: t("NODESTYLE_VIRTUAL"),
-      getInheritedStyle: ()=>{
-        return {
-          ...this.settings.baseNodeStyle,
-          //...this.settings.inferredLinkStyle
-        }
-      }
+      getInheritedStyle: ()=> this.settings.baseNodeStyle
     };
     this.nodeStyles["central"] = {
       style: this.settings.centralNodeStyle,
       allowOverride: true,
       userStyle: false,
       display: t("NODESTYLE_CENTRAL"),
-      getInheritedStyle: ()=>{
-        return {
-          ...this.settings.baseNodeStyle,
-          //...this.settings.inferredLinkStyle,
-          //...this.settings.virtualNodeStyle
-        }
-      }
+      getInheritedStyle: ()=> this.settings.baseNodeStyle
     };
     this.nodeStyles["sibling"] = {
       style: this.settings.siblingNodeStyle,
       allowOverride: true,
       userStyle: false,
       display: t("NODESTYLE_SIBLING"),
-      getInheritedStyle: ()=>{
-        return {
-          ...this.settings.baseNodeStyle,
-          //...this.settings.inferredLinkStyle,
-          //...this.settings.virtualNodeStyle,
-          //...this.settings.centralNodeStyle
-        }
-      }
+      getInheritedStyle: ()=> this.settings.baseNodeStyle
     };
     this.nodeStyles["attachment"] = {
       style: this.settings.attachmentNodeStyle,
       allowOverride: true,
       userStyle: false,
       display: t("NODESTYLE_ATTACHMENT"),
-      getInheritedStyle: ()=>{
-        return {
-          ...this.settings.baseNodeStyle,
-          //...this.settings.inferredLinkStyle,
-          //...this.settings.virtualNodeStyle,
-          //...this.settings.centralNodeStyle,
-          //...this.settings.siblingNodeStyle
-        }
-      }      
+      getInheritedStyle: ()=> this.settings.baseNodeStyle     
     };
     Object.entries(this.settings.tagNodeStyles).forEach(item=>{
       this.nodeStyles[item[0]] = {
@@ -267,16 +262,7 @@ export default class ExcaliBrain extends Plugin {
         allowOverride: true,
         userStyle: true,
         display: item[0],
-        getInheritedStyle: ()=>{
-          return {
-            ...this.settings.baseNodeStyle,
-            //...this.settings.inferredLinkStyle,
-            //...this.settings.virtualNodeStyle,
-            //...this.settings.centralNodeStyle,
-            //...this.settings.siblingNodeStyle,
-            //...this.settings.attachmentNodeStyle
-          }
-        }
+        getInheritedStyle: ()=> this.settings.baseNodeStyle
       }
     })
 	}

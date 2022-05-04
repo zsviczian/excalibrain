@@ -15,7 +15,12 @@ export class Link {
     private ea: ExcalidrawAutomate,
     private settings: ExcaliBrainSettings
   ) {
-    this.style = settings.baseLinkStyle;
+    this.style = {
+      ...settings.baseLinkStyle,
+      ...relation === RelationType.INFERRED
+        ? settings.inferredLinkStyle
+        : {}
+    };
   }
 
   render() {

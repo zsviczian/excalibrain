@@ -178,7 +178,7 @@ export class Scene {
     });
     
     ea.style.strokeColor = style.textColor;
-    ea.addText(0,0,"xxxxOpen a document in another pane and click it to get started.\n\n" +
+    ea.addText(0,0,"Open a document in another pane and click it to get started.\n\n" +
       "For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
       "under 'Links and Transclusion'.", {textAlign:"center"});
     await ea.addElementsToView();
