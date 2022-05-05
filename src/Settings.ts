@@ -12,7 +12,7 @@ import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAut
 import { Page } from "./graph/Page";
 import { t } from "./lang/helpers";
 import ExcaliBrain from "./main";
-import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData } from "./Types";
+import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData, LinkDirection } from "./Types";
 import { WarningPrompt } from "./utils/Prompts";
 import { Node } from "./graph/Node";
 import { svgToBase64 } from "./utils/utils";
@@ -38,7 +38,6 @@ export interface ExcaliBrainSettings {
   baseLinkStyle: LinkStyle;
   inferredLinkStyle: LinkStyle;
   hierarchyLinkStyles: {[key: string]: LinkStyle};
-  hierarchyStyleList: string[];
 }
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
@@ -108,7 +107,6 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
     strokeStyle: "dashed",
   },
   hierarchyLinkStyles: {},
-  hierarchyStyleList: []
 };
 
 const HIDE_DISABLED_STYLE = "excalibrain-hide-disabled";
@@ -141,7 +139,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
   ea: ExcalidrawAutomate;
   private dirty:boolean = false;
   private demoNode: Node;
-  private demoImg: HTMLImageElement;
+  private demoNodeImg: HTMLImageElement;
   private demoLinkImg: HTMLImageElement;
   private demoLinkStyle: LinkStyleData;
   private demoNodeStyle: NodeStyleData;
@@ -151,7 +149,14 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
-  async updateDemoImg() {
+  get hierarchyStyleList(): string[] {
+    return ["base","inferred"]
+      .concat(Array.from(this.plugin.settings.hierarchy.parents))
+      .concat(Array.from(this.plugin.settings.hierarchy.children))
+      .concat(Array.from(this.plugin.settings.hierarchy.friends));
+  };
+
+  async updateNodeDemoImg() {
     this.ea.reset();
     this.ea.canvas.viewBackgroundColor = this.plugin.settings.backgroundColor;
     this.demoNode.style = {
@@ -162,7 +167,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     const svg = await this.ea.createSVG(null,true,{withBackground:true, withTheme:false},null,"",40);
     svg.removeAttribute("width");
     svg.removeAttribute("height");
-    this.demoImg.setAttribute("src", svgToBase64(svg.outerHTML));
+    this.demoNodeImg.setAttribute("src", svgToBase64(svg.outerHTML));
   };
 
   async updateLinkDemoImg() {
@@ -186,6 +191,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     if(!this.dirty) {
       return;
     }
+    this.plugin.setHierarchyLinkStylesExtended();
     this.plugin.settings.tagStyleList = Object.keys(this.plugin.settings.tagNodeStyles);
     this.plugin.saveSettings();
     this.plugin.scene?.reRender();
@@ -463,7 +469,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             if(!value) {
               setDisabled(true);
               setting.prefix = undefined;
-              this.updateDemoImg();
+              this.updateNodeDemoImg();
               return;
             }
             setDisabled(false);
@@ -477,7 +483,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           .setValue(setting.prefix??inheritedStyle.prefix)
           .onChange(value => {
             setting.prefix = value;
-            this.updateDemoImg();
+            this.updateNodeDemoImg();
             this.dirty = true;
           })
       })  
@@ -490,11 +496,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       ()=>setting.backgroundColor,
       val=>{ 
         setting.backgroundColor=val;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=>{
         delete setting.backgroundColor;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.backgroundColor,
@@ -508,11 +514,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       () => setting.fillStyle?.toString(),
       (val) => {
         setting.fillStyle = val as FillStyle;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.fillStyle;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.fillStyle.toString(),
@@ -525,11 +531,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       ()=>setting.textColor,
       val=> {
         setting.textColor=val;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.textColor;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.textColor,
@@ -542,11 +548,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       ()=>setting.borderColor,
       val=> {
         setting.borderColor=val;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.borderColor;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.borderColor,
@@ -560,11 +566,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       () => setting.fontSize,
       (val) => {
         setting.fontSize = val;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.fontSize;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.fontSize,
@@ -578,11 +584,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       () => setting.fontFamily?.toString(),
       (val) => {
         setting.fontFamily =  parseInt(val);
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.fontFamily;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.fontFamily.toString(),
@@ -596,11 +602,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       () => setting.maxLabelLength,
       (val) => {
         setting.maxLabelLength = val;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.maxLabelLength;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.maxLabelLength,
@@ -614,11 +620,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       () => setting.roughness?.toString(),
       (val) => {
         setting.roughness =  parseInt(val);
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.roughness;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.roughness.toString(),
@@ -632,11 +638,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       () => setting.strokeShaprness,
       (val) => {
         setting.strokeShaprness = val as StrokeSharpness;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.strokeShaprness;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.strokeShaprness,
@@ -650,11 +656,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       () => setting.strokeWidth,
       (val) => {
         setting.strokeWidth = val;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.strokeWidth;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.strokeWidth,
@@ -668,11 +674,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       () => setting.strokeStyle,
       (val) => {
         setting.strokeStyle = val as StrokeStyle;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.strokeStyle;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.strokeStyle,
@@ -686,11 +692,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       () => setting.padding,
       (val) => {
         setting.padding = val;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.padding;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.padding,
@@ -704,11 +710,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       () => setting.gateRadius,
       (val) => {
         setting.gateRadius = val;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.gateRadius;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.gateRadius,
@@ -722,11 +728,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       () => setting.gateOffset,
       (val) => {
         setting.gateOffset = val;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.gateOffset;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.gateOffset,
@@ -739,11 +745,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       ()=>setting.gateStrokeColor,
       val=> {
         setting.gateStrokeColor=val;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.gateStrokeColor;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.gateStrokeColor,
@@ -756,11 +762,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       ()=>setting.gateBackgroundColor,
       val=> {
         setting.gateBackgroundColor=val;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.gateBackgroundColor;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.gateBackgroundColor,
@@ -774,11 +780,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       () => setting.gateFillStyle?.toString(),
       (val) => {
         setting.gateFillStyle = val as FillStyle;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.gateFillStyle;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.gateFillStyle.toString(),
@@ -849,7 +855,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       t("LINKSTYLE_ARROWSTART"),
       null,
       {"":"None","arrow":"Arrow","bar":"Bar","dot":"Dot","triangle":"Triangle"},
-      () => setting.startArrowHead,
+      () => setting.startArrowHead??"",
       (val) => {
         setting.startArrowHead = (val === "") ? null : val as Arrowhead;
         this.updateLinkDemoImg();
@@ -896,7 +902,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       null,
       this.plugin
     )
-    page.addChild(page2,RelationType.DEFINED);
+    page.addChild(page2,RelationType.DEFINED,LinkDirection.FROM);
+    page2.addParent(page,RelationType.DEFINED,LinkDirection.TO);
     this.demoNode = new Node({
       page,
       isInferred: false,
@@ -1077,7 +1084,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       ()=>this.plugin.settings.backgroundColor,
       (val)=> {
         this.plugin.settings.backgroundColor=val;
-        this.updateDemoImg();
+        this.updateNodeDemoImg();
       },
       ()=>{},
       false,
@@ -1099,7 +1106,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
         nodeStyle.getInheritedStyle()
       )
       this.demoNodeStyle = nodeStyle;
-      this.updateDemoImg();
+      this.updateNodeDemoImg();
     }
 
     const taglist = new Setting(containerEl)
@@ -1153,19 +1160,19 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
 
     taglist.descEl.style.maxWidth="400px";
     const nodeStylesWrapper = containerEl.createDiv({cls:"setting-item"});
-    const dropodownWrapper = nodeStylesWrapper.createDiv({cls:"setting-item-info"});
-    nodeStylesDropdown = new DropdownComponent(dropodownWrapper);
+    const nodeStylesDropdownWrapper = nodeStylesWrapper.createDiv({cls:"setting-item-info"});
+    nodeStylesDropdown = new DropdownComponent(nodeStylesDropdownWrapper);
     
-    const toggleLabel = nodeStylesWrapper.createDiv({
+    const nodeStylestoggleLabel = nodeStylesWrapper.createDiv({
       text: "Show inherited",
       cls: "setting-item-name"
     });
-    toggleLabel.style.marginRight = "10px";
+    nodeStylestoggleLabel.style.marginRight = "10px";
 
     let linkStylesToggle: ToggleComponent;
 
-    const toggle = new ToggleComponent(nodeStylesWrapper)
-    toggle
+    const nodeStylesToggle = new ToggleComponent(nodeStylesWrapper)
+    nodeStylesToggle
       .setValue(true)
       .setTooltip("Show/Hide Inherited Properties")
       .onChange(value => {
@@ -1181,7 +1188,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       nodeStylesDropdown.addOption(item[0],item[1].display)
     })
 
-    this.demoImg = containerEl.createEl("img",{cls: "excalibrain-settings-demoimg"});
+    this.demoNodeImg = containerEl.createEl("img",{cls: "excalibrain-settings-demoimg"});
 
     nodeStyleDiv = containerEl.createDiv({
       cls: "excalibrain-setting-nodestyle-section"
@@ -1198,7 +1205,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
         nodeStyle.getInheritedStyle()
       )
       this.demoNodeStyle = nodeStyle;
-      this.updateDemoImg();
+      this.updateNodeDemoImg();
 
     //-----------------------------
     // Link Style settings
@@ -1208,21 +1215,21 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     let linkStyleDiv: HTMLDivElement;
     const linkDropdownOnChange = (value:string) => {
       linkStyleDiv.empty();
-      const linkStyle = this.plugin.linkStyles[value];
+      const ls = this.plugin.linkStyles[value];
       this.linkSettings(
         linkStyleDiv,
-        linkStyle.style,
-        linkStyle.allowOverride,
-        linkStyle.getInheritedStyle()
+        ls.style,
+        ls.allowOverride,
+        ls.getInheritedStyle()
       )
-      this.demoLinkStyle = linkStyle;
+      this.demoLinkStyle = ls;
       this.updateLinkDemoImg();
     }
 
     const linkStylesWrapper = containerEl.createDiv({cls:"setting-item"});
     
-    const linkStylesDropodownWrapper = linkStylesWrapper.createDiv({cls:"setting-item-info"});
-    linkStylesDropdown = new DropdownComponent(linkStylesDropodownWrapper);
+    const linkStylesDropdownWrapper = linkStylesWrapper.createDiv({cls:"setting-item-info"});
+    linkStylesDropdown = new DropdownComponent(linkStylesDropdownWrapper);
     
     const linkStylesToggleLabel = linkStylesWrapper.createDiv({
       text: "Show inherited",
@@ -1242,7 +1249,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
         } else {
           addStylesheet(HIDE_DISABLED_STYLE, HIDE_DISABLED_CLASS);
         }
-        linkStylesToggle.setValue(value);
+        nodeStylesToggle.setValue(value);
       });
 
     Object.entries(this.plugin.linkStyles).forEach(item=>{
@@ -1254,42 +1261,38 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     linkStyleDiv = containerEl.createDiv({
       cls: "excalibrain-setting-nodestyle-section"
     });
-    removeStylesheet(HIDE_DISABLED_STYLE);
+
     linkStylesDropdown
       .setValue("base")
       .onChange(linkDropdownOnChange)
-      const linkStyle = this.plugin.linkStyles["base"];
+      const ls = this.plugin.linkStyles["base"];
       this.linkSettings(
         linkStyleDiv,
-        linkStyle.style,
-        linkStyle.allowOverride,
-        linkStyle.getInheritedStyle()
+        ls.style,
+        ls.allowOverride,
+        ls.getInheritedStyle()
       )
-      this.demoLinkStyle = linkStyle;
+      this.demoLinkStyle = ls;
       this.updateLinkDemoImg();
 
     onHierarchyChange = () => {
-      const hierarchy = this.plugin.settings.hierarchy;
       const hierarchyLinkStyles = this.plugin.settings.hierarchyLinkStyles
       const linkStyles = this.plugin.linkStyles;
-      this.plugin.settings.hierarchyStyleList = 
-        Array.from(hierarchy.parents)
-          .concat(Array.from(hierarchy.children))
-          .concat(Array.from(hierarchy.friends));
+
       Object.keys(linkStyles).forEach(key => {
-        if(!this.plugin.settings.hierarchyStyleList.contains(key)) {
+        if(!this.hierarchyStyleList.contains(key)) {
           delete linkStyles[key];
           delete hierarchyLinkStyles[key];
         }
       });
-      this.plugin.settings.hierarchyStyleList.forEach(link => {
-        if(!Object.keys(hierarchyLinkStyles).contains(link)) {
-          hierarchyLinkStyles[link] = {};
-          linkStyles[link] = {
-            style: hierarchyLinkStyles[link],
+      this.hierarchyStyleList.forEach(dataviewfield => {
+        if(!Object.keys(hierarchyLinkStyles).contains(dataviewfield)) {
+          hierarchyLinkStyles[dataviewfield] = {};
+          linkStyles[dataviewfield] = {
+            style: hierarchyLinkStyles[dataviewfield],
             allowOverride: true,
             userStyle: true,
-            display: link,
+            display: dataviewfield,
             getInheritedStyle: () => this.plugin.settings.baseLinkStyle
           }
         }

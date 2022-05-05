@@ -1,16 +1,14 @@
 import { TFile } from "obsidian";
 import ExcaliBrain from "src/main";
 import { ExcaliBrainSettings } from "src/Settings";
-import { Neighbour, Relation, RelationType } from "src/Types";
-import { pipeline } from "stream";
-
-
+import { LinkDirection, Neighbour, Relation, RelationType } from "src/Types";
 
 const DEFAULT_RELATION:Relation = {
   target: null,
   isParent: false,
   isChild: false,
-  isFriend: false
+  isFriend: false,
+  direction: null
 }
 
 const getRelationVector = (r:Relation):{
@@ -35,6 +33,16 @@ const concat = (s1: string, s2: string): string => {
     : s1 
       ? s1
       : s2
+}
+
+const directionToSet = (currentDirection:LinkDirection, newDirection: LinkDirection):LinkDirection => {
+  if(!currentDirection) {
+    return newDirection;
+  }
+  if(currentDirection === LinkDirection.BOTH || currentDirection === newDirection) {
+    return currentDirection;
+  }
+  return LinkDirection.BOTH;
 }
 
 const relationTypeToSet = (currentType: RelationType, newType: RelationType):RelationType => {
@@ -91,7 +99,7 @@ export class Page {
   //-----------------------------------------------
   // add relationships
   //-----------------------------------------------
-  addParent(page: Page, relationType:RelationType, definition?: string) {
+  addParent(page: Page, relationType:RelationType,  direction: LinkDirection, definition?: string) {
     if(page.path === this.plugin.settings.excalibrainFilepath) {
       return;
     };
@@ -100,6 +108,7 @@ export class Page {
       neighbour.isParent = true;
       neighbour.parentType = relationTypeToSet(neighbour.parentType,relationType);
       neighbour.parentTypeDefinition = concat(definition, neighbour.parentTypeDefinition);
+      neighbour.direction = directionToSet(neighbour.direction, direction);
       return;
     }
     this.neighbours.set(page.path, {
@@ -108,10 +117,11 @@ export class Page {
       isParent: true,
       parentType: relationType,
       parentTypeDefinition: definition,
+      direction
     });
   }
 
-  addChild(page: Page, relationType:RelationType, definition?: string) {
+  addChild(page: Page, relationType:RelationType, direction: LinkDirection, definition?: string) {
     if(page.path === this.plugin.settings.excalibrainFilepath) {
       return;
     };
@@ -120,6 +130,7 @@ export class Page {
       neighbour.isChild = true;
       neighbour.childType = relationTypeToSet(neighbour.childType,relationType);
       neighbour.childTypeDefinition = concat(definition,neighbour.childTypeDefinition);
+      neighbour.direction = directionToSet(neighbour.direction, direction);
       return;
     }
     this.neighbours.set(page.path, {
@@ -128,10 +139,11 @@ export class Page {
       isChild: true,
       childType: relationType,
       childTypeDefinition: definition,
+      direction
     });
   }
 
-  addFriend(page: Page, relationType:RelationType, definition?: string) {
+  addFriend(page: Page, relationType:RelationType, direction: LinkDirection, definition?: string) {
     if(page.path === this.plugin.settings.excalibrainFilepath) {
       return;
     };
@@ -139,7 +151,8 @@ export class Page {
     if(neighbour) {
       neighbour.isFriend = true;
       neighbour.friendType = relationTypeToSet(neighbour.friendType,relationType);
-      neighbour.friendTypeDefinition = concat(definition,neighbour.friendTypeDefinition);;
+      neighbour.friendTypeDefinition = concat(definition,neighbour.friendTypeDefinition);
+      neighbour.direction = directionToSet(neighbour.direction, direction);
       return;
     }
     this.neighbours.set(page.path, {
@@ -148,6 +161,7 @@ export class Page {
       isFriend: true,
       friendType: relationType,
       friendTypeDefinition: definition,
+      direction
     });
   }
   
@@ -184,7 +198,8 @@ export class Page {
         return {
           page: x[1].target,
           relationType: x[1].childType,
-          typeDefinition: x[1].childTypeDefinition
+          typeDefinition: x[1].childTypeDefinition,
+          linkDirection: x[1].direction
         }
       });//.sort
   }
@@ -217,7 +232,8 @@ export class Page {
       return {
         page: x[1].target,
         relationType: x[1].parentType,
-        typeDefinition: x[1].parentTypeDefinition
+        typeDefinition: x[1].parentTypeDefinition,
+        linkDirection: x[1].direction
       }
     });//.sort
   }
@@ -255,7 +271,8 @@ export class Page {
           ? RelationType.DEFINED
           //case I
           : RelationType.INFERRED,
-        typeDefinition: x[1].friendTypeDefinition
+        typeDefinition: x[1].friendTypeDefinition,
+        linkDirection: x[1].direction
       }
     });//.sort
   }

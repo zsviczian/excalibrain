@@ -25,6 +25,7 @@ export default class ExcaliBrain extends Plugin {
   public settings:ExcaliBrainSettings;
   public nodeStyles: NodeStyles;
   public linkStyles: LinkStyles;
+  public hierarchyLinkStylesExtended: {[key: string]: LinkStyle}; //including datafields lowercase and "-" instead of " "
   public pages: Pages;
   public DVAPI: DvAPIInterface;
   public EA: ExcalidrawAutomate;
@@ -183,11 +184,24 @@ export default class ExcaliBrain extends Plugin {
     }
 	}
 
+  public setHierarchyLinkStylesExtended() {
+    this.hierarchyLinkStylesExtended = {};
+    Object.entries(this.settings.hierarchyLinkStyles).forEach(item=>{
+      const lowercase = item[0].toLowerCase().replaceAll(" ","-");
+      this.hierarchyLinkStylesExtended[item[0]] = item[1];
+      if(item[0]!==lowercase) {
+        this.hierarchyLinkStylesExtended[lowercase] = item[1];
+      }
+    })
+  }
+
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    
+    this.setHierarchyLinkStylesExtended();
 
     this.linkStyles = {};
-    this.linkStyles["base"] = {
+    this.linkStyles["base"] = { //! update also Settings.hierarchyStyleList()
       style: this.settings.baseLinkStyle,
       allowOverride: false,
       userStyle: false,
@@ -195,7 +209,7 @@ export default class ExcaliBrain extends Plugin {
       getInheritedStyle: () => this.settings.baseLinkStyle,
     }
 
-    this.linkStyles["inferred"] = {
+    this.linkStyles["inferred"] = { //! update also Settings.hierarchyStyleList()
       style: this.settings.inferredLinkStyle,
       allowOverride: true,
       userStyle: false,
@@ -204,12 +218,15 @@ export default class ExcaliBrain extends Plugin {
     }
 
     Object.entries(this.settings.hierarchyLinkStyles).forEach((item:[string,LinkStyle])=>{
+      if(["base","inferred"].contains(item[0])) {
+        return;
+      }
       this.linkStyles[item[0]] = {
         style: item[1],
         allowOverride: true,
         userStyle: true,
         display: item[0],
-        getInheritedStyle: ()=> this.settings.baseNodeStyle
+        getInheritedStyle: ()=> this.settings.baseNodeStyle,
       }
     })
 

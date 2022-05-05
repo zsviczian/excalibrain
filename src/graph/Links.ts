@@ -1,6 +1,7 @@
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
+import ExcaliBrain from "src/main";
 import { ExcaliBrainSettings } from "src/Settings";
-import { RelationType, Role } from "src/Types";
+import { LinkDirection, RelationType, Role } from "src/Types";
 import { Link } from "./Link";
 import { Node } from "./Node";
 
@@ -9,7 +10,7 @@ const SEPARATOR = "|:?:|"
 export class Links {
   links: Map<string,Link> = new Map<string,Link>();
   reverseLinks: Set<string> = new Set<string>();
-  constructor() {
+  constructor(private plugin:ExcaliBrain) {
 
   }
 
@@ -19,6 +20,7 @@ export class Links {
     nodeBRole: Role,
     relation: RelationType,
     hierarchyDefinition: string,
+    linkDirection: LinkDirection,
     ea: ExcalidrawAutomate,
     settings: ExcaliBrainSettings
   ) {
@@ -28,13 +30,24 @@ export class Links {
     }
     const key2 = nodeB.page.path+SEPARATOR+nodeA.page.path;
     const link = new Link(
-      nodeA,
-      nodeB,
-      nodeBRole,
+      linkDirection===LinkDirection.FROM
+        ? nodeB
+        : nodeA,
+        linkDirection===LinkDirection.FROM
+        ? nodeA
+        : nodeB,
+        linkDirection===LinkDirection.FROM
+          ? nodeBRole === Role.FRIEND 
+            ? Role.FRIEND
+            : nodeBRole === Role.CHILD
+              ? Role.PARENT
+              : Role.CHILD
+          : nodeBRole,
       relation,
       hierarchyDefinition,
       ea,
-      settings
+      settings,
+      this.plugin
     )
     this.links.set(key1, link),
     this.reverseLinks.add(key2)

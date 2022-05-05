@@ -1,4 +1,4 @@
-import { App, FileView, MarkdownView, Notice, TextFileView, TFile, Vault, WorkspaceLeaf } from "obsidian";
+import { App, FileView, Notice, TextFileView, TFile, Vault, WorkspaceLeaf } from "obsidian";
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 import { EMPTYBRAIN } from "./constants/emptyBrainFile";
 import { Layout } from "./graph/Layout";
@@ -8,7 +8,7 @@ import ExcaliBrain from "./main";
 import { ExcaliBrainSettings } from "./Settings";
 import { SearchBox } from "./Suggesters/SearchBox";
 import { Neighbour, RelationType, Role } from "./Types";
-import { log } from "./utils/utils";
+
 
 export class Scene {
   settings: ExcaliBrainSettings;
@@ -24,7 +24,7 @@ export class Scene {
   public disregardLeafChange: boolean = false;
   public terminated: boolean;
   private nodesMap: Map<string,Node> = new Map<string,Node>();
-  private links: Links = new Links();
+  private links: Links;
   private layouts: Layout[] = [];
   private removeEH: Function;
   private removeTimer: Function;
@@ -38,6 +38,7 @@ export class Scene {
     this.app = plugin.app;
     this.leaf = leaf ?? app.workspace.getLeaf(newLeaf);
     this.terminated = false;
+    this.links = new Links(plugin);
   }
 
   public async initialize() {
@@ -231,7 +232,7 @@ export class Scene {
     //-------------------------------------------------------
     // Generate layout and nodes
     this.nodesMap = new Map<string,Node>();
-    this.links = new Links();
+    this.links = new Links(this.plugin);
     this.layouts = [];
     const manyChildren = children.length >10;
     const manySiblings = siblings.length > 10;
@@ -349,6 +350,7 @@ export class Scene {
           role,
           neighbour.relationType,
           neighbour.typeDefinition,
+          neighbour.linkDirection,
           this.ea,
           this.settings
         )

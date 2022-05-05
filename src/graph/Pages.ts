@@ -1,6 +1,6 @@
 import { App, TFile } from "obsidian";
 import ExcaliBrain from "src/main";
-import { Relation, RelationType } from "src/Types";
+import { LinkDirection, Relation, RelationType } from "src/Types";
 import { getDVFieldLinksForPage } from "src/utils/dataview";
 import { log } from "src/utils/utils";
 import { Page} from "./Page";
@@ -59,8 +59,8 @@ export class Pages {
         log(`Unexpected: ${page.file.path} is referenced from ${link} as backlink in metadataCache, but page for ${link} has not yet been registered in ExcaliBrain index.`);
         return;
       }
-      parent.addChild(page,RelationType.INFERRED);
-      page.addParent(parent,RelationType.INFERRED);
+      parent.addChild(page,RelationType.INFERRED,LinkDirection.TO);
+      page.addParent(parent,RelationType.INFERRED,LinkDirection.FROM);
     })
     
     this.addUnresolvedLinks(page);
@@ -74,11 +74,11 @@ export class Pages {
       if(page && page.path !== parentPath) {
         return;
       }
+      const parent = this.pages.get(parentPath);
       Object.keys(resolvedLinks[parentPath]).forEach(childPath=>{
         const child = this.pages.get(childPath);
-        const parent = this.pages.get(parentPath);
-        child.addParent(parent,RelationType.INFERRED);
-        parent.addChild(child,RelationType.INFERRED);
+        child.addParent(parent,RelationType.INFERRED, LinkDirection.TO);
+        parent.addChild(child,RelationType.INFERRED, LinkDirection.FROM);
       })
     }); 
   }
@@ -92,11 +92,11 @@ export class Pages {
       if(page && page.path !== parentPath) {
         return;
       }
+      const parent = this.pages.get(parentPath);
       Object.keys(unresolvedLinks[parentPath]).forEach(childPath=>{
         const newPage = new Page(childPath,null,this.plugin);
-        const parent = this.pages.get(parentPath);
-        newPage.addParent(parent,RelationType.INFERRED);
-        parent.addChild(newPage,RelationType.INFERRED);
+        newPage.addParent(parent,RelationType.INFERRED, LinkDirection.TO);
+        parent.addChild(newPage,RelationType.INFERRED, LinkDirection.FROM);
         this.add(childPath,newPage);
       })
     });
@@ -115,8 +115,8 @@ export class Pages {
         log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         return;
       }
-      page.addParent(referencedPage,RelationType.DEFINED,item.field);
-      referencedPage.addChild(page,RelationType.DEFINED,item.field);
+      page.addParent(referencedPage,RelationType.DEFINED,LinkDirection.FROM, item.field);
+      referencedPage.addChild(page,RelationType.DEFINED,LinkDirection.TO, item.field);
     });
     const childFields = this.plugin.settings.hierarchy.children;
     getDVFieldLinksForPage(this.plugin,dvPage,childFields).forEach(item=>{
@@ -125,8 +125,8 @@ export class Pages {
         log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         return;
       }        
-      page.addChild(referencedPage,RelationType.DEFINED,item.field);
-      referencedPage.addParent(page,RelationType.DEFINED,item.field);
+      page.addChild(referencedPage,RelationType.DEFINED,LinkDirection.FROM, item.field);
+      referencedPage.addParent(page,RelationType.DEFINED,LinkDirection.TO, item.field);
     });
     const friendFields = this.plugin.settings.hierarchy.friends;
     getDVFieldLinksForPage(this.plugin,dvPage,friendFields).forEach(item=>{
@@ -135,8 +135,8 @@ export class Pages {
         log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         return;
       }        
-      page.addFriend(referencedPage,RelationType.DEFINED,item.field);
-      referencedPage.addFriend(page,RelationType.DEFINED,item.field);
+      page.addFriend(referencedPage,RelationType.DEFINED,LinkDirection.FROM,item.field);
+      referencedPage.addFriend(page,RelationType.DEFINED,LinkDirection.TO, item.field);
     });     
   }
 }

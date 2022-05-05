@@ -13,8 +13,15 @@ export enum Role {
   FRIEND
 }
 
+export enum LinkDirection {
+  TO = 1,
+  FROM = 2,
+  BOTH = 3,
+}
+
 export type Relation = {
   target: Page;
+  direction: LinkDirection;
   isParent: boolean;
   parentType?: RelationType;
   parentTypeDefinition?: string;
@@ -79,7 +86,7 @@ export type LinkStyleData = {
   allowOverride:boolean,
   userStyle: boolean,
   display: string,
-  getInheritedStyle: ()=>LinkStyle
+  getInheritedStyle: ()=>LinkStyle,
 }
 
 export type LinkStyles = {
@@ -90,6 +97,7 @@ export type Neighbour = {
   page: Page;
   relationType: RelationType;
   typeDefinition: string;
+  linkDirection: LinkDirection;
 }
 
 export type LayoutSpecification = {
