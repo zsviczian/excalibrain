@@ -16,6 +16,8 @@ export default {
   CHILDREN_NAME: "Children",
   FRIENDS_NAME: "Friends",
   DISPLAY_HEAD: "Display",
+  EXCLUDE_PATHLIST_NAME: "Filepaths to exclude",
+  EXCLUDE_PATHLIST_DESC: "Enter comma-separated list of filepaths to exclude from the index.",
   RENDERALIAS_NAME: "Display alias if available",
   RENDERALIAS_DESC: "Displays the page alias instead of the filename if it is specified in the page's front matter.",
   SHOWINFERRED_NAME: "Display inferred relationships",

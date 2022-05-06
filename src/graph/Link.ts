@@ -69,8 +69,8 @@ export class Link {
       gateBId,
       null,
       {
-        startArrowHead: style.startArrowHead,
-        endArrowHead: style.endArrowHead,
+        startArrowHead: style.startArrowHead === "none" ? null : style.startArrowHead,
+        endArrowHead: style.endArrowHead === "none" ? null : style.endArrowHead,
       }
     )
   }

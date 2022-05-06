@@ -103,6 +103,7 @@ export class Node {
 
     ea.style.fillStyle = this.style.gateFillStyle;
     ea.style.strokeColor = this.style.gateStrokeColor;
+    ea.style.strokeStyle = "solid";
     ea.style.backgroundColor =  this.page.hasFriends() 
       ? this.style.gateBackgroundColor
       : "transparent";

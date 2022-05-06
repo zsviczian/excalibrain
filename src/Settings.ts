@@ -12,17 +12,19 @@ import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAut
 import { Page } from "./graph/Page";
 import { t } from "./lang/helpers";
 import ExcaliBrain from "./main";
-import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData, LinkDirection } from "./Types";
+import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData, LinkDirection, Role } from "./Types";
 import { WarningPrompt } from "./utils/Prompts";
 import { Node } from "./graph/Node";
 import { svgToBase64 } from "./utils/utils";
 import { Arrowhead } from "@zsviczian/excalidraw/types/element/types";
+import { Link } from "./graph/Link";
 
 export interface ExcaliBrainSettings {
   excalibrainFilepath: string;
   hierarchy: Hierarchy;
   renderAlias: boolean;
   backgroundColor: string;
+  excludeFilepaths: string[];
   showInferredNodes: boolean;
   showAttachments: boolean;
   showVirtualNodes: boolean;
@@ -49,6 +51,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   },
   renderAlias: true,
   backgroundColor: "#0c3e6aff",
+  excludeFilepaths: [],
   showInferredNodes: true,
   showAttachments: true,
   showVirtualNodes: true,
@@ -100,8 +103,8 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
     strokeWidth: 1,
     strokeStyle: "solid",
     roughness: 0,
-    startArrowHead: null,
-    endArrowHead: null,
+    startArrowHead: "none",
+    endArrowHead: "none",
   },
   inferredLinkStyle: {
     strokeStyle: "dashed",
@@ -172,13 +175,89 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
 
   async updateLinkDemoImg() {
     this.ea.reset();
-    this.ea.canvas.viewBackgroundColor = this.plugin.settings.backgroundColor;
-    this.demoNode.style = {
+    this.ea.canvas.viewBackgroundColor = this.plugin.settings.backgroundColor;    
+
+    const page = new Page(
+      "Start node",
+      null,
+      this.plugin
+    )
+    const page2 = new Page(
+      "End node",
+      null,
+      this.plugin
+    )
+
+    const hierarchy = this.plugin.settings.hierarchy;
+
+    if(hierarchy.friends.contains(this.demoLinkStyle.display)) {
+      page.addFriend(page2,RelationType.DEFINED,LinkDirection.FROM);
+      page2.addFriend(page,RelationType.DEFINED,LinkDirection.TO);        
+    } else if(hierarchy.parents.contains(this.demoLinkStyle.display)) {
+      page.addParent(page2,RelationType.DEFINED,LinkDirection.FROM);
+      page2.addChild(page,RelationType.DEFINED,LinkDirection.TO);  
+    } else {
+      page.addChild(page2,RelationType.DEFINED,LinkDirection.FROM);
+      page2.addParent(page,RelationType.DEFINED,LinkDirection.TO);  
+    }
+
+    const demoNode = new Node({
+      page,
+      isInferred: false,
+      isCentral: true,
+      isSibling: false,
+      friendGateOnLeft: true
+    })
+    demoNode.ea = this.ea;
+    demoNode.setCenter({x:0,y:0}) 
+
+    const demoNode2 = new Node({
+      page: page2,
+      isInferred:false,
+      isCentral: false,
+      isSibling: false,
+      friendGateOnLeft: false
+    })
+    demoNode2.ea = this.ea;
+    let role:Role = Role.CHILD;
+    if(hierarchy.friends.contains(this.demoLinkStyle.display)) {
+      demoNode2.setCenter({x:-300,y:0});
+      role = Role.FRIEND;
+    } else if(hierarchy.parents.contains(this.demoLinkStyle.display)) {
+      demoNode2.setCenter({x:0,y:-150});
+      role = Role.PARENT
+    } else {
+      demoNode2.setCenter({x:0,y:150});
+    }       
+
+    const demoLink = new Link(
+      demoNode,
+      demoNode2,
+      role,
+      RelationType.DEFINED,
+      "base",
+      this.ea,
+      this.plugin.settings,
+      this.plugin
+    );
+
+    demoNode.style = {
+      ...this.plugin.settings.baseNodeStyle,
+      ...this.plugin.settings.centralNodeStyle,
+    }
+    demoNode.render();
+
+    demoNode2.style = {
       ...this.demoNodeStyle.getInheritedStyle(),
       ...this.demoNodeStyle.style
     }
-    this.demoNode.render();
+    demoNode2.render();
 
+    demoLink.style = {
+      ...this.demoLinkStyle.getInheritedStyle(),
+      ...this.demoLinkStyle.style
+    }
+    demoLink.render();
 
     const svg = await this.ea.createSVG(null,true,{withBackground:true, withTheme:false},null,"",40);
     svg.removeAttribute("width");
@@ -854,8 +933,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       containerEl,
       t("LINKSTYLE_ARROWSTART"),
       null,
-      {"":"None","arrow":"Arrow","bar":"Bar","dot":"Dot","triangle":"Triangle"},
-      () => setting.startArrowHead??"",
+      {"none":"None","arrow":"Arrow","bar":"Bar","dot":"Dot","triangle":"Triangle"},
+      () => setting.startArrowHead,
       (val) => {
         setting.startArrowHead = (val === "") ? null : val as Arrowhead;
         this.updateLinkDemoImg();
@@ -872,7 +951,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       containerEl,
       t("LINKSTYLE_ARROWEND"),
       null,
-      {"":"None","arrow":"Arrow","bar":"Bar","dot":"Dot","triangle":"Triangle"},
+      {"none":"None","arrow":"Arrow","bar":"Bar","dot":"Dot","triangle":"Triangle"},
       () => setting.endArrowHead,
       (val) => {
         setting.endArrowHead = (val === "") ? null : val as Arrowhead;
@@ -898,7 +977,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       this.plugin
     )
     const page2 = new Page(
-      "Dummy child",
+      "This is a child node",
       null,
       this.plugin
     )
@@ -909,9 +988,10 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       isInferred: false,
       isCentral: false,
       isSibling: false,
-      friendGateOnLeft: false
+      friendGateOnLeft: true
     })
-    this.demoNode.ea = this.ea;  
+    this.demoNode.ea = this.ea;
+    this.demoNode.setCenter({x:0,y:0}) 
 
     const { containerEl } = this;
     this.containerEl.empty();
@@ -1010,6 +1090,24 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       cls: "excalibrain-settings-h1",
       text: t("DISPLAY_HEAD") 
     });
+
+    const filepathList = new Setting(containerEl)
+      .setName(t("EXCLUDE_PATHLIST_NAME"))
+      .setDesc(t("EXCLUDE_PATHLIST_DESC"))
+      .addTextArea((text)=> {
+        text.inputEl.style.height = "100px";
+        text.inputEl.style.width = "100%";
+        text
+          .setValue(this.plugin.settings.excludeFilepaths.join(", "))
+          .onChange(value => {
+            value = value.replaceAll("\n"," ");
+            const paths = value.split(",").map(s=>s.trim());
+            this.plugin.settings.excludeFilepaths = paths.filter(p=>p!=="");
+            this.dirty = true;
+          });
+        })
+    filepathList.descEl.style.maxWidth="400px";
+
     new Setting(containerEl)
       .setName(t("RENDERALIAS_NAME"))
       .setDesc(fragWithHTML(t("RENDERALIAS_DESC")))
@@ -1171,16 +1269,22 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
 
     let linkStylesToggle: ToggleComponent;
 
+    let boundToggleChange = false;
     const nodeStylesToggle = new ToggleComponent(nodeStylesWrapper)
     nodeStylesToggle
       .setValue(true)
       .setTooltip("Show/Hide Inherited Properties")
       .onChange(value => {
+        if(boundToggleChange) {
+          boundToggleChange = false;
+          return;
+        }
         if(value) {
           removeStylesheet(HIDE_DISABLED_STYLE);
         } else {
           addStylesheet(HIDE_DISABLED_STYLE, HIDE_DISABLED_CLASS);
         }
+        boundToggleChange = true;
         linkStylesToggle.setValue(value);
       });
 
@@ -1237,18 +1341,22 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     });
     linkStylesToggleLabel.style.marginRight = "10px";
     
-    
     linkStylesToggle = new ToggleComponent(linkStylesWrapper)
 
     linkStylesToggle
       .setValue(true)
       .setTooltip("Show/Hide Inherited Properties")
       .onChange(value => {
+        if(boundToggleChange) {
+          boundToggleChange = false;
+          return;
+        }
         if(value) {
           removeStylesheet(HIDE_DISABLED_STYLE);
         } else {
           addStylesheet(HIDE_DISABLED_STYLE, HIDE_DISABLED_CLASS);
         }
+        boundToggleChange = true;
         nodeStylesToggle.setValue(value);
       });
 

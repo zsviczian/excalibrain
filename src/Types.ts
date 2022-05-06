@@ -77,8 +77,8 @@ export type LinkStyle = {
   strokeWidth?: number,
   strokeStyle?: StrokeStyle,
   roughness?: number,
-  startArrowHead?: Arrowhead,
-  endArrowHead?: Arrowhead,
+  startArrowHead?: Arrowhead|"none",
+  endArrowHead?: Arrowhead|"none",
 }
 
 export type LinkStyleData = {

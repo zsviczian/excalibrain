@@ -172,6 +172,11 @@ export class Scene {
     ea.getExcalidrawAPI().updateScene({
       appState: {
         viewModeEnabled:true,
+        activeTool: {
+          lastActiveToolBeforeEraser: null,
+          locked: false,
+          type: "selection"
+        },
         theme: "light",
       viewBackgroundColor: this.settings.backgroundColor
       },
@@ -219,13 +224,20 @@ export class Scene {
     this.ea.getExcalidrawAPI().updateScene({elements:[]});
     this.ea.style.verticalAlign = "middle";
     const centralPage = this.plugin.pages.get(this.centralPagePath);
-    const parents = centralPage.getParents().filter(x=>x.page.path !== centralPage.path).slice(0,this.plugin.settings.maxItemCount);
-    const children =centralPage.getChildren().filter(x=>x.page.path !==centralPage.path).slice(0,this.plugin.settings.maxItemCount);
-    const friends = centralPage.getFriends().filter(x=>x.page.path !== centralPage.path).slice(0,this.plugin.settings.maxItemCount);
+    const parents = centralPage.getParents()
+      .filter(x=>(x.page.path !== centralPage.path) && !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)))
+      .slice(0,this.plugin.settings.maxItemCount);
+    const children =centralPage.getChildren()
+      .filter(x=>(x.page.path !== centralPage.path) && !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)))
+      .slice(0,this.plugin.settings.maxItemCount);
+    const friends = centralPage.getFriends()
+      .filter(x=>(x.page.path !== centralPage.path) && !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)))
+      .slice(0,this.plugin.settings.maxItemCount);
     const siblings = centralPage.getSiblings()
       .filter(s => !(parents.some(p=>p.page.path === s.page.path) ||
         children.some(c=>c.page.path === s.page.path) ||
-        friends.some(f=>f.page.path === s.page.path)) && 
+        friends.some(f=>f.page.path === s.page.path) ||
+        this.plugin.settings.excludeFilepaths.some(p => s.page.path.startsWith(p))) && 
         (s.page.path !== centralPage.path))
       .slice(0,this.plugin.settings.maxItemCount);
 

@@ -226,7 +226,7 @@ export default class ExcaliBrain extends Plugin {
         allowOverride: true,
         userStyle: true,
         display: item[0],
-        getInheritedStyle: ()=> this.settings.baseNodeStyle,
+        getInheritedStyle: ()=> this.settings.baseLinkStyle,
       }
     })
 

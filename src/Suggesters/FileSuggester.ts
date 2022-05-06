@@ -24,7 +24,8 @@ export class FileSuggest extends TextInputSuggest<TFile> {
       const lowerInputStr = inputStr.toLowerCase();  
       return app.vault.getFiles().filter(f=>
           (this.plugin.settings.showAttachments || f.extension === "md") &&
-          f.path.toLowerCase().contains(lowerInputStr)
+          f.path.toLowerCase().contains(lowerInputStr) && 
+          !this.plugin.settings.excludeFilepaths.some(p=>f.path.startsWith(p))
         )
     }
 
