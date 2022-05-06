@@ -88,5 +88,12 @@ export default {
   DATAVIEW_NOT_FOUND: `Dataview plugin not found. Please install or enable Dataview, then try restarting ${APPNAME}`,
   EXCALIDRAW_NOT_FOUND: `Excalidraw plugin not found. Please install or enable Excalidraw, then try restarting ${APPNAME}`,
   EXCALIDRAW_MINAPP_VERSION: `ExcaliBrain requires Excalidraw ${MINEXCALIDRAWVERSION} or higher. Please upgrade Excalidraw`,
-  COMMAND_START: "Open ExcaliBrain"
+  COMMAND_START: "Open ExcaliBrain",
+  //ToolsPanel
+  OPEN_DRAWING: "Save snapshot for editing",
+  SEARCH_IN_VAULT: "Search for a file in your Vault",
+  SHOW_HIDE_ATTACHMENTS: "Show/Hide attachments",
+  SHOW_HIDE_VIRTUAL: "Show/Hide virtual nodes",
+  SHOW_HIDE_INFERRED: "Show/Hide inferred nodes",
+  SHOW_HIDE_ALIAS: "Show/Hide document alias",
 }

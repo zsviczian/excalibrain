@@ -6,9 +6,8 @@ import { Links } from "./graph/Links";
 import { Node } from "./graph/Node";
 import ExcaliBrain from "./main";
 import { ExcaliBrainSettings } from "./Settings";
-import { SearchBox } from "./Suggesters/SearchBox";
+import { ToolsPanel } from "./Suggesters/ToolsPanel";
 import { Neighbour, RelationType, Role } from "./Types";
-
 
 export class Scene {
   settings: ExcaliBrainSettings;
@@ -29,7 +28,7 @@ export class Scene {
   private removeEH: Function;
   private removeTimer: Function;
   private blockUpdateTimer: boolean = false;
-  private searchBox: SearchBox;
+  private toolsPanel: ToolsPanel;
   
   constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
     this.settings = plugin.settings;
@@ -43,7 +42,7 @@ export class Scene {
 
   public async initialize() {
     await this.initilizeScene();
-    this.searchBox = new SearchBox((this.leaf.view as TextFileView).contentEl,this.plugin);
+    this.toolsPanel = new ToolsPanel((this.leaf.view as TextFileView).contentEl,this.plugin);
   }
 
   /**
@@ -68,6 +67,7 @@ export class Scene {
     }
     await this.plugin.createIndex(); //temporary
     await this.render();
+    this.toolsPanel.rerender();
   }
 
   /**
@@ -150,9 +150,9 @@ export class Scene {
     const ea = this.ea;
     const style = this.settings.baseNodeStyle;
     let counter = 0;
-
-    ea.setView(this.leaf.view as any)
     ea.clear();
+    
+    ea.setView(this.leaf.view as any)   
     counter = 0;
     while(!ea.targetView.excalidrawAPI && counter++<10) {
       await sleep(50);
@@ -186,7 +186,8 @@ export class Scene {
     ea.style.strokeColor = style.textColor;
     ea.addText(0,0,"Open a document in another pane and click it to get started.\n\n" +
       "For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
-      "under 'Links and Transclusion'.", {textAlign:"center"});
+      "under 'Links and Transclusion'.\n\nNote, that ExcaliBrain may need to wait for " +
+      "DataView to initialize its index,\nwhich can take up to a few minutes after starting Obsidian.", {textAlign:"center"});
     await ea.addElementsToView();
     ea.getExcalidrawAPI().zoomToFit(null, 5);
     
@@ -488,14 +489,14 @@ export class Scene {
         this.ea.targetView.excalidrawAPI.updateScene({appState:{viewModeEnabled:false}});
       } catch {}
     }
-
-    if(this.ea.targetView) {
+    //@ts-ignore
+    if(this.ea.targetView && this.ea.targetView._loaded) {
       try {
         this.ea.deregisterThisAsViewEA();
       } catch {}
     }
-    this.searchBox?.terminate();
-    this.searchBox = undefined;
+    this.toolsPanel?.terminate();
+    this.toolsPanel = undefined;
     this.ea.targetView = undefined;
     this.leaf = undefined;
     this.centralLeaf = undefined;

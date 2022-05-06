@@ -78,7 +78,7 @@ export default class ExcaliBrain extends Plugin {
       this.DVAPI.index.importer.reloadQueue.length > 0
     ) {
       if(counter++ % 100 === 10) {
-        new Notice("ExcaliBrain is waiting for Dataview initialization",1000);
+        new Notice("ExcaliBrain is waiting for Dataview to update its index",1000);
       }
       await sleep(100);
     }
@@ -296,15 +296,15 @@ export default class ExcaliBrain extends Plugin {
   }
 
   public async start(leaf: WorkspaceLeaf) {
+    if(!leaf.view) {
+      return;
+    }
     let counter = 0;
     while(!this.pluginLoaded && counter++<100) await sleep(50);
     if(!this.pluginLoaded) {
       new Notice("ExcaliBrain plugin did not load - aborting start()");
       errorlog({where: "ExcaliBrain.start()", fn: this.start, message: "ExcaliBrain did not load. Aborting after 5000ms of trying"});
       return;
-    }
-    if(counter<4) { //sleep as a temp workaround for a race condition starting Excalidraw
-      while(counter++<8) await sleep(50);
     }
     this.stop();
     if(!leaf) {

@@ -13,7 +13,7 @@ const readDVField = (app: App, field: any, file:TFile):string[] => {
   //the field is a list of links
   if(field.values) {
     field.values.forEach((l:any)=>{
-      if(l.type === "file") {
+      if(l.type === "file" || l.type === "header") {
         const path = getPathOrSelf(app, l.path,file.path);
         if(path) {
           res.add(path);

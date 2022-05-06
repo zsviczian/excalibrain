@@ -37,3 +37,29 @@
   top: 10px;
   left: 10px;
 }
+
+.excalibrain-button {
+  vertical-align: middle; 
+  padding-left: 5px;
+  padding-right: 5px;
+  margin-left: 5px;
+  margin-right: 0px;
+  width: 2em;
+}
+
+.excalibrain-button span {
+  text-align: center;
+}
+
+.excalibrain-button.off {
+  background-color: var(--interactive-normal);
+}
+
+.excalibrain-button.on {
+  background-color: var(--interactive-accent);
+}
+
+.excalibrain-searchinput {
+  width: 400px;
+  vertical-align: middle;
+}
