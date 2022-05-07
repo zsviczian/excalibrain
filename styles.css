@@ -18,10 +18,15 @@
   color: var(--text-title-h1);
 }
 
-.excalibrain-setting-nodestyle-section {
+.excalibrain-setting-style-section {
   padding-left: 30px;
   border-left: 10px solid var(--background-modifier-border);
 }
+
+/*.isMobile .excalibrain-setting-style-section  {
+  flex-direction: column;
+    align-items: flex-start;
+}*/
 
 .excalibrain-settings-demoimg {
   max-width: 400px;
@@ -31,20 +36,22 @@
   position: relative;
 }
 
-.excalibrain-search-wrapper {
+.excalibrain-toolspanel-wrapper {
   z-index: 1;
   position: absolute;
   top: 10px;
-  left: 10px;
+  padding-left: 10px;
+  width: 100%;
+  padding-right: 10px;
 }
 
 .excalibrain-button {
   vertical-align: middle; 
   padding-left: 5px;
   padding-right: 5px;
-  margin-left: 5px;
-  margin-right: 0px;
-  width: 2em;
+  margin-left: 5px !important;
+  margin-right: 0px !important;
+  width: 2em !important;
 }
 
 .excalibrain-button span {
@@ -60,6 +67,41 @@
 }
 
 .excalibrain-searchinput {
-  width: 400px;
+  max-width: 400px;
+  width: 100%;
   vertical-align: middle;
+}
+
+.excalibrain-buttons {
+  display: inline-flex;
+  width: 100%;
+  margin-top: 5px;
+  margin-left: -5px;
+}
+
+.excalibrain-settings-colorlabel {
+  padding-right: 5px;
+  min-width: 3em;
+}
+
+.excalibrain-settings-colorpicker {
+  max-width: 32px;
+  min-width: 32px;
+  width: 32px !important;
+}
+
+.excalibrain-settings-opacitylabel {
+  padding-right: 5px;
+  padding-left: 10px;
+  min-width: 5em;
+}
+
+.excalibrain-settings-sliderlabel {
+  min-width: 2em;
+  text-align: right;
+}
+
+.excalibrain-settings-toggle {
+  min-width: 2em;
+  margin-right: 5px;
 }

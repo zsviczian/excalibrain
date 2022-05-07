@@ -15,8 +15,9 @@ export class ToolsPanel {
     private plugin: ExcaliBrain
   ) {
     contentEl.addClass("excalibrain-contentEl");
-    this.wrapperDiv = this.contentEl.createDiv();
-    this.wrapperDiv.addClass("excalibrain-search-wrapper");
+    this.wrapperDiv = this.contentEl.createDiv({
+      cls: "excalibrain-toolspanel-wrapper"
+    });
     
     //------
     //search
@@ -39,11 +40,14 @@ export class ToolsPanel {
       this.plugin
     );
 
-
+    
+    const buttonsWrapperDiv = this.wrapperDiv.createDiv({
+      cls: "excalibrain-buttons"
+    })
     //------------
     //Edit drawing
     //------------
-    const saveAsDrawingButton = this.wrapperDiv.createEl("button", {
+    const saveAsDrawingButton = buttonsWrapperDiv.createEl("button", {
       cls: "excalibrain-button",
       text: "✏"
     });
@@ -70,7 +74,7 @@ export class ToolsPanel {
         this.plugin,
         ()=>this.plugin.settings.showAttachments,
         (val:boolean)=>this.plugin.settings.showAttachments = val,
-        this.wrapperDiv,
+        buttonsWrapperDiv,
         {
           display: "📎",
           tooltip: t("SHOW_HIDE_ATTACHMENTS")
@@ -86,7 +90,7 @@ export class ToolsPanel {
         this.plugin,
         ()=>this.plugin.settings.showVirtualNodes,
         (val:boolean)=>this.plugin.settings.showVirtualNodes = val,
-        this.wrapperDiv,
+        buttonsWrapperDiv,
         {
           display: "∅",
           tooltip: t("SHOW_HIDE_VIRTUAL")
@@ -102,7 +106,7 @@ export class ToolsPanel {
         this.plugin,
         ()=>this.plugin.settings.showInferredNodes,
         (val:boolean)=>this.plugin.settings.showInferredNodes = val,
-        this.wrapperDiv,
+        buttonsWrapperDiv,
         {
           display: "🤔",
           tooltip: t("SHOW_HIDE_INFERRED")
@@ -118,7 +122,7 @@ export class ToolsPanel {
         this.plugin,
         ()=>this.plugin.settings.renderAlias,
         (val:boolean)=>this.plugin.settings.renderAlias = val,
-        this.wrapperDiv,
+        buttonsWrapperDiv,
         {
           display: "🧥",
           tooltip: t("SHOW_HIDE_ALIAS")

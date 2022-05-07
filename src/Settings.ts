@@ -314,11 +314,10 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       opacityLabel.style.opacity = isDisabled ? "0.3" : "1";
       displayText.style.opacity = isDisabled ? "0.3" : "1";
     }
-
     if(allowOverride) {
       setting.addToggle(toggle => {
         toggleComponent = toggle;
-        toggleComponent.toggleEl.style.marginRight = "5px";
+        toggle.toggleEl.addClass("excalibrain-settings-toggle");
         toggle
           .setValue(typeof getValue() !== "undefined")
           .setTooltip(t("NODESTYLE_INCLUDE_TOGGLE"))
@@ -334,12 +333,18 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           })
       })
     }
-
-    colorLabel = createEl("span",{text:"color:"});
-    colorLabel.style.paddingRight="5px";
+    setting.settingEl.removeClass("mod-toggle");
+    colorLabel = createEl("span",{
+      text: "color:",
+      cls: "excalibrain-settings-colorlabel"
+    });
+    
     setting.controlEl.appendChild(colorLabel)   
 
-    picker = createEl("input", {type:"color"},(el:HTMLInputElement)=>{
+    picker = createEl("input", {
+      type: "color",
+      cls: "excalibrain-settings-colorpicker"
+    },(el:HTMLInputElement)=>{
       el.value = getHex(getValue()??defaultValue);
       el.onchange = () => {
         setValue(el.value+ getAlphaHex(sliderComponent.getValue()));
@@ -347,9 +352,10 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     });
     setting.controlEl.appendChild(picker);
 
-    opacityLabel = createEl("span",{text: "opacity:"});
-    opacityLabel.style.paddingLeft = "10px";
-    opacityLabel.style.paddingRight = "5px";
+    opacityLabel = createEl("span",{
+      text: "opacity:",
+      cls: "excalibrain-settings-opacitylabel"
+    });
     setting.controlEl.appendChild(opacityLabel);
 
     setting.addSlider(slider => {
@@ -364,10 +370,9 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
         })
     })
 
-    displayText = createDiv("", (el) => {
-      el.style.minWidth = "2em";
-      el.style.textAlign = "right";
-      el.innerText = ` ${sliderComponent.getValue().toString()}`;
+    displayText = createDiv({
+      text: `${sliderComponent.getValue().toString()}`,
+      cls: "excalibrain-settings-sliderlabel"
     });
     setting.controlEl.appendChild(displayText);
     picker.style.opacity = sliderComponent.getValue().toString();
@@ -407,7 +412,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     if(allowOverride) {
       setting.addToggle(toggle => {
         toggleComponent = toggle;
-        toggleComponent.toggleEl.style.marginRight = "5px";
+        toggle.toggleEl.addClass("excalibrain-settings-toggle");
         toggle
           .setValue(typeof getValue() !== "undefined")
           .setTooltip(t("NODESTYLE_INCLUDE_TOGGLE"))
@@ -479,7 +484,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     if(allowOverride) {
       setting.addToggle(toggle => {
         toggleComponent = toggle;
-        toggleComponent.toggleEl.style.marginRight = "5px";
+        toggle.toggleEl.addClass("excalibrain-settings-toggle");
         toggle
           .setValue(typeof getValue() !== "undefined")
           .setTooltip(t("NODESTYLE_INCLUDE_TOGGLE"))
@@ -539,7 +544,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     if(allowOverride) {
       prefixSetting.addToggle(toggle => {
         toggleComponent = toggle;
-        toggleComponent.toggleEl.style.marginRight = "5px";
+        toggle.toggleEl.addClass("excalibrain-settings-toggle");
         toggle
           .setValue(typeof setting.prefix !== "undefined")
           .setTooltip(t("NODESTYLE_INCLUDE_TOGGLE"))
@@ -1295,7 +1300,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     this.demoNodeImg = containerEl.createEl("img",{cls: "excalibrain-settings-demoimg"});
 
     nodeStyleDiv = containerEl.createDiv({
-      cls: "excalibrain-setting-nodestyle-section"
+      cls: "excalibrain-setting-style-section"
     });
     removeStylesheet(HIDE_DISABLED_STYLE);
     nodeStylesDropdown
