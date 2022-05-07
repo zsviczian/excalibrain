@@ -1,7 +1,6 @@
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 import { ExcaliBrainSettings } from "src/Settings";
 import { NodeStyle } from "src/Types";
-import { getFilenameFromPath } from "src/utils/fileUtils";
 import { Page } from "./Page";
 
 export class Node {
@@ -27,15 +26,27 @@ export class Node {
     this.page = x.page;
     this.settings = x.page.plugin.settings;
     this.ea = x.page.plugin.EA;
-    this.style = {
-      ...this.settings.baseNodeStyle,
-      ...x.isInferred?this.settings.inferredNodeStyle:{},
-      ...x.page.isVirtual?this.settings.virtualNodeStyle:{},
-      ...x.isCentral?this.settings.centralNodeStyle:{},
-      ...x.isSibling?this.settings.siblingNodeStyle:{},
-      ...x.page.isAttachment?this.settings.attachmentNodeStyle:{},
-      ...this.getTagStyle(),
-    };
+    if(this.page.isFolder) {
+      this.style = {
+        ...this.settings.baseNodeStyle,
+        ...this.settings.folderNodeStyle
+      }
+    } else if (this.page.isTag) {
+      this.style = {
+        ...this.settings.baseNodeStyle,
+        ...this.settings.tagNodeStyle
+      }
+    } else {
+      this.style = {
+        ...this.settings.baseNodeStyle,
+        ...x.isInferred?this.settings.inferredNodeStyle:{},
+        ...x.page.isVirtual?this.settings.virtualNodeStyle:{},
+        ...x.isCentral?this.settings.centralNodeStyle:{},
+        ...x.isSibling?this.settings.siblingNodeStyle:{},
+        ...x.page.isAttachment?this.settings.attachmentNodeStyle:{},
+        ...this.getTagStyle(),
+      };
+    }
     this.friendGateOnLeft = x.friendGateOnLeft;
     this.title = this.getTitle();
   }
@@ -46,9 +57,7 @@ export class Node {
       : [];
     return aliases.length > 0 
       ? aliases[0] 
-      : (this.page.file
-        ? (this.page.file.extension === "md" ? this.page.file.basename : this.page.file.name)
-        : getFilenameFromPath(this.page.path));
+      : this.page.name
   }
 
 

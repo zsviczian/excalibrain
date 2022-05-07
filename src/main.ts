@@ -1,16 +1,17 @@
-import { App, Notice, Plugin, PluginManifest, TAbstractFile, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
+import { App, Notice, Plugin, PluginManifest, TAbstractFile, TFile, TFolder, Vault, WorkspaceLeaf } from 'obsidian';
 import { Page } from './graph/Page';
 import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './Settings';
 import { errorlog, log } from './utils/utils';
 import { getAPI } from "obsidian-dataview"
 import { t } from './lang/helpers';
-import { MINEXCALIDRAWVERSION, PLUGIN_NAME } from './constants/constants';
+import { MINEXCALIDRAWVERSION, PLUGIN_NAME, PREDEFINED_LINK_STYLES } from './constants/constants';
 import { DvAPIInterface } from 'obsidian-dataview/lib/typings/api';
 import { Pages } from './graph/Pages';
 import { getEA } from "obsidian-excalidraw-plugin";
 import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
 import { Scene } from './Scene';
-import { LinkStyles, NodeStyles, LinkStyle } from './Types';
+import { LinkStyles, NodeStyles, LinkStyle, RelationType, LinkDirection } from './Types';
+import { link } from 'fs';
 
 
 declare module "obsidian" {
@@ -83,9 +84,29 @@ export default class ExcaliBrain extends Plugin {
       await sleep(100);
     }
 
+    //Add all folders
+    const addFolderChildren = (parentFolder: TFolder, parent: Page) => {
+      const folders = parentFolder.children.filter(f=>f instanceof TFolder) as TFolder[];
+      folders.forEach(f => {
+        const child = new Page("folder:"+f.path, null, this, true, false, f.name);
+        this.pages.add("folder:"+f.path,child);
+        child.addParent(parent,RelationType.DEFINED,LinkDirection.TO,"file-tree");
+        parent.addChild(child,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
+        addFolderChildren(f,child);
+      })
+    }
+    const rootFolder = app.vault.getRoot();
+    const rootFolderPage = new Page("folder:/", null, this, true, false, "/");
+    this.pages.add("folder:/",rootFolderPage);
+    addFolderChildren(rootFolder, rootFolderPage);
+
     //Add all existing files
     for(const f of this.app.vault.getFiles()) {
-      this.pages.add(f.path,new Page(f.path,f,this));
+      const page = new Page(f.path,f,this);
+      this.pages.add(f.path,page);
+      const folder = this.pages.get(`folder:${f.parent.path}`);
+      page.addParent(folder,RelationType.DEFINED,LinkDirection.TO,"file-tree");
+      folder.addChild(page,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
     }
     //Add all unresolved links and make child of page where it was found
     this.pages.addUnresolvedLinks()
@@ -170,6 +191,14 @@ export default class ExcaliBrain extends Plugin {
       return true;
     }
 
+    this.EA.onLinkClickHook = (element,linkText) => {
+      if(!linkText.startsWith("[[folder:") && !linkText.startsWith("[[tag:")) {
+        return true;
+      }
+      this.scene?.renderGraphForPath(linkText.match(/\[\[([^\]]*)/)[1]);
+      return false;
+    }
+
     this.EA.onViewUnloadHook = (view) => {    
       if(this.scene && this.scene.leaf === view.leaf) {
         this.stop();
@@ -201,7 +230,7 @@ export default class ExcaliBrain extends Plugin {
     this.setHierarchyLinkStylesExtended();
 
     this.linkStyles = {};
-    this.linkStyles["base"] = { //! update also Settings.hierarchyStyleList()
+    this.linkStyles["base"] = { //! update also constants.ts PREDEFINED_LINK_STYLES
       style: this.settings.baseLinkStyle,
       allowOverride: false,
       userStyle: false,
@@ -209,7 +238,7 @@ export default class ExcaliBrain extends Plugin {
       getInheritedStyle: () => this.settings.baseLinkStyle,
     }
 
-    this.linkStyles["inferred"] = { //! update also Settings.hierarchyStyleList()
+    this.linkStyles["inferred"] = { //! update also constants.ts PREDEFINED_LINK_STYLES
       style: this.settings.inferredLinkStyle,
       allowOverride: true,
       userStyle: false,
@@ -217,8 +246,24 @@ export default class ExcaliBrain extends Plugin {
       getInheritedStyle: () => this.settings.baseLinkStyle,
     }
 
+    this.linkStyles["file-tree"] = { //! update also constants.ts PREDEFINED_LINK_STYLES
+      style: this.settings.folderLinkStyle,
+      allowOverride: true,
+      userStyle: false,
+      display: t("LINKSTYLE_FOLDER"),
+      getInheritedStyle: () => this.settings.baseLinkStyle,
+    }
+
+    this.linkStyles["tag-tree"] = { //! update also constants.ts PREDEFINED_LINK_STYLES
+      style: this.settings.tagLinkStyle,
+      allowOverride: true,
+      userStyle: false,
+      display: t("LINKSTYLE_TAG"),
+      getInheritedStyle: () => this.settings.baseLinkStyle,
+    }
+
     Object.entries(this.settings.hierarchyLinkStyles).forEach((item:[string,LinkStyle])=>{
-      if(["base","inferred"].contains(item[0])) {
+      if(PREDEFINED_LINK_STYLES.contains(item[0])) { 
         return;
       }
       this.linkStyles[item[0]] = {
@@ -271,6 +316,20 @@ export default class ExcaliBrain extends Plugin {
       allowOverride: true,
       userStyle: false,
       display: t("NODESTYLE_ATTACHMENT"),
+      getInheritedStyle: ()=> this.settings.baseNodeStyle     
+    };
+    this.nodeStyles["folder"] = {
+      style: this.settings.folderNodeStyle,
+      allowOverride: true,
+      userStyle: false,
+      display: t("NODESTYLE_FOLDER"),
+      getInheritedStyle: ()=> this.settings.baseNodeStyle     
+    };
+    this.nodeStyles["tag"] = {
+      style: this.settings.tagNodeStyle,
+      allowOverride: true,
+      userStyle: false,
+      display: t("NODESTYLE_TAG"),
       getInheritedStyle: ()=> this.settings.baseNodeStyle     
     };
     Object.entries(this.settings.tagNodeStyles).forEach(item=>{

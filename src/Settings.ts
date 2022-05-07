@@ -18,6 +18,7 @@ import { Node } from "./graph/Node";
 import { svgToBase64 } from "./utils/utils";
 import { Arrowhead } from "@zsviczian/excalidraw/types/element/types";
 import { Link } from "./graph/Link";
+import { PREDEFINED_LINK_STYLES } from "./constants/constants";
 
 export interface ExcaliBrainSettings {
   excalibrainFilepath: string;
@@ -28,6 +29,8 @@ export interface ExcaliBrainSettings {
   showInferredNodes: boolean;
   showAttachments: boolean;
   showVirtualNodes: boolean;
+  showFolderNodes: boolean;
+  showTagNodes: boolean;
   maxItemCount: number;
   baseNodeStyle: NodeStyle;
   centralNodeStyle: NodeStyle;
@@ -35,10 +38,14 @@ export interface ExcaliBrainSettings {
   virtualNodeStyle: NodeStyle;
   siblingNodeStyle: NodeStyle;
   attachmentNodeStyle: NodeStyle;
+  folderNodeStyle: NodeStyle;
+  tagNodeStyle: NodeStyle;
   tagNodeStyles: {[key: string]: NodeStyle};
   tagStyleList: string[];
   baseLinkStyle: LinkStyle;
   inferredLinkStyle: LinkStyle;
+  folderLinkStyle: LinkStyle;
+  tagLinkStyle: LinkStyle;
   hierarchyLinkStyles: {[key: string]: LinkStyle};
   navigationHistory: string[];
 }
@@ -56,6 +63,8 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   showInferredNodes: true,
   showAttachments: true,
   showVirtualNodes: true,
+  showFolderNodes: false,
+  showTagNodes: false,
   maxItemCount: 30,
   baseNodeStyle: {
     prefix: "",
@@ -97,6 +106,18 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   attachmentNodeStyle: {
     prefix: "📎 ",
   },
+  folderNodeStyle: {
+    prefix: "📂 ",
+    strokeShaprness: "sharp",
+    borderColor: "#ffd700ff",
+    textColor: "#ffd700ff"
+  },
+  tagNodeStyle: {
+    prefix: "# ",
+    strokeShaprness: "sharp",
+    borderColor: "#4682b4ff",
+    textColor: "#4682b4ff"
+  },
   tagNodeStyles: {},
   tagStyleList: [],
   baseLinkStyle: {
@@ -109,6 +130,12 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   },
   inferredLinkStyle: {
     strokeStyle: "dashed",
+  },
+  folderLinkStyle: {
+    strokeColor: "#ffd700ff",
+  },
+  tagLinkStyle: {
+    strokeColor: "#4682b4ff",
   },
   hierarchyLinkStyles: {},
   navigationHistory: [],
@@ -155,7 +182,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
   }
 
   get hierarchyStyleList(): string[] {
-    return ["base","inferred"]
+    return PREDEFINED_LINK_STYLES
       .concat(Array.from(this.plugin.settings.hierarchy.parents))
       .concat(Array.from(this.plugin.settings.hierarchy.children))
       .concat(Array.from(this.plugin.settings.hierarchy.friends));
@@ -1021,21 +1048,22 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       .addText(text=>
         text
           .setValue(this.plugin.settings.excalibrainFilepath)
-          .onChange(async (value) => {
+          .onChange((value) => {
             this.dirty = true;
             if(!value.endsWith(".md")) {
-              value = value + ".md";
+              value = value + (value.endsWith(".m") ? "d" : value.endsWith(".") ? "md" : ".md");
             }
             const f = this.app.vault.getAbstractFileByPath(value);
             if(f) {
-              (new WarningPrompt(
+              new WarningPrompt(
                 this.app,
                 "⚠ File Exists",
                 `${value} already exists in your Vault. Is it ok to overwrite this file?`)
-              ).show((result: boolean) => {
+              .show((result: boolean) => {
                 if(result) {
                   this.plugin.settings.excalibrainFilepath = value;
                   this.dirty = true;
+                  text.inputEl.value = value;
                 }
               });
               return;
@@ -1395,13 +1423,19 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       const linkStyles = this.plugin.linkStyles;
 
       Object.keys(linkStyles).forEach(key => {
+        if(PREDEFINED_LINK_STYLES.contains(key)) {
+          return;
+        }
         if(!this.hierarchyStyleList.contains(key)) {
           delete linkStyles[key];
           delete hierarchyLinkStyles[key];
         }
       });
       this.hierarchyStyleList.forEach(dataviewfield => {
-        if(!Object.keys(hierarchyLinkStyles).contains(dataviewfield)) {
+        if(
+          !(Object.keys(hierarchyLinkStyles).contains(dataviewfield) ||
+          PREDEFINED_LINK_STYLES.contains(dataviewfield))
+        ) {
           hierarchyLinkStyles[dataviewfield] = {};
           linkStyles[dataviewfield] = {
             style: hierarchyLinkStyles[dataviewfield],

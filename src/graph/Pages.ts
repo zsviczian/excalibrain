@@ -87,12 +87,18 @@ export class Pages {
    * @param page if undefined add unresolved links for all the pages
    */
   public addUnresolvedLinks(page?:Page) {
+    if(page && (page.isFolder || page.isTag)) {
+      return;
+    }
     const unresolvedLinks = this.app.metadataCache.unresolvedLinks;
     Object.keys(unresolvedLinks).forEach(parentPath=>{
       if(page && page.path !== parentPath) {
         return;
       }
       const parent = this.pages.get(parentPath);
+      if(parentPath === this.plugin.settings.excalibrainFilepath) {
+        return;
+      }
       Object.keys(unresolvedLinks[parentPath]).forEach(childPath=>{
         const newPage = new Page(childPath,null,this.plugin);
         newPage.addParent(parent,RelationType.INFERRED, LinkDirection.TO);
@@ -103,6 +109,9 @@ export class Pages {
   }
 
   public addDVFieldLinksToPage(page: Page) {
+    if(page.isFolder || page.isTag) {
+      return;
+    }
     const dvPage = this.plugin.DVAPI.page(page.file.path);
     if(!dvPage) {
       return;

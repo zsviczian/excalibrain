@@ -31,16 +31,30 @@ export class HistoryPanel {
         })
       }
       const f = app.vault.getAbstractFileByPath(nh[i]);
-      if(f && f instanceof TFile) {
-        
-        container.createDiv({
-          text: f.extension === "md" ? f.basename : f.name,
-          cls: "excalibrain-history-item"
-        }, el=> {
-          el.ariaLabel = `[[${f.path}]]`
-          el.onclick = () => this.plugin.scene?.renderGraphForFile(f.path);
-        })
+      let displayName = "", link = "", label = "";
+      if(f && f instanceof TFile) { 
+        displayName = f.extension === "md" ? f.basename : f.name;
+        link = label = f.path;
+      } else {
+        const page = this.plugin.pages.get(nh[i]);
+        if(!page) {
+          return;
+        }
+        displayName = page.name;
+        label = page.path;
+        link = page.path.startsWith("folder:") 
+          ? page.path.substring(7)
+          : page.path.startsWith("tag:")
+            ? page.path.substring(4)
+            : page.path;
       }
+      container.createDiv({
+        text: displayName,
+        cls: "excalibrain-history-item"
+      }, el=> {
+        el.ariaLabel = `[[${label}]]`
+        el.onclick = () => this.plugin.scene?.renderGraphForPath(link);
+      })
     }
   }
 

@@ -30,7 +30,7 @@ export class ToolsPanel {
     inputEl.oninput = () => {
       const file = app.vault.getAbstractFileByPath(inputEl.value);
       if(file && file instanceof TFile) {
-        this.plugin.scene?.renderGraphForFile(inputEl.value);
+        this.plugin.scene?.renderGraphForPath(inputEl.value);
         inputEl.value = file.basename;
       }
     }
@@ -110,6 +110,38 @@ export class ToolsPanel {
         {
           display: "🤔",
           tooltip: t("SHOW_HIDE_INFERRED")
+        }
+     )
+    )
+
+    //------------
+    //Folder
+    //------------
+    this.buttons.push(
+      new ToggleButton(
+        this.plugin,
+        ()=>this.plugin.settings.showFolderNodes,
+        (val:boolean)=>this.plugin.settings.showFolderNodes = val,
+        buttonsWrapperDiv,
+        {
+          display: "📂",
+          tooltip: t("SHOW_HIDE_FOLDER")
+        }
+     )
+    )
+
+    //------------
+    //Folder
+    //------------
+    this.buttons.push(
+      new ToggleButton(
+        this.plugin,
+        ()=>this.plugin.settings.showTagNodes,
+        (val:boolean)=>this.plugin.settings.showTagNodes = val,
+        buttonsWrapperDiv,
+        {
+          display: "#",
+          tooltip: t("SHOW_HIDE_TAG")
         }
      )
     )

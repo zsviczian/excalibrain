@@ -76,6 +76,8 @@ export default {
   NODESTYLE_VIRTUAL: "Style of virtual nodes",
   NODESTYLE_SIBLING: "Style of sibling nodes",
   NODESTYLE_ATTACHMENT: "Style of attachment nodes",
+  NODESTYLE_FOLDER: "Style of folder nodes",
+  NODESTYLE_TAG: "Style of tag nodes",
   LINKSTYLE_COLOR: "Color",
   LINKSTYLE_WIDTH: "Width",
   LINKSTYLE_STROKE: "Stroke style",
@@ -84,6 +86,8 @@ export default {
   LINKSTYLE_ARROWEND: "End arrow head",
   LINKSTYLE_BASE: "Base link style",
   LINKSTYLE_INFERRED: "Style of inferred link",
+  LINKSTYLE_FOLDER: "Style of folder link",
+  LINKSTYLE_TAG: "Style of tag link",
   //main
   DATAVIEW_NOT_FOUND: `Dataview plugin not found. Please install or enable Dataview, then try restarting ${APPNAME}`,
   EXCALIDRAW_NOT_FOUND: `Excalidraw plugin not found. Please install or enable Excalidraw, then try restarting ${APPNAME}`,
@@ -96,4 +100,6 @@ export default {
   SHOW_HIDE_VIRTUAL: "Show/Hide virtual nodes",
   SHOW_HIDE_INFERRED: "Show/Hide inferred nodes",
   SHOW_HIDE_ALIAS: "Show/Hide document alias",
+  SHOW_HIDE_FOLDER: "Show/Hide folder nodes",
+  SHOW_HIDE_TAG: "Show/Hide tag nodes"
 }

@@ -1,7 +1,9 @@
 import { TFile } from "obsidian";
+import { getFileInfo } from "prettier";
 import ExcaliBrain from "src/main";
 import { ExcaliBrainSettings } from "src/Settings";
 import { LinkDirection, Neighbour, Relation, RelationType } from "src/Types";
+import { getFilenameFromPath } from "src/utils/fileUtils";
 
 const DEFAULT_RELATION:Relation = {
   target: null,
@@ -60,27 +62,37 @@ const relationTypeToSet = (currentType: RelationType, newType: RelationType):Rel
 
 export class Page {
   public mtime: number;
-  public path: string;
-  public file: TFile;
   public neighbours: Map<string,Relation>;
-  public plugin: ExcaliBrain;
   public settings: ExcaliBrainSettings;
   public dvPage: Record<string, any>;
   
-  constructor(path:string, file:TFile, plugin: ExcaliBrain) {
-    this.path = path;
-    this.file = file;
+  constructor(
+    public path:string,
+    public file:TFile,
+    public plugin: ExcaliBrain,
+    public isFolder: boolean=false,
+    public isTag: boolean=false,
+    public name?: string
+  ) {
+    if(!name) {
+      this.name = file 
+      ? (file.extension === "md")
+        ? file.basename
+        : file.name
+      : getFilenameFromPath(path);
+    }
     this.mtime = file ? file.stat.mtime : null;
     this.neighbours = new Map<string,Relation>();
-    this.plugin = plugin;
     this.settings = plugin.settings;
   }
 
   private getNeighbours(): [string, Relation][] {
-    const { showVirtualNodes, showAttachments, showInferredNodes } = this.settings
+    const { showVirtualNodes, showAttachments, showFolderNodes, showTagNodes } = this.settings
     return Array.from(this.neighbours)
       .filter(x=> (showVirtualNodes || !x[1].target.isVirtual) && 
-        (showAttachments || !x[1].target.isAttachment))
+        (showAttachments || !x[1].target.isAttachment) &&
+        (showFolderNodes || !x[1].target.isFolder) &&
+        (showTagNodes || !x[1].target.isTag))
   }
   
   public get isVirtual(): boolean {

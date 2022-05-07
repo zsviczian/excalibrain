@@ -78,7 +78,7 @@ export class Scene {
    * @param path 
    * @returns 
    */
-  public async renderGraphForFile(path: string) {
+  public async renderGraphForPath(path: string) {
     if(!this.isActive()) {
       return;
     }
@@ -86,7 +86,14 @@ export class Scene {
     this.blockUpdateTimer = true; //blocks the updateTimer
 
     const page = this.plugin.pages.get(path);
-    if(!page || !page.file) {
+    if(!page) {
+      this.blockUpdateTimer = false;
+      return;
+    }
+
+    const isFile = !(page.isFolder || page.isTag);
+
+    if(isFile && !page.file) {
       this.blockUpdateTimer = false;
       return;
     }
@@ -96,7 +103,7 @@ export class Scene {
       return;
     }
     
-    if (page.file.path === this.ea.targetView.file.path) { //brainview drawing is the active leaf
+    if (isFile && (page.file.path === this.ea.targetView.file.path)) { //brainview drawing is the active leaf
       this.blockUpdateTimer = false;
       return; 
     }
@@ -106,34 +113,39 @@ export class Scene {
     if(
       centralPage &&
       centralPage.path === path &&
+      isFile &&
       page.file.stat.mtime === centralPage.mtime
     ) {
       this.blockUpdateTimer = false;
       return; //don't reload the file if it has not changed
     }
 
-    //@ts-ignore
-    if(!this.centralLeaf || !app.workspace.getLeafById(this.centralLeaf.id)) {
-      this.centralLeaf = this.ea.openFileInNewOrAdjacentLeaf(page.file);
+    if(isFile) {
+      //@ts-ignore
+      if(!this.centralLeaf || !app.workspace.getLeafById(this.centralLeaf.id)) {
+        this.centralLeaf = this.ea.openFileInNewOrAdjacentLeaf(page.file);
+      } else {
+        this.centralLeaf.openFile(page.file);
+      }
+      this.addToHistory(page.file.path);
     } else {
-      this.centralLeaf.openFile(page.file);
+      this.addToHistory(page.path);
     }
-    this.addToHistory(page.file);
 
     this.centralPagePath = path;
     await this.plugin.createIndex();
     await this.render();
   }
 
-  async addToHistory(file: TFile) {
+  async addToHistory(path: string) {
     const nh = this.plugin.settings.navigationHistory;
-    if(nh.last() === file.path) {
+    if(nh.last() === path) {
       return;
     }
     if(nh.length>20) {
       nh.shift();
     }
-    nh.push(file.path);
+    nh.push(path);
   }
 
   public static async openExcalidrawLeaf(ea: ExcalidrawAutomate, settings: ExcaliBrainSettings, leaf: WorkspaceLeaf) {
@@ -463,7 +475,7 @@ export class Scene {
         return; //don't reload the file if it has not changed
       }
   
-      this.addToHistory(rootFile);
+      this.addToHistory(rootFile.path);
       self.centralPagePath = rootFile.path;
       self.centralLeaf = leaf;
 
