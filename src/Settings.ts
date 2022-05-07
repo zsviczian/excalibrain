@@ -40,6 +40,7 @@ export interface ExcaliBrainSettings {
   baseLinkStyle: LinkStyle;
   inferredLinkStyle: LinkStyle;
   hierarchyLinkStyles: {[key: string]: LinkStyle};
+  navigationHistory: string[];
 }
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
@@ -110,6 +111,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
     strokeStyle: "dashed",
   },
   hierarchyLinkStyles: {},
+  navigationHistory: [],
 };
 
 const HIDE_DISABLED_STYLE = "excalibrain-hide-disabled";

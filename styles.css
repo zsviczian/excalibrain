@@ -23,11 +23,6 @@
   border-left: 10px solid var(--background-modifier-border);
 }
 
-/*.isMobile .excalibrain-setting-style-section  {
-  flex-direction: column;
-    align-items: flex-start;
-}*/
-
 .excalibrain-settings-demoimg {
   max-width: 400px;
 }
@@ -43,6 +38,22 @@
   padding-left: 10px;
   width: 100%;
   padding-right: 10px;
+}
+
+.excalibrain-history-wrapper {
+  z-index: 1;
+  position: absolute;
+  bottom: 0px;
+  padding-left: 10px;
+  width: 100%;
+  padding-right: 10px;
+  overflow: hidden;
+}
+
+.excalibrain-history-container {
+  overflow-y: hidden;
+  display: -webkit-box;
+  overflow-x: scroll;
 }
 
 .excalibrain-button {
@@ -104,4 +115,25 @@
 .excalibrain-settings-toggle {
   min-width: 2em;
   margin-right: 5px;
+}
+
+.excalibrain-contentEl div.Island,
+.excalibrain-contentEl button.help-icon {
+  display:none;
+}
+
+.excalibrain-contentEl {
+  overflow: hidden !important;
+}
+
+.excalibrain-history-divider {
+  color: gold;
+  margin-left: 5px;
+  margin-right: 5px;
+  font-size: smaller;
+}
+
+.excalibrain-history-item {
+  color: silver;
+  font-size: smaller;
 }

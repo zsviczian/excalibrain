@@ -1,6 +1,6 @@
 // Credits go to Liam's Periodic Notes Plugin: https://github.com/liamcain/obsidian-periodic-notes
 
-import { App, TAbstractFile, TFile } from "obsidian";
+import { App, fuzzySearch, prepareFuzzySearch, prepareQuery, TAbstractFile, TFile } from "obsidian";
 import ExcaliBrain from "src/main";
 import { getTFilesFromFolder } from "src/utils/fileUtils";
 import { fileURLToPath } from "url";
@@ -21,11 +21,11 @@ export class FileSuggest extends TextInputSuggest<TFile> {
     }
 
     getSuggestions(inputStr: string): TFile[] {
-      const lowerInputStr = inputStr.toLowerCase();  
+      const query = prepareFuzzySearch(inputStr);
       return app.vault.getFiles().filter(f=>
           (this.plugin.settings.showAttachments || f.extension === "md") &&
-          f.path.toLowerCase().contains(lowerInputStr) && 
-          !this.plugin.settings.excludeFilepaths.some(p=>f.path.startsWith(p))
+          !this.plugin.settings.excludeFilepaths.some(p=>f.path.startsWith(p)) &&
+          query(f.path)
         )
     }
 

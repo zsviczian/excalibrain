@@ -4,7 +4,7 @@ import { ToggleButton } from "src/Components/ToggleButton";
 import { t } from "src/lang/helpers";
 import ExcaliBrain from "src/main";
 import { splitFolderAndFilename } from "src/utils/fileUtils";
-import { FileSuggest } from "./FileSuggester";
+import { FileSuggest } from "../Suggesters/FileSuggester";
 
 export class ToolsPanel {
   private wrapperDiv: HTMLDivElement;
@@ -62,7 +62,7 @@ export class ToolsPanel {
       elements.forEach(el=>ea.elementsDict[el.id] = el);
       ea.create({
         filename: `ExcaliBrain Snapshot - ${splitFolderAndFilename(this.plugin.scene.centralPagePath).basename}`,
-        onNewPane:true
+        onNewPane: true
       });
     }
 
@@ -139,6 +139,9 @@ export class ToolsPanel {
   }
 
   terminate() {
+    if(this.contentEl) {
+      this.contentEl.removeClass("excalibrain-contentEl");
+    }   
     if(this.wrapperDiv) {
       try{
         this.contentEl?.removeChild(this.wrapperDiv);

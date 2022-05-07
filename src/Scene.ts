@@ -1,4 +1,4 @@
-import { App, FileView, Notice, TextFileView, TFile, Vault, WorkspaceLeaf } from "obsidian";
+import { App, FileView, Notice, TextFileView, TFile, WorkspaceLeaf } from "obsidian";
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 import { EMPTYBRAIN } from "./constants/emptyBrainFile";
 import { Layout } from "./graph/Layout";
@@ -6,11 +6,12 @@ import { Links } from "./graph/Links";
 import { Node } from "./graph/Node";
 import ExcaliBrain from "./main";
 import { ExcaliBrainSettings } from "./Settings";
-import { ToolsPanel } from "./Suggesters/ToolsPanel";
+import { ToolsPanel } from "./Components/ToolsPanel";
 import { Neighbour, RelationType, Role } from "./Types";
+import { HistoryPanel } from "./Components/HistoryPanel";
+import { WarningPrompt } from "./utils/Prompts";
 
 export class Scene {
-  settings: ExcaliBrainSettings;
   ea: ExcalidrawAutomate;
   plugin: ExcaliBrain;
   app: App;
@@ -29,9 +30,9 @@ export class Scene {
   private removeTimer: Function;
   private blockUpdateTimer: boolean = false;
   private toolsPanel: ToolsPanel;
+  private historyPanel: HistoryPanel;
   
   constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
-    this.settings = plugin.settings;
     this.ea = plugin.EA;
     this.plugin = plugin;
     this.app = plugin.app;
@@ -41,8 +42,10 @@ export class Scene {
   }
 
   public async initialize() {
-    await this.initilizeScene();
+    await this.plugin.loadSettings();
+    await this.initializeScene();
     this.toolsPanel = new ToolsPanel((this.leaf.view as TextFileView).contentEl,this.plugin);
+    this.historyPanel = new HistoryPanel((this.leaf.view as TextFileView).contentEl,this.plugin);
   }
 
   /**
@@ -88,7 +91,7 @@ export class Scene {
       return;
     }
 
-    if(!this.ea.targetView?.file || this.ea.targetView.file.path !== this.settings.excalibrainFilepath) {
+    if(!this.ea.targetView?.file || this.ea.targetView.file.path !== this.plugin.settings.excalibrainFilepath) {
       this.unloadScene();
       return;
     }
@@ -109,10 +112,28 @@ export class Scene {
       return; //don't reload the file if it has not changed
     }
 
-    this.centralLeaf.openFile(page.file);
+    //@ts-ignore
+    if(!this.centralLeaf || !app.workspace.getLeafById(this.centralLeaf.id)) {
+      this.centralLeaf = this.ea.openFileInNewOrAdjacentLeaf(page.file);
+    } else {
+      this.centralLeaf.openFile(page.file);
+    }
+    this.addToHistory(page.file);
+
     this.centralPagePath = path;
     await this.plugin.createIndex();
     await this.render();
+  }
+
+  async addToHistory(file: TFile) {
+    const nh = this.plugin.settings.navigationHistory;
+    if(nh.last() === file.path) {
+      return;
+    }
+    if(nh.length>20) {
+      nh.shift();
+    }
+    nh.push(file.path);
   }
 
   public static async openExcalidrawLeaf(ea: ExcalidrawAutomate, settings: ExcaliBrainSettings, leaf: WorkspaceLeaf) {
@@ -132,23 +153,30 @@ export class Scene {
     }
     counter = 0;
     if(file && file instanceof TFile && !ea.isExcalidrawFile(file)) {
-      file = await app.vault.create(settings.excalibrainFilepath,EMPTYBRAIN);
-      //an ugly temporary hack waiting for metadataCache to index the new file
-      while(file instanceof TFile && !ea.isExcalidrawFile(file) && counter++<10) {
-        await sleep(50);
-      }
-      if(!ea.isExcalidrawFile(file as TFile)) {
-        new Notice(`Couldn't open ${settings.excalibrainFilepath}. Please try again later.`);
-        return;
-      }
+      (new WarningPrompt(
+        app,
+        "⚠ File Exists",
+        `${file.path} already exists in your Vault. Is it ok to overwrite this file? If not, change ExcaliBrain file path in plugin settings.`)
+      ).show(async (result: boolean) => {
+        if(result) {
+          await app.vault.modify(file as TFile,EMPTYBRAIN);
+          while(file instanceof TFile && !ea.isExcalidrawFile(file) && counter++<10) {
+            await sleep(50);
+          }
+          Scene.openExcalidrawLeaf(ea, settings, leaf);
+        } else {
+          new Notice(`Could not start ExcaliBrain. Please change the ExcaliBrain file path in plugin settings.`);
+        }
+      });
+      return;
     }
     await (leaf ?? app.workspace.getLeaf(true)).openFile(file as TFile);   
   }
 
-  public async initilizeScene() {
+  public async initializeScene() {
     this.disregardLeafChange = false;
     const ea = this.ea;
-    const style = this.settings.baseNodeStyle;
+    const style = this.plugin.settings.baseNodeStyle;
     let counter = 0;
     ea.clear();
     
@@ -163,6 +191,7 @@ export class Scene {
     }
     this.ea.registerThisAsViewEA();
     this.ea.targetView.semaphores.saving = true; //disable saving by setting this Excalidraw flag (not published API)
+    this.ea.targetView.excalidrawAPI.setMobileModeAllowed(false); //disable mobile view https://github.com/zsviczian/excalibrain/issues/9
     ea.style.fontFamily = style.fontFamily;
     ea.style.fontSize = style.fontSize;
     this.textSize = ea.measureText("m".repeat(style.maxLabelLength+3));
@@ -178,16 +207,17 @@ export class Scene {
           type: "selection"
         },
         theme: "light",
-      viewBackgroundColor: this.settings.backgroundColor
+      viewBackgroundColor: this.plugin.settings.backgroundColor
       },
       elements:[]
     });
     
     ea.style.strokeColor = style.textColor;
-    ea.addText(0,0,"Open a document in another pane and click it to get started.\n\n" +
-      "For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
-      "under 'Links and Transclusion'.\n\nNote, that ExcaliBrain may need to wait for " +
-      "DataView to initialize its index,\nwhich can take up to a few minutes after starting Obsidian.", {textAlign:"center"});
+    ea.addText(0,0,"🚀 To get started\nselect a document using the search in the top left or\n" +
+      "open a document in another pane.\n\n" +
+      "✨ For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
+      "under 'Links and Transclusion'.\n\n⚠ ExcaliBrain may need to wait for " +
+      "DataView to initialize its index.\nThis can take up to a few minutes after starting Obsidian.", {textAlign:"center"});
     await ea.addElementsToView();
     ea.getExcalidrawAPI().zoomToFit(null, 5);
     
@@ -221,6 +251,9 @@ export class Scene {
   }
 
   private async render() {
+    if(this.historyPanel) {
+      this.historyPanel.rerender()
+    }
     this.ea.clear();
     this.ea.getExcalidrawAPI().updateScene({elements:[]});
     this.ea.style.verticalAlign = "middle";
@@ -365,7 +398,7 @@ export class Scene {
           neighbour.typeDefinition,
           neighbour.linkDirection,
           this.ea,
-          this.settings
+          this.plugin.settings
         )
       })
     }
@@ -403,7 +436,7 @@ export class Scene {
       //await new Promise((resolve) => setTimeout(resolve, 100));
       //-------------------------------------------------------
       //terminate event handler if view no longer exists or file has changed
-      if(!self.ea.targetView?.file || self.ea.targetView.file.path !== self.settings.excalibrainFilepath) {
+      if(!self.ea.targetView?.file || self.ea.targetView.file.path !== self.plugin.settings.excalibrainFilepath) {
         self.unloadScene();
         return;
       }
@@ -430,6 +463,7 @@ export class Scene {
         return; //don't reload the file if it has not changed
       }
   
+      this.addToHistory(rootFile);
       self.centralPagePath = rootFile.path;
       self.centralLeaf = leaf;
 
@@ -465,6 +499,8 @@ export class Scene {
 
     if(leaves.length>0) {
       brainEventHandler(leaves[0]);
+    } else {
+      this.plugin.createIndex(); //temporary
     }
   }
 
@@ -486,6 +522,7 @@ export class Scene {
     if(this.ea.targetView && this.ea.targetView.excalidrawAPI) {
       try {
         this.ea.targetView.semaphores.saving = false;
+        this.ea.targetView.excalidrawAPI.setMobileModeAllowed(true);
         this.ea.targetView.excalidrawAPI.updateScene({appState:{viewModeEnabled:false}});
       } catch {}
     }
@@ -495,8 +532,16 @@ export class Scene {
         this.ea.deregisterThisAsViewEA();
       } catch {}
     }
+    (async()=>{
+      const tmpNavigationHistory = this.plugin.settings.navigationHistory.slice(); //copy by value
+      await this.plugin.loadSettings(); //only overwrite the navigation history, save other synchronized settings
+      this.plugin.settings.navigationHistory = tmpNavigationHistory;
+      await this.plugin.saveSettings();
+    })();
     this.toolsPanel?.terminate();
     this.toolsPanel = undefined;
+    this.historyPanel?.terminate();
+    this.historyPanel = undefined;
     this.ea.targetView = undefined;
     this.leaf = undefined;
     this.centralLeaf = undefined;
