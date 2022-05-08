@@ -496,6 +496,10 @@ export class Scene {
         self.blockUpdateTimer = false;
         return; //don't reload the file if it has not changed
       }
+
+      if(!self.plugin.pages.get(rootFile.path)) {
+        await self.plugin.createIndex();
+      }
   
       this.addToHistory(rootFile.path);
       self.centralPagePath = rootFile.path;
