@@ -118,7 +118,12 @@ export class Pages {
     }
     page.dvPage = dvPage;
     if(!dvPage) return;
-    (dvPage.file?.tags?.values??[]).forEach((tag:string)=>{
+    const addedTags:string[] = [];
+    (dvPage.file?.tags?.values??[]).sort((a:string,b:string) => b.length-a.length).forEach((tag:string)=>{
+      if(addedTags.length > 0) {
+        if(addedTags.some(x=>x.startsWith(tag+"/"))) return;
+      }
+      addedTags.push(tag);
       tag = "tag:" + tag.substring(1);
       const parent = this.pages.get(tag);
       if(!parent) return;
