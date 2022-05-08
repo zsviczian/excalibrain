@@ -237,10 +237,16 @@ export default class ExcaliBrain extends Plugin {
     }
 
     this.EA.onLinkClickHook = (element,linkText) => {
+      const path = linkText.match(/\[\[([^\]]*)/)[1];     
       if(!linkText.startsWith("[[folder:") && !linkText.startsWith("[[tag:")) {
+        //@ts-ignore
+        if(this.scene?.centralLeaf?.view?.file?.path === path) {
+          this.scene?.renderGraphForPath(path);
+          return false;
+        }
         return true;
       }
-      this.scene?.renderGraphForPath(linkText.match(/\[\[([^\]]*)/)[1]);
+      this.scene?.renderGraphForPath(path);
       return false;
     }
 

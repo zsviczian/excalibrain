@@ -134,8 +134,18 @@ export class Scene {
       this.addToHistory(page.path);
     }
 
+    if(page.isFolder && !this.plugin.settings.showFolderNodes) {
+      this.plugin.settings.showFolderNodes = true;
+      this.toolsPanel.rerender();
+    }
+
+    if(page.isTag && !this.plugin.settings.showTagNodes) {
+      this.plugin.settings.showTagNodes = true;
+      this.toolsPanel.rerender();
+    }
+
     this.centralPagePath = path;
-    await this.plugin.createIndex();
+    //await this.plugin.createIndex();
     await this.render();
   }
 
@@ -448,7 +458,7 @@ export class Scene {
     this.blockUpdateTimer = false;
   }
 
-  private addEventHandler() {
+  private async addEventHandler() {
     const self = this;
     
     const brainEventHandler = async (leaf:WorkspaceLeaf) => {
@@ -456,8 +466,8 @@ export class Scene {
         return;
       }
       self.blockUpdateTimer = true;
-      await self.plugin.createIndex();
-      //await new Promise((resolve) => setTimeout(resolve, 100));
+      //await self.plugin.createIndex();
+      await new Promise((resolve) => setTimeout(resolve, 100));
       //-------------------------------------------------------
       //terminate event handler if view no longer exists or file has changed
       if(!self.ea.targetView?.file || self.ea.targetView.file.path !== self.plugin.settings.excalibrainFilepath) {
@@ -520,11 +530,11 @@ export class Scene {
         leaves.push(l);
       }
     })
-
+    
+    await this.plugin.createIndex(); //temporary
+    
     if(leaves.length>0) {
       brainEventHandler(leaves[0]);
-    } else {
-      this.plugin.createIndex(); //temporary
     }
   }
 
