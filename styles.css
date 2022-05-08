@@ -38,6 +38,7 @@
   padding-left: 10px;
   width: 100%;
   padding-right: 10px;
+  pointer-events: none;
 }
 
 .excalibrain-history-wrapper {
@@ -81,6 +82,7 @@
   max-width: 400px;
   width: 100%;
   vertical-align: middle;
+  pointer-events: all;
 }
 
 .excalibrain-buttons {
@@ -88,6 +90,7 @@
   width: 100%;
   margin-top: 5px;
   margin-left: -5px;
+  pointer-events: all;
 }
 
 .excalibrain-settings-colorlabel {
