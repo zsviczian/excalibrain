@@ -10,6 +10,7 @@ import { ToolsPanel } from "./Components/ToolsPanel";
 import { Neighbour, RelationType, Role } from "./Types";
 import { HistoryPanel } from "./Components/HistoryPanel";
 import { WarningPrompt } from "./utils/Prompts";
+import { log } from "./utils/utils";
 
 export class Scene {
   ea: ExcalidrawAutomate;
@@ -116,6 +117,7 @@ export class Scene {
       isFile &&
       page.file.stat.mtime === centralPage.mtime
     ) {
+      log("!!!")
       this.blockUpdateTimer = false;
       return; //don't reload the file if it has not changed
     }
@@ -142,7 +144,7 @@ export class Scene {
     if(nh.last() === path) {
       return;
     }
-    if(nh.length>20) {
+    if(nh.length>50) {
       nh.shift();
     }
     nh.push(path);
@@ -295,7 +297,8 @@ export class Scene {
     const manyChildren = children.length >10;
     const manySiblings = siblings.length > 10;
     const singleParent = parents.length <= 1
-    
+    const baseStyle = this.plugin.settings.baseNodeStyle;
+
     const lCenter = new Layout({
       origoX: 0,
       origoY: 0,
@@ -340,14 +343,23 @@ export class Scene {
     });
     this.layouts.push(lParents);
     
+    const siblingsStyle = this.plugin.settings.siblingNodeStyle;
+    const siblingsPadding = siblingsStyle.padding??baseStyle.padding;
+    const siblingsLabelLength = siblingsStyle.maxLabelLength??baseStyle.maxLabelLength;
+    this.ea.style.fontFamily = siblingsStyle.fontFamily;
+    this.ea.style.fontSize = siblingsStyle.fontSize;
+    const siblingsTextSize = this.ea.measureText("m".repeat(siblingsLabelLength+3));
+    const siblingsNodeWidth = siblingsTextSize.width + 3 * siblingsPadding;
+    const siblingsNodeHeight = 2 * (siblingsTextSize.height + 2 * siblingsPadding);
+
     const lSiblings = new Layout({
-      origoX: this.nodeWidth * ((singleParent ? 0 : 1) + (manySiblings ? 2 : 1)),
+      origoX: this.nodeWidth * 1.3 * ((singleParent ? 0 : 1) + (manySiblings ? 2 : 1)),
       origoY: -2.5 * this.nodeHeight,
       top: null,
-      bottom: this.nodeHeight,
+      bottom: 0, //this.nodeHeight,
       columns: (manySiblings ? 3 : 1),
-      columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      columnWidth: siblingsNodeWidth, //this.nodeWidth,
+      rowHeight: siblingsNodeHeight, //this.nodeHeight
     })
     this.layouts.push(lSiblings);
 

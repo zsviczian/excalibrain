@@ -117,6 +117,15 @@ export class Pages {
       return;
     }
     page.dvPage = dvPage;
+    if(!dvPage) return;
+    (dvPage.file?.tags?.values??[]).forEach((tag:string)=>{
+      tag = "tag:" + tag.substring(1);
+      const parent = this.pages.get(tag);
+      if(!parent) return;
+      page.addParent(parent,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
+      parent.addChild(page,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
+    })
+
     const parentFields = this.plugin.settings.hierarchy.parents;
     getDVFieldLinksForPage(this.plugin,dvPage,parentFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);

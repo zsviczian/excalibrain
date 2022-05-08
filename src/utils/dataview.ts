@@ -1,6 +1,8 @@
 import { App, TFile } from "obsidian";
 import { Page } from "src/graph/Page";
 import ExcaliBrain from "src/main";
+import { ExcaliBrainSettings } from "src/Settings";
+import { NodeStyle } from "src/Types";
 
 const getPathOrSelf = (app: App, link:string, hostPath:string):string => {
   const f = app.metadataCache.getFirstLinkpathDest(link,hostPath);
@@ -54,4 +56,17 @@ export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<strin
     };
   });
   return links;
+}
+
+export const getTagStyle = (
+  dvPage: Record<string, any>,
+  settings: ExcaliBrainSettings
+):NodeStyle => {
+  if(!dvPage) return {};
+  const tag = (dvPage.file?.tags?.values??[])
+    .filter((t:string)=>settings.tagStyleList.some(x=>t.startsWith(x)))[0];
+  if(!tag) {
+    return {};
+  }
+  return settings.tagNodeStyles[settings.tagStyleList.filter(x=>tag.startsWith(x))[0]];
 }

@@ -12,6 +12,7 @@ import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAut
 import { Scene } from './Scene';
 import { LinkStyles, NodeStyles, LinkStyle, RelationType, LinkDirection } from './Types';
 import { link } from 'fs';
+import { WarningPrompt } from './utils/Prompts';
 
 
 declare module "obsidian" {
@@ -44,24 +45,45 @@ export default class ExcaliBrain extends Plugin {
     this.app.workspace.onLayoutReady(()=>{
       this.DVAPI = getAPI();
       if(!this.DVAPI) {
-        new Notice(t("DATAVIEW_NOT_FOUND"),4000);
-        errorlog({fn:this.onload, where:"main.ts/onload()", message:"Dataview not found"});
-        this.app.plugins.disablePlugin(PLUGIN_NAME)
+        (new WarningPrompt(
+          app,
+          "⚠ ExcaliBrain Disabled: DataView Plugin not found",
+          t("DATAVIEW_NOT_FOUND"))
+        ).show(async (result: boolean) => {
+          new Notice("Disabling ExcaliBrain Plugin", 8000);
+          errorlog({fn:this.onload, where:"main.ts/onload()", message:"Dataview not found"});
+          this.app.plugins.disablePlugin(PLUGIN_NAME)  
+        });
         return;
       }
+
       this.EA = getEA();
       if(!this.EA) {
-        new Notice(t("EXCALIDRAW_NOT_FOUND"),4000);
-        errorlog({fn:this.onload, where:"main.ts/onload()", message:"Excalidraw not found"});
-        this.app.plugins.disablePlugin(PLUGIN_NAME)
+        (new WarningPrompt(
+          app,
+          "⚠ ExcaliBrain Disabled: Excalidraw Plugin not found",
+          t("EXCALIDRAW_NOT_FOUND"))
+        ).show(async (result: boolean) => {
+          new Notice("Disabling ExcaliBrain Plugin", 8000);
+          errorlog({fn:this.onload, where:"main.ts/onload()", message:"Excalidraw not found"});
+          this.app.plugins.disablePlugin(PLUGIN_NAME)  
+        });
         return;
       }
+
       if(!this.EA.verifyMinimumPluginVersion(MINEXCALIDRAWVERSION)) {
-        new Notice(t("EXCALIDRAW_MINAPP_VERSION"), 4000);
-        errorlog({fn:this.onload, where:"main.ts/onload()", message:"ExcaliBrain requires a new version of Excalidraw"});
-        this.app.plugins.disablePlugin(PLUGIN_NAME)
+        (new WarningPrompt(
+          app,
+          "⚠ ExcaliBrain Disabled: Please upgrade Excalidraw and try again",
+          t("EXCALIDRAW_MINAPP_VERSION"))
+        ).show(async (result: boolean) => {
+          new Notice("Disabling ExcaliBrain Plugin", 8000);
+          errorlog({fn:this.onload, where:"main.ts/onload()", message:"ExcaliBrain requires a new version of Excalidraw"});
+          this.app.plugins.disablePlugin(PLUGIN_NAME)  
+        });
         return;
       }
+
       this.registerCommands();
       this.registerExcalidrawAutomateHooks();
       this.pluginLoaded = true;
@@ -84,15 +106,23 @@ export default class ExcaliBrain extends Plugin {
       await sleep(100);
     }
 
-    //Add all folders
+    //Add all folders and files
     const addFolderChildren = (parentFolder: TFolder, parent: Page) => {
-      const folders = parentFolder.children.filter(f=>f instanceof TFolder) as TFolder[];
-      folders.forEach(f => {
-        const child = new Page("folder:"+f.path, null, this, true, false, f.name);
-        this.pages.add("folder:"+f.path,child);
-        child.addParent(parent,RelationType.DEFINED,LinkDirection.TO,"file-tree");
-        parent.addChild(child,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
-        addFolderChildren(f,child);
+      const children = parentFolder.children; //.filter(f=>f instanceof TFolder) as TFolder[];
+      children.forEach(f => {
+        if(f instanceof TFolder) {
+          const child = new Page("folder:"+f.path, null, this, true, false, f.name);
+          this.pages.add("folder:"+f.path,child);
+          child.addParent(parent,RelationType.DEFINED,LinkDirection.TO,"file-tree");
+          parent.addChild(child,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
+          addFolderChildren(f,child);
+          return;
+        } else {
+          const child = new Page(f.path,f as TFile,this);
+          this.pages.add(f.path,child);
+          child.addParent(parent,RelationType.DEFINED,LinkDirection.TO,"file-tree");
+          parent.addChild(child,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
+        }
       })
     }
     const rootFolder = app.vault.getRoot();
@@ -100,14 +130,29 @@ export default class ExcaliBrain extends Plugin {
     this.pages.add("folder:/",rootFolderPage);
     addFolderChildren(rootFolder, rootFolderPage);
 
-    //Add all existing files
-    for(const f of this.app.vault.getFiles()) {
-      const page = new Page(f.path,f,this);
-      this.pages.add(f.path,page);
-      const folder = this.pages.get(`folder:${f.parent.path}`);
-      page.addParent(folder,RelationType.DEFINED,LinkDirection.TO,"file-tree");
-      folder.addChild(page,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
-    }
+    //Add all tags
+    //@ts-ignore
+    const tags = Object.keys(app.metadataCache.getTags()).map(t=>t.substring(1).split("/"))
+    tags.forEach(tag => {
+      const tagPages: Page[] = [];
+      tag.forEach((el,idx,t)=> {
+        const path = "tag:" + t.slice(0,idx+1).join("/");
+        let child = this.pages.get(path);
+        if(child) {
+          tagPages.push(child);
+          return;
+        }
+        child = new Page(path, null, this, false, true, el);
+        this.pages.add(path,child);
+        tagPages.push(child);
+        if(idx>0) {
+          const parent = tagPages[idx-1];
+          child.addParent(parent,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
+          parent.addChild(child,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
+        }
+      })
+    })
+
     //Add all unresolved links and make child of page where it was found
     this.pages.addUnresolvedLinks()
     //Add all links as inferred children to pages on which they were found

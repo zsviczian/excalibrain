@@ -89,9 +89,9 @@ export default {
   LINKSTYLE_FOLDER: "Style of folder link",
   LINKSTYLE_TAG: "Style of tag link",
   //main
-  DATAVIEW_NOT_FOUND: `Dataview plugin not found. Please install or enable Dataview, then try restarting ${APPNAME}`,
-  EXCALIDRAW_NOT_FOUND: `Excalidraw plugin not found. Please install or enable Excalidraw, then try restarting ${APPNAME}`,
-  EXCALIDRAW_MINAPP_VERSION: `ExcaliBrain requires Excalidraw ${MINEXCALIDRAWVERSION} or higher. Please upgrade Excalidraw`,
+  DATAVIEW_NOT_FOUND: `Dataview plugin not found. Please install or enable Dataview then try restarting ${APPNAME}.`,
+  EXCALIDRAW_NOT_FOUND: `Excalidraw plugin not found. Please install or enable Excalidraw then try restarting ${APPNAME}.`,
+  EXCALIDRAW_MINAPP_VERSION: `ExcaliBrain requires Excalidraw ${MINEXCALIDRAWVERSION} or higher. Please upgrade Excalidraw then try restarting ${APPNAME}.`,
   COMMAND_START: "Open ExcaliBrain",
   //ToolsPanel
   OPEN_DRAWING: "Save snapshot for editing",

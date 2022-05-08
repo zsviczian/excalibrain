@@ -1,6 +1,7 @@
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 import { ExcaliBrainSettings } from "src/Settings";
 import { NodeStyle } from "src/Types";
+import { getTagStyle } from "src/utils/dataview";
 import { Page } from "./Page";
 
 export class Node {
@@ -29,11 +30,15 @@ export class Node {
     if(this.page.isFolder) {
       this.style = {
         ...this.settings.baseNodeStyle,
+        ...x.isCentral?this.settings.centralNodeStyle:{},
+        ...x.isSibling?this.settings.siblingNodeStyle:{},
         ...this.settings.folderNodeStyle
       }
     } else if (this.page.isTag) {
       this.style = {
         ...this.settings.baseNodeStyle,
+        ...x.isCentral?this.settings.centralNodeStyle:{},
+        ...x.isSibling?this.settings.siblingNodeStyle:{},
         ...this.settings.tagNodeStyle
       }
     } else {
@@ -44,7 +49,7 @@ export class Node {
         ...x.isCentral?this.settings.centralNodeStyle:{},
         ...x.isSibling?this.settings.siblingNodeStyle:{},
         ...x.page.isAttachment?this.settings.attachmentNodeStyle:{},
-        ...this.getTagStyle(),
+        ...getTagStyle(this.page.dvPage,this.settings),
       };
     }
     this.friendGateOnLeft = x.friendGateOnLeft;
@@ -72,14 +77,6 @@ export class Node {
     this.center = center;
   }
 
-  getTagStyle():NodeStyle {
-    const tag = (this.page.dvPage?.file?.tags?.values??[])
-      .filter((t:string)=>this.settings.tagStyleList.some(x=>t.startsWith(x)))[0];
-    if(!tag) {
-      return {};
-    }
-    return this.settings.tagNodeStyles[this.settings.tagStyleList.filter(x=>tag.startsWith(x))[0]];
-  }
 
   render() {
     const ea = this.ea;

@@ -134,6 +134,7 @@
 }
 
 .excalibrain-history-item {
+  cursor: pointer;
   color: silver;
   font-size: smaller;
 }

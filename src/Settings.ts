@@ -113,7 +113,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
     textColor: "#ffd700ff"
   },
   tagNodeStyle: {
-    prefix: "# ",
+    prefix: "#",
     strokeShaprness: "sharp",
     borderColor: "#4682b4ff",
     textColor: "#4682b4ff"
