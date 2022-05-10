@@ -27,7 +27,7 @@ export class HistoryPanel {
     for(let i=nh.length-1;i>=0;i--) {
       if(i !== nh.length-1) {
         container.createDiv({
-          text: "<",
+          text: "•",
           cls: "excalibrain-history-divider"
         })
       }

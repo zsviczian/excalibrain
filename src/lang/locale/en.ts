@@ -101,5 +101,7 @@ export default {
   SHOW_HIDE_INFERRED: "Show/Hide inferred nodes",
   SHOW_HIDE_ALIAS: "Show/Hide document alias",
   SHOW_HIDE_FOLDER: "Show/Hide folder nodes",
-  SHOW_HIDE_TAG: "Show/Hide tag nodes"
+  SHOW_HIDE_TAG: "Show/Hide tag nodes",
+  SHOW_HIDE_PAGES: "Show/Hide page nodes (incl. defined, inferred, virtual and attachments)",
+  PIN_LEAF: "Link ExcaliBrain to most recent active leaf"
 }

@@ -87,16 +87,18 @@ export class Page {
   }
 
   private getNeighbours(): [string, Relation][] {
-    const { showVirtualNodes, showAttachments, showFolderNodes, showTagNodes } = this.settings
+    const { showVirtualNodes, showAttachments, showFolderNodes, showTagNodes, showPageNodes } = this.settings
     return Array.from(this.neighbours)
       .filter(x=> (showVirtualNodes || !x[1].target.isVirtual) && 
         (showAttachments || !x[1].target.isAttachment) &&
         (showFolderNodes || !x[1].target.isFolder) &&
-        (showTagNodes || !x[1].target.isTag))
+        (showTagNodes || !x[1].target.isTag) &&
+        (showPageNodes || x[1].target.isFolder || x[1].target.isTag)
+        )
   }
   
   public get isVirtual(): boolean {
-    return this.file === null;
+    return (this.file === null) && !this.isFolder && !this.isTag;
   }
 
   public get isAttachment(): boolean {

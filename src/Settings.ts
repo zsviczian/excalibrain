@@ -31,6 +31,7 @@ export interface ExcaliBrainSettings {
   showVirtualNodes: boolean;
   showFolderNodes: boolean;
   showTagNodes: boolean;
+  showPageNodes: boolean;
   maxItemCount: number;
   baseNodeStyle: NodeStyle;
   centralNodeStyle: NodeStyle;
@@ -65,6 +66,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   showVirtualNodes: true,
   showFolderNodes: false,
   showTagNodes: false,
+  showPageNodes: true,
   maxItemCount: 30,
   baseNodeStyle: {
     prefix: "",

@@ -113,6 +113,22 @@ export class ToolsPanel {
         }
      )
     )
+    
+    //------------
+    //Page
+    //------------
+    this.buttons.push(
+      new ToggleButton(
+        this.plugin,
+        ()=>this.plugin.settings.showPageNodes,
+        (val:boolean)=>this.plugin.settings.showPageNodes = val,
+        buttonsWrapperDiv,
+        {
+          display: "📄",
+          tooltip: t("SHOW_HIDE_PAGES")
+        }
+     )
+    )
 
     //------------
     //Folder
@@ -131,7 +147,7 @@ export class ToolsPanel {
     )
 
     //------------
-    //Folder
+    //Tag
     //------------
     this.buttons.push(
       new ToggleButton(
@@ -145,6 +161,7 @@ export class ToolsPanel {
         }
      )
     )
+
 
     //------------
     //Alias
@@ -161,6 +178,22 @@ export class ToolsPanel {
         }
      )
     )
+
+    //------------
+    //Pin Leaf
+    //------------
+    this.buttons.push(
+      new ToggleButton(
+        this.plugin,
+        ()=>this.plugin.scene.pinLeaf,
+        (val:boolean)=>this.plugin.scene.pinLeaf = val,
+        buttonsWrapperDiv,
+        {
+          display: "📌",
+          tooltip: t("PIN_LEAF")
+        }
+     )
+    )    
 
     this.contentEl.appendChild(this.wrapperDiv);
 

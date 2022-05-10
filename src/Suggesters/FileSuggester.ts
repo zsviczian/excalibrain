@@ -21,12 +21,24 @@ export class FileSuggest extends TextInputSuggest<TFile> {
     }
 
     getSuggestions(inputStr: string): TFile[] {
+      const lowerInputStr = inputStr.toLowerCase();
+      const exactMatches = app.vault.getFiles().filter(f=> 
+        (this.plugin.settings.showAttachments || f.extension === "md") &&
+        !this.plugin.settings.excludeFilepaths.some(p=>f.path.startsWith(p)) &&
+        f.path.toLowerCase().contains(lowerInputStr)
+      )
+      if(exactMatches.length>30) {
+        return exactMatches;
+      }
+
       const query = prepareFuzzySearch(inputStr);
-      return app.vault.getFiles().filter(f=>
+      return exactMatches.concat(app.vault.getFiles().filter(f=>
+
           (this.plugin.settings.showAttachments || f.extension === "md") &&
           !this.plugin.settings.excludeFilepaths.some(p=>f.path.startsWith(p)) &&
+          !exactMatches.contains(f) &&
           query(f.path)
-        )
+        ))
     }
 
     renderSuggestion(file: TFile, el: HTMLElement): void {

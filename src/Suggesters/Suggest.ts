@@ -2,6 +2,7 @@
 
 import { App, ISuggestOwner, Scope } from "obsidian";
 import { createPopper, Instance as PopperInstance } from "@popperjs/core";
+import { SUGGEST_LIMIT } from "src/constants/constants";
 
 const wrapAround = (value: number, size: number): number => {
     return ((value % size) + size) % size;
@@ -16,7 +17,7 @@ class Suggest<T> {
         private owner: ISuggestOwner<T>,
         private containerEl: HTMLElement,
         scope: Scope,
-        private limit: number = 30
+        private limit: number = SUGGEST_LIMIT
     ) {
         this.owner = owner;
         this.containerEl = containerEl;

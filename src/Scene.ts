@@ -29,9 +29,15 @@ export class Scene {
   private layouts: Layout[] = [];
   private removeEH: Function;
   private removeTimer: Function;
+  private removeOnCreate: Function;
+  private removeOnModify: Function;
+  private removeOnDelete: Function;
+  private removeOnRename: Function;
   private blockUpdateTimer: boolean = false;
   private toolsPanel: ToolsPanel;
   private historyPanel: HistoryPanel;
+  private vaultFileChanged: boolean = false;
+  public pinLeaf: boolean = false;
   
   constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
     this.ea = plugin.EA;
@@ -153,6 +159,10 @@ export class Scene {
     const nh = this.plugin.settings.navigationHistory;
     if(nh.last() === path) {
       return;
+    }
+    const i = nh.indexOf(path);
+    if(i>-1) {
+      nh.splice(i,1);
     }
     if(nh.length>50) {
       nh.shift();
@@ -458,6 +468,11 @@ export class Scene {
     this.blockUpdateTimer = false;
   }
 
+  public isCentralLeafStillThere():boolean {
+    //@ts-ignore
+    return app.workspace.getLeafById(this.centralLeaf.id) !== null;
+  }
+
   private async addEventHandler() {
     const self = this;
     
@@ -470,6 +485,14 @@ export class Scene {
       await new Promise((resolve) => setTimeout(resolve, 100));
       //-------------------------------------------------------
       //terminate event handler if view no longer exists or file has changed
+
+      if(this.pinLeaf && !this.isCentralLeafStillThere()) {
+        this.pinLeaf = false;
+        this.toolsPanel.rerender();
+      }
+
+      if(this.pinLeaf && leaf !== this.centralLeaf) return;
+
       if(!self.ea.targetView?.file || self.ea.targetView.file.path !== self.plugin.settings.excalibrainFilepath) {
         self.unloadScene();
         return;
@@ -512,7 +535,12 @@ export class Scene {
       if(this.blockUpdateTimer) {
         return;
       }
-      for(const node of this.nodesMap.values()) {
+      if(this.vaultFileChanged) {
+        this.vaultFileChanged = false;
+        await this.plugin.createIndex();
+        this.render();
+      }
+/*      for(const node of this.nodesMap.values()) {
         const { file, mtime } = node.page;
         if(file && file.stat.mtime !== mtime) {
           await this.plugin.createIndex();
@@ -520,13 +548,25 @@ export class Scene {
           this.render();
           return;
         }
-      }
+      }*/
+    }
+
+    const fileChangeHandler = () => {
+      this.vaultFileChanged = true;
     }
 
     app.workspace.on("active-leaf-change", brainEventHandler);
     this.removeEH = () => app.workspace.off("active-leaf-change",brainEventHandler);
     const timer = setInterval(updateTimer,5000);
     this.removeTimer = () => clearInterval(timer);
+    app.vault.on("rename",fileChangeHandler);
+    this.removeOnRename = () => app.vault.off("rename",fileChangeHandler)
+    app.vault.on("modify",fileChangeHandler);
+    this.removeOnModify = () => app.vault.off("modify",fileChangeHandler)
+    app.vault.on("create",fileChangeHandler);
+    this.removeOnCreate = () => app.vault.off("create",fileChangeHandler)
+    app.vault.on("delete",fileChangeHandler);
+    this.removeOnDelete = () => app.vault.off("delete",fileChangeHandler)
 
     const leaves: WorkspaceLeaf[] = [];
     app.workspace.iterateAllLeaves(l=>{
@@ -552,7 +592,27 @@ export class Scene {
       this.removeTimer();
       this.removeTimer = undefined;
     }
+
+    if(this.removeOnRename) {
+      this.removeOnRename();
+      this.removeOnRename = undefined;
+    }
     
+    if(this.removeOnModify) {
+      this.removeOnModify();
+      this.removeOnModify = undefined;
+    }
+
+    if(this.removeOnCreate) {
+      this.removeOnCreate();
+      this.removeOnCreate = undefined;
+    }
+    
+    if(this.removeOnDelete) {
+      this.removeOnDelete();
+      this.removeOnDelete = undefined;
+    }
+
     if(this.ea.targetView && isBoolean(this.ea.targetView.linksAlwaysOpenInANewPane)) {
       this.ea.targetView.linksAlwaysOpenInANewPane = false;
     }
