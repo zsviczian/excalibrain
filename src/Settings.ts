@@ -33,6 +33,7 @@ export interface ExcaliBrainSettings {
   showTagNodes: boolean;
   showPageNodes: boolean;
   maxItemCount: number;
+  renderSiblings: boolean;
   baseNodeStyle: NodeStyle;
   centralNodeStyle: NodeStyle;
   inferredNodeStyle: NodeStyle;
@@ -68,6 +69,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   showTagNodes: false,
   showPageNodes: true,
   maxItemCount: 30,
+  renderSiblings: true,
   baseNodeStyle: {
     prefix: "",
     backgroundColor: "#00000066",

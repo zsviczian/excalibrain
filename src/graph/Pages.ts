@@ -23,6 +23,10 @@ export class Pages {
     return this.pages.get(path);
   }
 
+  public getPages(): Page[] {
+    return Array.from(this.pages.values());
+  }
+
   public forEach = this.pages.forEach.bind(this.pages);
   public get size():number {
      return this.pages.size;

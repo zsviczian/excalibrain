@@ -253,7 +253,7 @@ export class Scene {
       "under 'Links and Transclusion'.\n\n⚠ ExcaliBrain may need to wait for " +
       "DataView to initialize its index.\nThis can take up to a few minutes after starting Obsidian.", {textAlign:"center"});
     await ea.addElementsToView();
-    ea.getExcalidrawAPI().zoomToFit(null, 5);
+    ea.getExcalidrawAPI().zoomToFit(null, 5, 0.05);
     
     ea.targetView.linksAlwaysOpenInANewPane = true;
     
@@ -418,14 +418,16 @@ export class Scene {
       friendGateOnLeft: false
     });
 
-    this.addNodes({
-      neighbours: siblings,
-      layout: lSiblings,
-      isCentral: false,
-      isSibling: true,
-      friendGateOnLeft: true
-    });
-    
+    if(this.plugin.settings.renderSiblings) {
+      this.addNodes({
+        neighbours: siblings,
+        layout: lSiblings,
+        isCentral: false,
+        isSibling: true,
+        friendGateOnLeft: true
+      });
+    }
+
     //-------------------------------------------------------
     // Generate links for all displayed nodes
     const addLinks = (nodeA: Node, neighbours:Neighbour[],role: Role) => {
@@ -464,7 +466,7 @@ export class Scene {
         el=>el.type==="arrow"
       ).concat(elements.filter(el=>el.type!=="arrow"))
     })
-    this.ea.getExcalidrawAPI().zoomToFit(null,5);
+    this.ea.getExcalidrawAPI().zoomToFit(null,5,0.05);
     this.blockUpdateTimer = false;
   }
 

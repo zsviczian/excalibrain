@@ -4,7 +4,7 @@ import { ToggleButton } from "src/Components/ToggleButton";
 import { t } from "src/lang/helpers";
 import ExcaliBrain from "src/main";
 import { splitFolderAndFilename } from "src/utils/fileUtils";
-import { FileSuggest } from "../Suggesters/FileSuggester";
+import { PageSuggest } from "../Suggesters/PageSuggester";
 
 export class ToolsPanel {
   private wrapperDiv: HTMLDivElement;
@@ -28,13 +28,15 @@ export class ToolsPanel {
     });
     inputEl.ariaLabel = t("SEARCH_IN_VAULT");
     inputEl.oninput = () => {
-      const file = app.vault.getAbstractFileByPath(inputEl.value);
-      if(file && file instanceof TFile) {
-        this.plugin.scene?.renderGraphForPath(inputEl.value);
-        inputEl.value = file.basename;
+      const page = this.plugin.pages.get(inputEl.value);
+      if(page) {
+        this.plugin.scene?.renderGraphForPath(page.path);
+        inputEl.value = page.file
+          ? page.file.basename
+          : page.path;
       }
     }
-    new FileSuggest(
+    new PageSuggest(
       this.plugin.app,
       inputEl,
       this.plugin
@@ -193,7 +195,23 @@ export class ToolsPanel {
           tooltip: t("PIN_LEAF")
         }
      )
-    )    
+    )
+    
+    //------------
+    //Display siblings
+    //------------
+    this.buttons.push(
+      new ToggleButton(
+        this.plugin,
+        ()=>this.plugin.settings.renderSiblings,
+        (val:boolean)=>this.plugin.settings.renderSiblings = val,
+        buttonsWrapperDiv,
+        {
+          display: "👨‍👩‍👧‍👦",
+          tooltip: t("SHOW_HIDE_SIBLINGS")
+        }
+     )
+    )
 
     this.contentEl.appendChild(this.wrapperDiv);
 
