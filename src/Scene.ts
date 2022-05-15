@@ -253,7 +253,7 @@ export class Scene {
       "under 'Links and Transclusion'.\n\n⚠ ExcaliBrain may need to wait for " +
       "DataView to initialize its index.\nThis can take up to a few minutes after starting Obsidian.", {textAlign:"center"});
     await ea.addElementsToView();
-    ea.getExcalidrawAPI().zoomToFit(null, 5, 0.05);
+    ea.getExcalidrawAPI().zoomToFit(null, 5, 0.1);
     
     ea.targetView.linksAlwaysOpenInANewPane = true;
     
@@ -466,7 +466,7 @@ export class Scene {
         el=>el.type==="arrow"
       ).concat(elements.filter(el=>el.type!=="arrow"))
     })
-    this.ea.getExcalidrawAPI().zoomToFit(null,5,0.05);
+    this.ea.getExcalidrawAPI().zoomToFit(null,5,0.1);
     this.blockUpdateTimer = false;
   }
 

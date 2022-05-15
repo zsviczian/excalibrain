@@ -19,6 +19,10 @@ export class Pages {
     this.pages.set(path,page);
   }
 
+  public has(path:string) : boolean {
+    return this.pages.has(path);
+  }
+
   public get(path:string): Page {
     return this.pages.get(path);
   }

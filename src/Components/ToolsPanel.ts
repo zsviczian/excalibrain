@@ -31,10 +31,10 @@ export class ToolsPanel {
       const page = this.plugin.pages.get(inputEl.value);
       if(page) {
         this.plugin.scene?.renderGraphForPath(page.path);
-        inputEl.value = page.file
-          ? page.file.basename
-          : page.path;
       }
+    }
+    inputEl.onblur = () => {
+      inputEl.value = "";
     }
     new PageSuggest(
       this.plugin.app,

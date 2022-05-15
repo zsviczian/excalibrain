@@ -34,6 +34,7 @@ export default class ExcaliBrain extends Plugin {
   public scene: Scene = null;
   private disregardLeafChangeTimer: NodeJS.Timeout;
   private pluginLoaded: boolean = false;
+  public starred: Page[] = [];
   
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
@@ -162,6 +163,17 @@ export default class ExcaliBrain extends Plugin {
     this.pages.forEach((page:Page,key:string)=>{
       if(!page?.file) return;
       this.pages.addDVFieldLinksToPage(page);
+    })
+
+    const self = this;
+    setTimeout(async()=>{
+      //@ts-ignore
+      self.starred = (await app.internalPlugins.getPluginById("starred").loadData())
+        .items
+        .filter((i: any)=>i.type==="file")
+        .map((i: any)=>i.path)
+        .filter((p:string)=>(p!==self.settings.excalibrainFilepath) && self.pages.has(p))
+        .map((p:string)=>self.pages.get(p));
     })
   }
 

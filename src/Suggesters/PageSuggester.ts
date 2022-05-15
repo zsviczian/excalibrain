@@ -20,8 +20,12 @@ export class PageSuggest extends TextInputSuggest<Page> {
     }
 
     getSuggestions(inputStr: string): Page[] {
+      if(inputStr==="") {
+        return this.plugin.starred;
+      }
       const lowerInputStr = inputStr.toLowerCase();
-      const exactMatches = this.plugin.pages?.getPages().filter(p=> 
+      const exactMatches = this.plugin.pages?.getPages().filter(p=>
+        !p.isVirtual &&
         (!p.file || 
           (this.plugin.settings.showAttachments || p.file.extension === "md") &&
           (!this.plugin.settings.excludeFilepaths.some(ep=>p.path.startsWith(ep)))
@@ -38,6 +42,7 @@ export class PageSuggest extends TextInputSuggest<Page> {
 
       const query = prepareFuzzySearch(inputStr);
       return exactMatches.concat(this.plugin.pages?.getPages().filter(p=>
+        !p.isVirtual &&
         (!p.file || 
           (this.plugin.settings.showAttachments || p.file.extension === "md") &&
           (!this.plugin.settings.excludeFilepaths.some(ep=>p.path.startsWith(ep)))

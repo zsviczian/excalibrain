@@ -95,7 +95,7 @@ export default {
   COMMAND_START: "Open ExcaliBrain",
   //ToolsPanel
   OPEN_DRAWING: "Save snapshot for editing",
-  SEARCH_IN_VAULT: "Search for a file in your Vault",
+  SEARCH_IN_VAULT: "Starred items will be listed in empty search.\nSearch for a file, a folder or a tag in your Vault.\nToggle folders and tags on/off to show in the list.",
   SHOW_HIDE_ATTACHMENTS: "Show/Hide attachments",
   SHOW_HIDE_VIRTUAL: "Show/Hide virtual nodes",
   SHOW_HIDE_INFERRED: "Show/Hide inferred nodes",
