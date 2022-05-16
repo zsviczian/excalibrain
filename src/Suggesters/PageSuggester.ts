@@ -20,11 +20,13 @@ export class PageSuggest extends TextInputSuggest<Page> {
     }
 
     getSuggestions(inputStr: string): Page[] {
+      //if now query string is provided, show the favorits
       if(inputStr==="") {
         return this.plugin.starred;
       }
       const lowerInputStr = inputStr.toLowerCase();
-      const exactMatches = this.plugin.pages?.getPages().filter(p=>
+      //first filter on the name of the file
+      const exactMatchesBasename = this.plugin.pages?.getPages().filter(p=>
         !p.isVirtual &&
         (!p.file || 
           (this.plugin.settings.showAttachments || p.file.extension === "md") &&
@@ -34,12 +36,31 @@ export class PageSuggest extends TextInputSuggest<Page> {
           (this.plugin.settings.showFolderNodes || !p.path.startsWith("folder:")) &&
           (this.plugin.settings.showTagNodes || !p.path.startsWith("tag:"))
         ) &&
-        p.path.toLowerCase().contains(lowerInputStr)
+        p.name.toLowerCase().contains(lowerInputStr)
+      )
+      //if there are more than 30 matches based on filename, return those
+      if (exactMatchesBasename.length>30) {
+        return exactMatchesBasename
+      }
+      //extend query with matches based on filepath
+      const exactMatches = exactMatchesBasename.concat(
+        this.plugin.pages?.getPages().filter(p=>
+          !p.isVirtual && !exactMatchesBasename.contains(p) && 
+          (!p.file || 
+            (this.plugin.settings.showAttachments || p.file.extension === "md") &&
+            (!this.plugin.settings.excludeFilepaths.some(ep=>p.path.startsWith(ep)))
+          ) && 
+          (p.file || 
+            (this.plugin.settings.showFolderNodes || !p.path.startsWith("folder:")) &&
+            (this.plugin.settings.showTagNodes || !p.path.startsWith("tag:"))
+          ) &&
+          p.path.toLowerCase().contains(lowerInputStr)
+        )
       )
       if(exactMatches.length>30) {
         return exactMatches;
       }
-
+      //extend query based on fuzzy search results
       const query = prepareFuzzySearch(inputStr);
       return exactMatches.concat(this.plugin.pages?.getPages().filter(p=>
         !p.isVirtual &&

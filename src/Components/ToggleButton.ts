@@ -11,7 +11,9 @@ export class ToggleButton {
     options: {
       display: string,
       tooltip: string
-  }) {
+    },
+    private updateIndex: boolean = true
+  ) {
     this.button = wrapper.createEl("button", {
       cls: "excalibrain-button",
     });
@@ -24,7 +26,7 @@ export class ToggleButton {
       setVal(!getVal());
       plugin.saveSettings();
       this.setColor();
-      plugin.scene?.reRender();
+      plugin.scene?.reRender(this.updateIndex);
     }
   }
 

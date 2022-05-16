@@ -68,14 +68,16 @@ export class Scene {
    * Updates the current Scene applying changes in the Index
    * @returns 
    */
-  public async reRender() {
+  public async reRender(updateIndex:boolean = true) {
     if(!this.isActive()) {
       return;
     }
     if(!this.centralLeaf || !this.centralPagePath) {
       return;
     }
-    await this.plugin.createIndex(); //temporary
+    if(updateIndex) {
+      await this.plugin.createIndex(); //temporary
+    }
     await this.render();
     this.toolsPanel.rerender();
   }
@@ -98,7 +100,7 @@ export class Scene {
       return;
     }
 
-    const isFile = !(page.isFolder || page.isTag);
+    const isFile = !(page.isFolder || page.isTag || page.isVirtual);
 
     if(isFile && !page.file) {
       this.blockUpdateTimer = false;

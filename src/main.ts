@@ -11,7 +11,6 @@ import { getEA } from "obsidian-excalidraw-plugin";
 import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
 import { Scene } from './Scene';
 import { LinkStyles, NodeStyles, LinkStyle, RelationType, LinkDirection } from './Types';
-import { link } from 'fs';
 import { WarningPrompt } from './utils/Prompts';
 
 
@@ -38,6 +37,13 @@ export default class ExcaliBrain extends Plugin {
   
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
+    this.starred = [
+      new Page(
+        "Initializing index, please wait",
+        null,this,false,false,
+        "Initializing index, please wait"
+      )
+    ]
   }
 
 	async onload() {
@@ -248,8 +254,13 @@ export default class ExcaliBrain extends Plugin {
       return true;
     }
 
-    this.EA.onLinkClickHook = (element,linkText) => {
+    this.EA.onLinkClickHook = (element,linkText,event) => {
       const path = linkText.match(/\[\[([^\]]*)/)[1];
+      const page =  this.pages.get(path);
+      if(!event.shiftKey && page && page.isVirtual) {
+        this.scene?.renderGraphForPath(path);
+        return false;
+      }
       if(!linkText.startsWith("[[folder:") && !linkText.startsWith("[[tag:")) {
         //@ts-ignore
         if(this.scene?.centralLeaf?.view?.file?.path === path) {

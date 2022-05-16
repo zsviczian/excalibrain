@@ -96,7 +96,8 @@ export class ToolsPanel {
         {
           display: "∅",
           tooltip: t("SHOW_HIDE_VIRTUAL")
-        }
+        },
+        false
      )
     )
     
@@ -144,7 +145,8 @@ export class ToolsPanel {
         {
           display: "📂",
           tooltip: t("SHOW_HIDE_FOLDER")
-        }
+        },
+        true
      )
     )
 
@@ -160,7 +162,8 @@ export class ToolsPanel {
         {
           display: "#",
           tooltip: t("SHOW_HIDE_TAG")
-        }
+        },
+        false
      )
     )
 
@@ -177,7 +180,8 @@ export class ToolsPanel {
         {
           display: "🧥",
           tooltip: t("SHOW_HIDE_ALIAS")
-        }
+        },
+        false
      )
     )
 
@@ -193,7 +197,8 @@ export class ToolsPanel {
         {
           display: "📌",
           tooltip: t("PIN_LEAF")
-        }
+        },
+        false
      )
     )
     
@@ -209,7 +214,8 @@ export class ToolsPanel {
         {
           display: "👨‍👩‍👧‍👦",
           tooltip: t("SHOW_HIDE_SIBLINGS")
-        }
+        },
+        false
      )
     )
 
