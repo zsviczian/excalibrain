@@ -183,11 +183,29 @@ export default class ExcaliBrain extends Plugin {
     })
   }
 
+  private excalidrawAvailable():boolean {
+    const ea = getEA();
+    if(!ea) {
+      this.EA = null;
+      if(this.scene) {
+        this.scene.unloadScene();
+      }
+      new Notice("ExcaliBrain: Please start Excalidraw and try again.",4000);
+      return false;
+    }
+    if(!this.EA) {
+      this.EA = ea;
+      this.registerExcalidrawAutomateHooks()
+    }
+    return true;
+  }
+
   private registerCommands() {
     this.addCommand({
       id: "excalibrain-start",
       name: t("COMMAND_START"),
       callback: () => {
+        if(!this.excalidrawAvailable()) return;
         if(this.scene && !this.scene.terminated) {
           this.scene.unloadScene();
           this.scene = null;
@@ -447,6 +465,7 @@ export default class ExcaliBrain extends Plugin {
       errorlog({where: "ExcaliBrain.start()", fn: this.start, message: "ExcaliBrain did not load. Aborting after 5000ms of trying"});
       return;
     }
+    if(!this.excalidrawAvailable()) return;
     this.stop();
     if(!leaf) {
       await Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,this.getBrainLeaf());

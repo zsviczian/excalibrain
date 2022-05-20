@@ -649,6 +649,10 @@ export class Scene {
     this.centralLeaf = undefined;
     this.centralPagePath = undefined;
     this.terminated = true;
+    //@ts-ignore
+    if(!app.plugins.plugins["obsidian-excalidraw-plugin"]) {
+      this.plugin.EA = null;
+    }
     new Notice("Brain Graph Off");
   }
 }

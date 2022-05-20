@@ -108,7 +108,7 @@ export class Pages {
         return;
       }
       Object.keys(unresolvedLinks[parentPath]).forEach(childPath=>{
-        const newPage = new Page(childPath,null,this.plugin);
+        const newPage = this.get(childPath) ?? new Page(childPath,null,this.plugin);
         newPage.addParent(parent,RelationType.INFERRED, LinkDirection.TO);
         parent.addChild(newPage,RelationType.INFERRED, LinkDirection.FROM);
         this.add(childPath,newPage);
