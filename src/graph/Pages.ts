@@ -51,7 +51,7 @@ export class Pages {
     this.pages.delete(toBeDeletedPath);
   }
 
-  public addWithConnections(file:TFile) {
+  /*public addWithConnections(file:TFile) {
     const page = new Page(file.path,file,this.plugin);
     this.add(file.path, page);
 
@@ -74,7 +74,7 @@ export class Pages {
     this.addUnresolvedLinks(page);
     this.addResolvedLinks(page);
     this.addDVFieldLinksToPage(page);
-  }
+  }*/
 
   public addResolvedLinks(page?: Page) {
     const resolvedLinks = this.app.metadataCache.resolvedLinks;
@@ -126,20 +126,15 @@ export class Pages {
     }
     page.dvPage = dvPage;
     if(!dvPage) return;
-    const addedTags:string[] = [];
-    (dvPage.file?.tags?.values??[]).sort((a:string,b:string) => b.length-a.length).forEach((tag:string)=>{
-      if(addedTags.length > 0) {
-        if(addedTags.some(x=>x.startsWith(tag+"/"))) return;
-      }
-      addedTags.push(tag);
+    (dvPage.file?.etags?.values??[]).forEach((tag:string)=>{
       tag = "tag:" + tag.substring(1);
       const parent = this.pages.get(tag);
       if(!parent) return;
       page.addParent(parent,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
       parent.addChild(page,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
-    })
+    })    
 
-    const parentFields = this.plugin.settings.hierarchy.parents;
+    const parentFields = this.plugin.hierarchyLowerCase.parents;
     getDVFieldLinksForPage(this.plugin,dvPage,parentFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
@@ -149,7 +144,7 @@ export class Pages {
       page.addParent(referencedPage,RelationType.DEFINED,LinkDirection.FROM, item.field);
       referencedPage.addChild(page,RelationType.DEFINED,LinkDirection.TO, item.field);
     });
-    const childFields = this.plugin.settings.hierarchy.children;
+    const childFields = this.plugin.hierarchyLowerCase.children;
     getDVFieldLinksForPage(this.plugin,dvPage,childFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
@@ -159,7 +154,7 @@ export class Pages {
       page.addChild(referencedPage,RelationType.DEFINED,LinkDirection.FROM, item.field);
       referencedPage.addParent(page,RelationType.DEFINED,LinkDirection.TO, item.field);
     });
-    const friendFields = this.plugin.settings.hierarchy.friends;
+    const friendFields = this.plugin.hierarchyLowerCase.friends;
     getDVFieldLinksForPage(this.plugin,dvPage,friendFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
       if(!referencedPage) {

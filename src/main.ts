@@ -12,6 +12,7 @@ import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAut
 import { Scene } from './Scene';
 import { LinkStyles, NodeStyles, LinkStyle, RelationType, LinkDirection } from './Types';
 import { WarningPrompt } from './utils/Prompts';
+import { timeStamp } from 'console';
 
 
 declare module "obsidian" {
@@ -26,6 +27,11 @@ export default class ExcaliBrain extends Plugin {
   public settings:ExcaliBrainSettings;
   public nodeStyles: NodeStyles;
   public linkStyles: LinkStyles;
+  public hierarchyLowerCase: {
+    parents: string[],
+    children: string[],
+    friends: string[]
+  } = {parents: [], children: [], friends: []};
   public hierarchyLinkStylesExtended: {[key: string]: LinkStyle}; //including datafields lowercase and "-" instead of " "
   public pages: Pages;
   public DVAPI: DvAPIInterface;
@@ -113,6 +119,9 @@ export default class ExcaliBrain extends Plugin {
       await sleep(100);
     }
 
+    //const timestamps:{[key:string]: number} = {};
+    
+    //timestamps.start = Date.now();
     //Add all folders and files
     const addFolderChildren = (parentFolder: TFolder, parent: Page) => {
       const children = parentFolder.children; //.filter(f=>f instanceof TFolder) as TFolder[];
@@ -136,6 +145,7 @@ export default class ExcaliBrain extends Plugin {
     const rootFolderPage = new Page("folder:/", null, this, true, false, "/");
     this.pages.add("folder:/",rootFolderPage);
     addFolderChildren(rootFolder, rootFolderPage);
+    //timestamps._1FoldersAndFiles = Date.now();
 
     //Add all tags
     //@ts-ignore
@@ -159,17 +169,33 @@ export default class ExcaliBrain extends Plugin {
         }
       })
     })
-
+    //timestamps._2Tags = Date.now();
+    
     //Add all unresolved links and make child of page where it was found
     this.pages.addUnresolvedLinks()
+    //timestamps._3UnresolvedLinks = Date.now();
+
     //Add all links as inferred children to pages on which they were found
     this.pages.addResolvedLinks();
+
+    //timestamps._4ResolvedLinks = Date.now();
     //Iterate all pages and add defined links based on Dataview fields
 
-    this.pages.forEach((page:Page,key:string)=>{
+    this.pages.forEach((page:Page)=>{
       if(!page?.file) return;
       this.pages.addDVFieldLinksToPage(page);
     })
+    //timestamps._5DataviewLinks = Date.now();
+
+    /*console.log({
+      total: timestamps._5DataviewLinks-timestamps.start,
+      files: timestamps._1FoldersAndFiles-timestamps.start,
+      tags: timestamps._2Tags - timestamps._1FoldersAndFiles,
+      "unresolved links": timestamps._3UnresolvedLinks - timestamps._2Tags,
+      "resolved links": timestamps._4ResolvedLinks - timestamps._3UnresolvedLinks,
+      "Dataview fields": timestamps._5DataviewLinks - timestamps._4ResolvedLinks,
+      size: this.pages.size
+    })*/
 
     const self = this;
     setTimeout(async()=>{
@@ -327,6 +353,14 @@ export default class ExcaliBrain extends Plugin {
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     
+    this.hierarchyLowerCase.parents = [];
+    this.settings.hierarchy.parents.forEach(f=>this.hierarchyLowerCase.parents.push(f.toLowerCase().replaceAll(" ","-")))
+    this.hierarchyLowerCase.children = [];
+    this.settings.hierarchy.children.forEach(f=>this.hierarchyLowerCase.children.push(f.toLowerCase().replaceAll(" ","-")))
+    this.hierarchyLowerCase.friends = [];
+    this.settings.hierarchy.friends.forEach(f=>this.hierarchyLowerCase.friends.push(f.toLowerCase().replaceAll(" ","-")))
+
+
     this.setHierarchyLinkStylesExtended();
 
     this.linkStyles = {};

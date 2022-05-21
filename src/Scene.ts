@@ -542,17 +542,17 @@ export class Scene {
       if(this.vaultFileChanged) {
         this.vaultFileChanged = false;
         await this.plugin.createIndex();
+        if(this.centralPagePath) {
+          if(!this.plugin.pages.get(this.centralPagePath)) {
+            //@ts-ignore
+            if(this.centralLeaf && this.centralLeaf.view && this.centralLeaf.view.file) {
+              //@ts-ignore
+              this.centralPagePath = this.centralLeaf.view.file.path;
+            }
+          }
+        }
         this.render();
       }
-/*      for(const node of this.nodesMap.values()) {
-        const { file, mtime } = node.page;
-        if(file && file.stat.mtime !== mtime) {
-          await this.plugin.createIndex();
-          this.centralPagePath = file.path;
-          this.render();
-          return;
-        }
-      }*/
     }
 
     const fileChangeHandler = () => {

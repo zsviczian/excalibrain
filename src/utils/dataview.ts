@@ -14,12 +14,13 @@ const readDVField = (app: App, field: any, file:TFile):string[] => {
 
   //the field is a list of links
   if(field.values) {
-    field.values.forEach((l:any)=>{
-      if(l.type === "file" || l.type === "header") {
-        const path = getPathOrSelf(app, l.path,file.path);
-        if(path) {
-          res.add(path);
-        }
+    field
+    .values
+    .filter((l:any)=>l.type === "file" || l.type === "header")
+    .forEach((l:any)=>{
+      const path = getPathOrSelf(app, l.path,file.path);
+      if(path) {
+        res.add(path);
       }
     });
     return Array.from(res);
@@ -49,10 +50,11 @@ export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<strin
   const links:{link:string,field:string}[] = [];
   const processed = new Set();
   fields.forEach(f => {
-    f = f.toLowerCase().replaceAll(" ","-");
-    if(dvPage[f] && !processed.has(f)) {
+    //f = f.toLowerCase().replaceAll(" ","-");
+    const fieldvals = dvPage[f];
+    if(fieldvals) {// && !processed.has(f)) {
       processed.add(f);
-      readDVField(plugin.app,dvPage[f],dvPage.file).forEach(l=>links.push({link:l,field:f}))
+      readDVField(plugin.app,fieldvals,dvPage.file).forEach(l=>links.push({link:l,field:f}))
     };
   });
   return links;

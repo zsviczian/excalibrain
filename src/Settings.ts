@@ -1094,6 +1094,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.hierarchy.parents.join(", "))
           .onChange(value => {
             this.plugin.settings.hierarchy.parents = value.split(",").map(s=>s.trim());
+            this.plugin.hierarchyLowerCase.parents = [];
+            this.plugin.settings.hierarchy.parents.forEach(f=>this.plugin.hierarchyLowerCase.parents.push(f.toLowerCase().replaceAll(" ","-")))
             onHierarchyChange();
             this.dirty = true;
           })
@@ -1107,6 +1109,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.hierarchy.children.join(", "))
           .onChange(value => {
             this.plugin.settings.hierarchy.children = value.split(",").map(s=>s.trim());
+            this.plugin.hierarchyLowerCase.children = [];
+            this.plugin.settings.hierarchy.children.forEach(f=>this.plugin.hierarchyLowerCase.children.push(f.toLowerCase().replaceAll(" ","-")))
             onHierarchyChange();
             this.dirty = true;
           })
@@ -1120,6 +1124,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.hierarchy.friends.join(", "))
           .onChange(value => {
             this.plugin.settings.hierarchy.friends = value.split(",").map(s=>s.trim());
+            this.plugin.hierarchyLowerCase.friends = [];
+            this.plugin.settings.hierarchy.friends.forEach(f=>this.plugin.hierarchyLowerCase.friends.push(f.toLowerCase().replaceAll(" ","-")))
             onHierarchyChange();
             this.dirty = true;
           })
