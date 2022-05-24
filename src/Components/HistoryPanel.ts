@@ -24,6 +24,7 @@ export class HistoryPanel {
       cls: "excalibrain-history-container"
     })
     const nh = this.plugin.settings.navigationHistory;
+
     for(let i=nh.length-1;i>=0;i--) {
       if(i !== nh.length-1) {
         container.createDiv({
@@ -46,7 +47,7 @@ export class HistoryPanel {
              };
 
       if(page.file) {
-        displayName = style.prefix + page.name;
+        displayName = style.prefix + page.getTitle();
         link = label = page.path;
       } else {
 

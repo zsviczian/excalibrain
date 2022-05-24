@@ -86,6 +86,15 @@ export class Page {
     this.settings = plugin.settings;
   }
 
+  public getTitle(): string {
+    const aliases = (this.file && this.plugin.settings.renderAlias)
+      ? (this.dvPage?.file?.aliases?.values??[])
+      : [];
+    return aliases.length > 0 
+      ? aliases[0] 
+      : this.name
+  }
+
   private getNeighbours(): [string, Relation][] {
     const { showVirtualNodes, showAttachments, showFolderNodes, showTagNodes, showPageNodes } = this.settings
     return Array.from(this.neighbours)
