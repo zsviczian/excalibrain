@@ -1,10 +1,10 @@
-import { TFile } from "obsidian";
 import { ExcalidrawElement } from "obsidian-excalidraw-plugin";
 import { ToggleButton } from "src/Components/ToggleButton";
 import { t } from "src/lang/helpers";
 import ExcaliBrain from "src/main";
 import { splitFolderAndFilename } from "src/utils/fileUtils";
 import { PageSuggest } from "../Suggesters/PageSuggester";
+import { Multiselect} from "ts-multiselect";
 
 export class ToolsPanel {
   private wrapperDiv: HTMLDivElement;
@@ -19,10 +19,14 @@ export class ToolsPanel {
       cls: "excalibrain-toolspanel-wrapper"
     });
     
+    const dropdownWrapperDiv = this.wrapperDiv.createDiv({
+      cls: "excalibrain-dropdown-wrapper"
+    });
+    
     //------
     //search
     //------
-    const inputEl = this.wrapperDiv.createEl("input",{
+    const inputEl = dropdownWrapperDiv.createEl("input",{
       type: "text",
       cls: "excalibrain-searchinput"
     });
@@ -42,6 +46,32 @@ export class ToolsPanel {
       this.plugin
     );
 
+    //-------
+    //Filter
+    //-------
+    const filterDiv = dropdownWrapperDiv.createDiv({attr:{id: "filter"}});
+    const filter = new Multiselect({
+      id: "filter",
+      placeholder: "link and tag filter",
+      options: [
+        {
+          label: "test 1",
+          value: 1
+        },
+        {
+          label: "test 2",
+          value: 2
+        },
+        {
+          label: "test 3",
+          value: 3
+        },
+        {
+          label: "test 4",
+          value: 4
+        }
+      ]
+    })
     
     const buttonsWrapperDiv = this.wrapperDiv.createDiv({
       cls: "excalibrain-buttons"
