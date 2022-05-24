@@ -1,5 +1,4 @@
 import { App, TFile } from "obsidian";
-import { Page } from "src/graph/Page";
 import ExcaliBrain from "src/main";
 import { ExcaliBrainSettings } from "src/Settings";
 import { NodeStyle } from "src/Types";

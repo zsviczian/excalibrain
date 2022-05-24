@@ -1,5 +1,4 @@
 import { TFile } from "obsidian";
-import { getFileInfo } from "prettier";
 import ExcaliBrain from "src/main";
 import { ExcaliBrainSettings } from "src/Settings";
 import { LinkDirection, Neighbour, Relation, RelationType } from "src/Types";

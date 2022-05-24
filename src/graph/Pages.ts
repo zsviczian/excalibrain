@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import { App } from "obsidian";
 import ExcaliBrain from "src/main";
 import { LinkDirection, Relation, RelationType } from "src/Types";
 import { getDVFieldLinksForPage } from "src/utils/dataview";

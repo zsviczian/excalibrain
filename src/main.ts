@@ -1,7 +1,7 @@
-import { App, Notice, Plugin, PluginManifest, TAbstractFile, TFile, TFolder, Vault, WorkspaceLeaf } from 'obsidian';
+import { App, Notice, Plugin, PluginManifest, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { Page } from './graph/Page';
 import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './Settings';
-import { errorlog, log } from './utils/utils';
+import { errorlog } from './utils/utils';
 import { getAPI } from "obsidian-dataview"
 import { t } from './lang/helpers';
 import { MINEXCALIDRAWVERSION, PLUGIN_NAME, PREDEFINED_LINK_STYLES } from './constants/constants';
@@ -12,7 +12,6 @@ import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAut
 import { Scene } from './Scene';
 import { LinkStyles, NodeStyles, LinkStyle, RelationType, LinkDirection } from './Types';
 import { WarningPrompt } from './utils/Prompts';
-import { timeStamp } from 'console';
 
 
 declare module "obsidian" {
