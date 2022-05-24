@@ -53,16 +53,7 @@ export class Node {
       };
     }
     this.friendGateOnLeft = x.friendGateOnLeft;
-    this.title = this.getTitle();
-  }
-
-  private getTitle(): string {
-    const aliases = (this.page.file && this.settings.renderAlias)
-      ? (this.page.dvPage?.file?.aliases?.values??[])
-      : [];
-    return aliases.length > 0 
-      ? aliases[0] 
-      : this.page.name
+    this.title = this.page.getTitle();
   }
 
 
