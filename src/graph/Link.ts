@@ -7,18 +7,20 @@ import { Node } from "./Node";
 
 export class Link {
   style: LinkStyle;
+  public isInferred: boolean = false;
 
   constructor(
     public nodeA: Node,
     public nodeB: Node,
     private nodeBRole: Role,
     relation: RelationType,
-    hierarchyDefinition: string,
+    public hierarchyDefinition: string,
     private ea: ExcalidrawAutomate,
     settings: ExcaliBrainSettings,
     plugin: ExcaliBrain
   ) {
     const hlist = hierarchyDefinition?.split(",").map(h=>h.trim());
+    this.isInferred = relation === RelationType.INFERRED;
     let linkstyle: LinkStyle = {};
     if(hlist) {
       hlist.forEach(h=>{
@@ -33,7 +35,7 @@ export class Link {
     }
     this.style = {
       ...settings.baseLinkStyle,
-      ...relation === RelationType.INFERRED
+      ...this.isInferred
         ? settings.inferredLinkStyle
         : {},
       ...linkstyle
@@ -41,12 +43,13 @@ export class Link {
   }
 
 
-  render() {
+  render(hide: boolean) {
     const ea = this.ea;
     const style = this.style;
     ea.style.strokeStyle = style.strokeStyle;
     ea.style.strokeColor = style.strokeColor;
     ea.style.strokeWidth = style.strokeWidth;
+    ea.style.opacity = hide ? 10 : 100;
     let gateAId: string;
     let gateBId: string;
     switch(this.nodeBRole) {

@@ -62,8 +62,8 @@ const relationTypeToSet = (currentType: RelationType, newType: RelationType):Rel
 export class Page {
   public mtime: number;
   public neighbours: Map<string,Relation>;
-  public settings: ExcaliBrainSettings;
   public dvPage: Record<string, any>;
+  public primaryStyleTag: string;
   
   constructor(
     public path:string,
@@ -82,7 +82,6 @@ export class Page {
     }
     this.mtime = file ? file.stat.mtime : null;
     this.neighbours = new Map<string,Relation>();
-    this.settings = plugin.settings;
   }
 
   public getTitle(): string {
@@ -95,7 +94,7 @@ export class Page {
   }
 
   private getNeighbours(): [string, Relation][] {
-    const { showVirtualNodes, showAttachments, showFolderNodes, showTagNodes, showPageNodes } = this.settings
+    const { showVirtualNodes, showAttachments, showFolderNodes, showTagNodes, showPageNodes } = this.plugin.settings
     return Array.from(this.neighbours)
       .filter(x=> (showVirtualNodes || !x[1].target.isVirtual) && 
         (showAttachments || !x[1].target.isAttachment) &&
@@ -207,7 +206,7 @@ export class Page {
     return this.getNeighbours()
     .some(x => {
       const rt = this.isChild(x[1]);
-      return (rt && this.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+      return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
     });
   }
 
@@ -215,7 +214,7 @@ export class Page {
     return this.getNeighbours()
       .filter(x => {
         const rt = this.isChild(x[1]);
-        return (rt && this.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+        return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
       }).map(x=>{
         return {
           page: x[1].target,
@@ -240,7 +239,7 @@ export class Page {
     return this.getNeighbours()
     .some(x => {
       const rt = this.isParent(x[1]);
-      return (rt && this.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+      return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
     });
   }
 
@@ -248,7 +247,7 @@ export class Page {
     return this.getNeighbours()
     .filter(x => {
       const rt = this.isParent(x[1]);
-      return (rt && this.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+      return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
     })
     .map(x => {
       return {
@@ -274,7 +273,7 @@ export class Page {
     return this.getNeighbours()
     .some(x => {
       const rt = this.isFriend(x[1]);
-      return (rt && this.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+      return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
     })
   }
 
@@ -282,7 +281,7 @@ export class Page {
     return this.getNeighbours()
     .filter(x => {
       const rt = this.isFriend(x[1]);
-      return (rt && this.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+      return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
     })
     .map(x => {
       return {

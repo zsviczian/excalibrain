@@ -290,7 +290,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       ...this.demoLinkStyle.getInheritedStyle(),
       ...this.demoLinkStyle.style
     }
-    demoLink.render();
+    demoLink.render(false);
 
     const svg = await this.ea.createSVG(null,true,{withBackground:true, withTheme:false},null,"",40);
     svg.removeAttribute("width");

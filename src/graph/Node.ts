@@ -49,7 +49,7 @@ export class Node {
         ...x.isCentral?this.settings.centralNodeStyle:{},
         ...x.isSibling?this.settings.siblingNodeStyle:{},
         ...x.page.isAttachment?this.settings.attachmentNodeStyle:{},
-        ...getTagStyle(this.page.dvPage,this.settings),
+        ...getTagStyle(this.page.primaryStyleTag,this.settings),
       };
     }
     this.friendGateOnLeft = x.friendGateOnLeft;

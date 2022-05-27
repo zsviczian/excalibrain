@@ -1,6 +1,6 @@
 import { TFile } from "obsidian";
 import ExcaliBrain from "src/main";
-import { getTagStyle } from "src/utils/dataview";
+import { getPrimaryTag, getTagStyle } from "src/utils/dataview";
 
 export class HistoryPanel {
   private wrapperDiv: HTMLDivElement;
@@ -43,7 +43,7 @@ export class HistoryPanel {
           ? this.plugin.settings.tagNodeStyle
           :  {
                ...this.plugin.settings.baseNodeStyle,
-               ...getTagStyle(page.dvPage,this.plugin.settings)
+               ...getTagStyle(getPrimaryTag(page.dvPage,this.plugin.settings),this.plugin.settings)
              };
 
       if(page.file) {

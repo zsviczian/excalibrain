@@ -1,14 +1,16 @@
+import { renderMatches } from "obsidian";
 import { ExcalidrawElement } from "obsidian-excalidraw-plugin";
 import { ToggleButton } from "src/Components/ToggleButton";
 import { t } from "src/lang/helpers";
 import ExcaliBrain from "src/main";
 import { splitFolderAndFilename } from "src/utils/fileUtils";
 import { PageSuggest } from "../Suggesters/PageSuggester";
-import { Multiselect} from "ts-multiselect";
+import { LinkTagFilter } from "./LinkTagFilter";
 
 export class ToolsPanel {
   private wrapperDiv: HTMLDivElement;
   private buttons: ToggleButton[] = [];
+  public linkTagFilter: LinkTagFilter;
 
   constructor(
     private contentEl: HTMLElement,
@@ -49,29 +51,9 @@ export class ToolsPanel {
     //-------
     //Filter
     //-------
-    const filterDiv = dropdownWrapperDiv.createDiv({attr:{id: "filter"}});
-    const filter = new Multiselect({
-      id: "filter",
-      placeholder: "link and tag filter",
-      options: [
-        {
-          label: "test 1",
-          value: 1
-        },
-        {
-          label: "test 2",
-          value: 2
-        },
-        {
-          label: "test 3",
-          value: 3
-        },
-        {
-          label: "test 4",
-          value: 4
-        }
-      ]
-    })
+    this.linkTagFilter = new LinkTagFilter(plugin,dropdownWrapperDiv);
+    this.linkTagFilter.render();
+    
     
     const buttonsWrapperDiv = this.wrapperDiv.createDiv({
       cls: "excalibrain-buttons"
@@ -255,6 +237,7 @@ export class ToolsPanel {
 
   rerender() {
     this.buttons.forEach(b=>b.setColor());
+    this.linkTagFilter.render();
   }
 
   terminate() {

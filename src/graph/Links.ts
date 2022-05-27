@@ -53,7 +53,12 @@ export class Links {
     this.reverseLinks.add(key2)
   }
 
-  render() {
-    this.links.forEach(link=>link.render());
+  render(linksToHide:string[]) {
+    this.links.forEach(link=>
+      link.render(
+        linksToHide.some(lth=>link.hierarchyDefinition?.includes(lth)) ||
+        (link.isInferred && linksToHide.includes("inferred-link"))
+      )
+    );
   }
 }

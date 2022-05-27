@@ -11,6 +11,7 @@ import { Neighbour, RelationType, Role } from "./Types";
 import { HistoryPanel } from "./Components/HistoryPanel";
 import { WarningPrompt } from "./utils/Prompts";
 import { log } from "./utils/utils";
+import { getPrimaryTag } from "./utils/dataview";
 
 export class Scene {
   ea: ExcalidrawAutomate;
@@ -24,8 +25,8 @@ export class Scene {
   nodeHeight: number;
   public disregardLeafChange: boolean = false;
   public terminated: boolean;
-  private nodesMap: Map<string,Node> = new Map<string,Node>();
-  private links: Links;
+  public nodesMap: Map<string,Node> = new Map<string,Node>();
+  public links: Links;
   private layouts: Layout[] = [];
   private removeEH: Function;
   private removeTimer: Function;
@@ -294,21 +295,41 @@ export class Scene {
     this.ea.getExcalidrawAPI().updateScene({elements:[]});
     this.ea.style.verticalAlign = "middle";
     const centralPage = this.plugin.pages.get(this.centralPagePath);
+    
+    centralPage.getParents().forEach(x => x.page.primaryStyleTag = getPrimaryTag(x.page.dvPage,this.plugin.settings));
     const parents = centralPage.getParents()
-      .filter(x=>(x.page.path !== centralPage.path) && !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)))
+      .filter(x => 
+        (x.page.path !== centralPage.path) &&
+        !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+        (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
       .slice(0,this.plugin.settings.maxItemCount);
+    const parentPaths = parents.map(x=>x.page.path);
+
+    centralPage.getChildren().forEach(x => x.page.primaryStyleTag = getPrimaryTag(x.page.dvPage,this.plugin.settings));
     const children =centralPage.getChildren()
-      .filter(x=>(x.page.path !== centralPage.path) && !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)))
+      .filter(x => 
+        (x.page.path !== centralPage.path) &&
+        !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+        (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
       .slice(0,this.plugin.settings.maxItemCount);
+    
+    centralPage.getFriends().forEach(x => x.page.primaryStyleTag = getPrimaryTag(x.page.dvPage,this.plugin.settings));
     const friends = centralPage.getFriends()
-      .filter(x=>(x.page.path !== centralPage.path) && !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)))
+      .filter(x => 
+        (x.page.path !== centralPage.path) &&
+        !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+        (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
       .slice(0,this.plugin.settings.maxItemCount);
+
+    centralPage.getSiblings().forEach(x => x.page.primaryStyleTag = getPrimaryTag(x.page.dvPage,this.plugin.settings));
     const siblings = centralPage.getSiblings()
       .filter(s => !(parents.some(p=>p.page.path === s.page.path) ||
         children.some(c=>c.page.path === s.page.path) ||
         friends.some(f=>f.page.path === s.page.path) ||
         this.plugin.settings.excludeFilepaths.some(p => s.page.path.startsWith(p))) && 
-        (s.page.path !== centralPage.path))
+        (s.page.path !== centralPage.path) &&
+        s.page.getParents().map(x=>x.page.path).some(y=>parentPaths.includes(y)) &&
+        (!s.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(s.page.primaryStyleTag)))
       .slice(0,this.plugin.settings.maxItemCount);
 
     //-------------------------------------------------------
@@ -459,9 +480,10 @@ export class Scene {
   
     //-------------------------------------------------------
     // Render
+    this.ea.style.opacity = 100;
     this.layouts.forEach(layout => layout.render());
-    this.links.render();    
-   
+    this.links.render(Array.from(this.toolsPanel.linkTagFilter.selectedLinks));
+       
     const elements = this.ea.getElements();
     this.ea.getExcalidrawAPI().updateScene({
       elements: elements.filter(
@@ -469,6 +491,8 @@ export class Scene {
       ).concat(elements.filter(el=>el.type!=="arrow"))
     })
     this.ea.getExcalidrawAPI().zoomToFit(null,5,0.1);
+
+    this.toolsPanel.rerender();
     this.blockUpdateTimer = false;
   }
 

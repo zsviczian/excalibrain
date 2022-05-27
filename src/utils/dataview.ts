@@ -73,13 +73,21 @@ export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<strin
   return links;
 }
 
-export const getTagStyle = (
+export const getPrimaryTag = (
   dvPage: Record<string, any>,
   settings: ExcaliBrainSettings
-):NodeStyle => {
-  if(!dvPage) return {};
-  const tag = (dvPage.file?.tags?.values??[])
+):string => {
+  if(!dvPage) return null;
+  return (dvPage.file?.tags?.values??[])
     .filter((t:string)=>settings.tagStyleList.some(x=>t.startsWith(x)))[0];
+}
+
+
+
+export const getTagStyle = (
+  tag:string,
+  settings: ExcaliBrainSettings
+):NodeStyle => {
   if(!tag) {
     return {};
   }
