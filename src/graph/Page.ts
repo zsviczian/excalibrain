@@ -1,6 +1,5 @@
 import { TFile } from "obsidian";
 import ExcaliBrain from "src/main";
-import { ExcaliBrainSettings } from "src/Settings";
 import { LinkDirection, Neighbour, Relation, RelationType } from "src/Types";
 import { getFilenameFromPath } from "src/utils/fileUtils";
 
@@ -10,22 +9,6 @@ const DEFAULT_RELATION:Relation = {
   isChild: false,
   isFriend: false,
   direction: null
-}
-
-const getRelationVector = (r:Relation):{
-  pi: boolean,
-  pd: boolean,
-  ci: boolean,
-  cd: boolean,
-  fd: boolean
-} => {
-  return {
-    pi: r.isParent && r.parentType === RelationType.INFERRED,
-    pd: r.isParent && r.parentType === RelationType.DEFINED,
-    ci: r.isChild && r.childType === RelationType.INFERRED,
-    cd: r.isChild && r.childType === RelationType.DEFINED,
-    fd: r.isFriend
-  }
 }
 
 const concat = (s1: string, s2: string): string => {
@@ -91,6 +74,23 @@ export class Page {
     return aliases.length > 0 
       ? aliases[0] 
       : this.name
+  }
+
+  private getRelationVector (r:Relation):{
+    pi: boolean,
+    pd: boolean,
+    ci: boolean,
+    cd: boolean,
+    fd: boolean
+  } {
+    return {
+      pi: r.isParent && r.parentType === RelationType.INFERRED,
+      pd: r.isParent && r.parentType === RelationType.DEFINED,
+      ci: r.isChild && r.childType === RelationType.INFERRED,
+      cd: r.isChild && r.childType === RelationType.DEFINED,
+      fd: (!this.plugin.settings.inferAllLinksAsFriends && r.isFriend) ||
+        (this.plugin.settings.inferAllLinksAsFriends && r.isFriend && !(r.parentType === RelationType.DEFINED || r.childType === RelationType.DEFINED))
+    }
   }
 
   private getNeighbours(): [string, Relation][] {
@@ -194,7 +194,7 @@ export class Page {
   //see: getRelationLogic.excalidraw
   //-----------------------------------------------
   isChild = (relation: Relation):RelationType => {
-    const {pi,pd,ci,cd,fd} = getRelationVector(relation);
+    const {pi,pd,ci,cd,fd} = this.getRelationVector(relation);
     return (cd && !pd && !fd) 
       ? RelationType.DEFINED 
       : (!pi && !pd && ci && !cd && !fd)
@@ -226,7 +226,7 @@ export class Page {
   }
 
   isParent (relation: Relation):RelationType {
-    const {pi,pd,ci,cd,fd} = getRelationVector(relation);
+    const {pi,pd,ci,cd,fd} = this.getRelationVector(relation);
     return (!cd && pd && !fd) 
       ? RelationType.DEFINED 
       : (pi && !pd && !ci && !cd && !fd)
@@ -260,7 +260,7 @@ export class Page {
   }
 
   isFriend (relation: Relation):RelationType {
-    const {pi,pd,ci,cd,fd} = getRelationVector(relation);
+    const {pi,pd,ci,cd,fd} = this.getRelationVector(relation);
     return fd 
       ? RelationType.DEFINED 
       : (pi && !pd && ci && !cd && !fd)
@@ -287,11 +287,11 @@ export class Page {
       return {
         page: x[1].target,
         relationType: x[1].friendType ??
-          (x[1].parentType === RelationType.DEFINED && x[1].childType === RelationType.DEFINED)
+          ((x[1].parentType === RelationType.DEFINED && x[1].childType === RelationType.DEFINED)
           //case H
           ? RelationType.DEFINED
           //case I
-          : RelationType.INFERRED,
+          : RelationType.INFERRED),
         typeDefinition: x[1].friendTypeDefinition,
         linkDirection: x[1].direction
       }

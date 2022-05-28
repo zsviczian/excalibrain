@@ -11,6 +11,7 @@ export class ToolsPanel {
   private wrapperDiv: HTMLDivElement;
   private buttons: ToggleButton[] = [];
   public linkTagFilter: LinkTagFilter;
+  public searchElement: HTMLInputElement;
 
   constructor(
     private contentEl: HTMLElement,
@@ -45,8 +46,10 @@ export class ToolsPanel {
     new PageSuggest(
       this.plugin.app,
       inputEl,
-      this.plugin
+      this.plugin,
+      contentEl
     );
+    this.searchElement = inputEl;
 
     //-------
     //Filter

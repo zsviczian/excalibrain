@@ -110,20 +110,20 @@ class Suggest<T> {
 }
 
 export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
-    protected app: App;
-    protected inputEl: HTMLInputElement | HTMLTextAreaElement;
-
     private popper: PopperInstance;
     private scope: Scope;
     private suggestEl: HTMLElement;
     private suggest: Suggest<T>;
+    
 
-    constructor(app: App, inputEl: HTMLInputElement | HTMLTextAreaElement) {
-        this.app = app;
-        this.inputEl = inputEl;
+    constructor(
+      public app: App, 
+      public inputEl: HTMLInputElement | HTMLTextAreaElement,
+      public containerEl: HTMLElement
+      ) {
         this.scope = new Scope();
 
-        this.suggestEl = createDiv("suggestion-container");
+        this.suggestEl = containerEl.createDiv("suggestion-container");
         const suggestion = this.suggestEl.createDiv("suggestion");
         this.suggest = new Suggest(this, suggestion, this.scope);
 
@@ -153,7 +153,7 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
         if (suggestions.length > 0) {
             this.suggest.setSuggestions(suggestions);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            this.open((<any>this.app).dom.appContainerEl, this.inputEl);
+            this.open(this.containerEl, this.inputEl); //(<any>this.app).dom.appContainerEl
         } else {
             this.close();
         }

@@ -12,11 +12,12 @@ export enum FileSuggestMode {
 
 export class PageSuggest extends TextInputSuggest<Page> {
     constructor(
-        public app: App,
-        public inputEl: HTMLInputElement,
+        app: App,
+        inputEl: HTMLInputElement,
         private plugin: ExcaliBrain,
+        containerEl: HTMLElement
     ) {
-        super(app, inputEl);
+        super(app, inputEl, containerEl);
     }
 
     getSuggestions(inputStr: string): Page[] {
@@ -27,7 +28,6 @@ export class PageSuggest extends TextInputSuggest<Page> {
       const lowerInputStr = inputStr.toLowerCase();
       //first filter on the name of the file
       const exactMatchesBasename = this.plugin.pages?.getPages().filter(p=>
-        !p.isVirtual &&
         (!p.file || 
           (this.plugin.settings.showAttachments || p.file.extension === "md") &&
           (!this.plugin.settings.excludeFilepaths.some(ep=>p.path.startsWith(ep)))
@@ -45,7 +45,7 @@ export class PageSuggest extends TextInputSuggest<Page> {
       //extend query with matches based on filepath
       const exactMatches = exactMatchesBasename.concat(
         this.plugin.pages?.getPages().filter(p=>
-          !p.isVirtual && !exactMatchesBasename.contains(p) && 
+          !exactMatchesBasename.contains(p) && 
           (!p.file || 
             (this.plugin.settings.showAttachments || p.file.extension === "md") &&
             (!this.plugin.settings.excludeFilepaths.some(ep=>p.path.startsWith(ep)))

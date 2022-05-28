@@ -12,6 +12,12 @@ export default {
     "the automatically generated ExcaliBrain graph.",
   HIERARCHY_HEAD: "Hierarchy",
   HIERARCHY_DESC: "Enter the Dataview field names separated by comma (,) that you will use to define link directions in your graph.",
+  INFER_NAME: "Infer all implicit relationships as Friend",
+  INFER_DESC: "<b>Toggle On:</b> All implicit links in the document are interpreted as FRIENDS.<br>" + 
+    "<b>Toggle Off:</b> The following logic is used:<ul>" +
+    "<li>A forward link is inferred as a CHILD</li>" +
+    "<li>A backlink is inferred as a PARENT</li>" +
+    "<li>If files mutually link to each other, they are FRIENDS</li></ul>",
   PARENTS_NAME: "Parents",
   CHILDREN_NAME: "Children",
   FRIENDS_NAME: "Friends",
@@ -84,6 +90,9 @@ export default {
   LINKSTYLE_ROUGHNESS: "Roughness",
   LINKSTYLE_ARROWSTART: "Start arrow head",
   LINKSTYLE_ARROWEND: "End arrow head",
+  LINKSTYLE_SHOWLABEL: "Show label on link",
+  LINKSTYLE_FONTSIZE: "Label font size",
+  LINKSTYLE_FONTFAMILY: "Label font family",
   LINKSTYLE_BASE: "Base link style",
   LINKSTYLE_INFERRED: "Style of inferred link",
   LINKSTYLE_FOLDER: "Style of folder link",
@@ -92,7 +101,11 @@ export default {
   DATAVIEW_NOT_FOUND: `Dataview plugin not found. Please install or enable Dataview then try restarting ${APPNAME}.`,
   EXCALIDRAW_NOT_FOUND: `Excalidraw plugin not found. Please install or enable Excalidraw then try restarting ${APPNAME}.`,
   EXCALIDRAW_MINAPP_VERSION: `ExcaliBrain requires Excalidraw ${MINEXCALIDRAWVERSION} or higher. Please upgrade Excalidraw then try restarting ${APPNAME}.`,
-  COMMAND_START: "Open ExcaliBrain",
+  COMMAND_START: "ExcaliBrain Normal",
+  COMMAND_START_HOVER: "ExcaliBrain Hover-Editor",
+  //COMMAND_SEARCH: "Search",
+  COMMAND_STOP: "Stop ExcaliBrain",
+  HOVER_EDITOR_ERROR: "I am sorry. Something went wrong. Most likely there was a version update to Hover Editor which I haven't addressed properly in ExcaliBrain. Normally I should get this fixed within few days",
   //ToolsPanel
   OPEN_DRAWING: "Save snapshot for editing",
   SEARCH_IN_VAULT: "Starred items will be listed in empty search.\nSearch for a file, a folder or a tag in your Vault.\nToggle folders and tags on/off to show in the list.",

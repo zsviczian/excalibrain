@@ -85,8 +85,13 @@ export class Pages {
       const parent = this.pages.get(parentPath);
       Object.keys(resolvedLinks[parentPath]).forEach(childPath=>{
         const child = this.pages.get(childPath);
-        child.addParent(parent,RelationType.INFERRED, LinkDirection.TO);
-        parent.addChild(child,RelationType.INFERRED, LinkDirection.FROM);
+        if(this.plugin.settings.inferAllLinksAsFriends) {
+          child.addFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
+          parent.addFriend(child,RelationType.INFERRED, LinkDirection.TO);
+        } else {
+          child.addParent(parent,RelationType.INFERRED, LinkDirection.FROM);
+          parent.addChild(child,RelationType.INFERRED, LinkDirection.TO);
+        }
       })
     }); 
   }
@@ -109,8 +114,13 @@ export class Pages {
       }
       Object.keys(unresolvedLinks[parentPath]).forEach(childPath=>{
         const newPage = this.get(childPath) ?? new Page(childPath,null,this.plugin);
-        newPage.addParent(parent,RelationType.INFERRED, LinkDirection.TO);
-        parent.addChild(newPage,RelationType.INFERRED, LinkDirection.FROM);
+        if(this.plugin.settings.inferAllLinksAsFriends) {
+          newPage.addFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
+          parent.addFriend(newPage,RelationType.INFERRED, LinkDirection.TO);
+        } else {
+          newPage.addParent(parent,RelationType.INFERRED, LinkDirection.FROM);
+          parent.addChild(newPage,RelationType.INFERRED, LinkDirection.TO);
+        }
         this.add(childPath,newPage);
       })
     });
@@ -130,8 +140,8 @@ export class Pages {
       tag = "tag:" + tag.substring(1);
       const parent = this.pages.get(tag);
       if(!parent) return;
-      page.addParent(parent,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
-      parent.addChild(page,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
+      page.addParent(parent,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
+      parent.addChild(page,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
     })    
 
     const parentFields = this.plugin.hierarchyLowerCase.parents;
@@ -141,8 +151,8 @@ export class Pages {
         log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         return;
       }
-      page.addParent(referencedPage,RelationType.DEFINED,LinkDirection.FROM, item.field);
-      referencedPage.addChild(page,RelationType.DEFINED,LinkDirection.TO, item.field);
+      page.addParent(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
+      referencedPage.addChild(page,RelationType.DEFINED,LinkDirection.FROM, item.field);
     });
     const childFields = this.plugin.hierarchyLowerCase.children;
     getDVFieldLinksForPage(this.plugin,dvPage,childFields).forEach(item=>{
@@ -151,8 +161,8 @@ export class Pages {
         log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         return;
       }        
-      page.addChild(referencedPage,RelationType.DEFINED,LinkDirection.FROM, item.field);
-      referencedPage.addParent(page,RelationType.DEFINED,LinkDirection.TO, item.field);
+      page.addChild(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
+      referencedPage.addParent(page,RelationType.DEFINED,LinkDirection.FROM, item.field);
     });
     const friendFields = this.plugin.hierarchyLowerCase.friends;
     getDVFieldLinksForPage(this.plugin,dvPage,friendFields).forEach(item=>{
@@ -161,8 +171,8 @@ export class Pages {
         log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         return;
       }        
-      page.addFriend(referencedPage,RelationType.DEFINED,LinkDirection.FROM,item.field);
-      referencedPage.addFriend(page,RelationType.DEFINED,LinkDirection.TO, item.field);
+      page.addFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
+      referencedPage.addFriend(page,RelationType.DEFINED,LinkDirection.FROM, item.field);
     });     
   }
 }

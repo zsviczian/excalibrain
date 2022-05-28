@@ -79,6 +79,10 @@ export type LinkStyle = {
   roughness?: number,
   startArrowHead?: Arrowhead|"none",
   endArrowHead?: Arrowhead|"none",
+  showLabel?: boolean,
+  fontSize?: number,
+  fontFamily?: number,
+  textColor?: string
 }
 
 export type LinkStyleData = {

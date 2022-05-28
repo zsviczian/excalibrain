@@ -25,6 +25,20 @@ export class Link {
     if(hlist) {
       hlist.forEach(h=>{
         if(!plugin.hierarchyLinkStylesExtended[h]) {
+          switch(h) {
+            case "file-tree": 
+              linkstyle = {
+                ...linkstyle,
+                ...plugin.settings.folderLinkStyle    
+              };
+              break;
+            case "tag-tree":
+              linkstyle = {
+                ...linkstyle,
+                ...plugin.settings.tagLinkStyle    
+              };
+              break;
+          }
           return;
         }
         linkstyle = {
@@ -42,11 +56,11 @@ export class Link {
     };
   }
 
-
   render(hide: boolean) {
     const ea = this.ea;
     const style = this.style;
     ea.style.strokeStyle = style.strokeStyle;
+    ea.style.roughness = style.roughness;
     ea.style.strokeColor = style.strokeColor;
     ea.style.strokeWidth = style.strokeWidth;
     ea.style.opacity = hide ? 10 : 100;
@@ -66,7 +80,7 @@ export class Link {
         gateBId = this.nodeB.friendGateId;
         break;
     }
-    ea.connectObjects(
+    const id = ea.connectObjects(
       gateAId,
       null,
       gateBId,
@@ -76,5 +90,11 @@ export class Link {
         endArrowHead: style.endArrowHead === "none" ? null : style.endArrowHead,
       }
     )
+    if(style.showLabel && this.hierarchyDefinition) {
+      ea.style.fontSize = style.fontSize;
+      ea.style.fontFamily = style.fontFamily;
+      ea.style.strokeColor = style.textColor;
+      ea.addLabelToLine(id,this.hierarchyDefinition);
+    }   
   }
 }

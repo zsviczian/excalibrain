@@ -4,15 +4,14 @@ import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './
 import { errorlog } from './utils/utils';
 import { getAPI } from "obsidian-dataview"
 import { t } from './lang/helpers';
-import { MINEXCALIDRAWVERSION, PLUGIN_NAME, PREDEFINED_LINK_STYLES } from './constants/constants';
+import { DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, MINEXCALIDRAWVERSION, PLUGIN_NAME, PREDEFINED_LINK_STYLES } from './constants/constants';
 import { DvAPIInterface } from 'obsidian-dataview/lib/typings/api';
 import { Pages } from './graph/Pages';
 import { getEA } from "obsidian-excalidraw-plugin";
-import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
+import { ExcalidrawAutomate, search } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
 import { Scene } from './Scene';
 import { LinkStyles, NodeStyles, LinkStyle, RelationType, LinkDirection } from './Types';
 import { WarningPrompt } from './utils/Prompts';
-
 
 declare module "obsidian" {
   interface App {
@@ -39,6 +38,7 @@ export default class ExcaliBrain extends Plugin {
   private disregardLeafChangeTimer: NodeJS.Timeout;
   private pluginLoaded: boolean = false;
   public starred: Page[] = [];
+  private focusSearchAfterInitiation:boolean = false;
   
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
@@ -128,15 +128,15 @@ export default class ExcaliBrain extends Plugin {
         if(f instanceof TFolder) {
           const child = new Page("folder:"+f.path, null, this, true, false, f.name);
           this.pages.add("folder:"+f.path,child);
-          child.addParent(parent,RelationType.DEFINED,LinkDirection.TO,"file-tree");
-          parent.addChild(child,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
+          child.addParent(parent,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
+          parent.addChild(child,RelationType.DEFINED,LinkDirection.TO,"file-tree");
           addFolderChildren(f,child);
           return;
         } else {
           const child = new Page(f.path,f as TFile,this);
           this.pages.add(f.path,child);
-          child.addParent(parent,RelationType.DEFINED,LinkDirection.TO,"file-tree");
-          parent.addChild(child,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
+          child.addParent(parent,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
+          parent.addChild(child,RelationType.DEFINED,LinkDirection.TO,"file-tree");
         }
       })
     }
@@ -163,8 +163,8 @@ export default class ExcaliBrain extends Plugin {
         tagPages.push(child);
         if(idx>0) {
           const parent = tagPages[idx-1];
-          child.addParent(parent,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
-          parent.addChild(child,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
+          child.addParent(parent,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
+          parent.addChild(child,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
         }
       })
     })
@@ -225,27 +225,124 @@ export default class ExcaliBrain extends Plugin {
     return true;
   }
 
+  private revealBrainLeaf() {
+    if(!this.scene || this.scene.terminated) {
+      return;
+    }
+    app.workspace.revealLeaf(this.scene.leaf);
+    //@ts-ignore
+    const hoverEditor = app.plugins.getPlugin("obsidian-hover-editor");
+    if(hoverEditor) {
+      const activeEditor = hoverEditor.activePopovers.filter((he:any) => he.leaves()[0] === this.scene.leaf)[0];
+      if(activeEditor) {
+        if(this.scene.leaf.view.containerEl.offsetHeight === 0) {
+          activeEditor.titleEl.querySelector("a.popover-action.mod-minimize").click();
+        }
+      }
+    }
+    const searchElement = this.scene.toolsPanel?.searchElement;
+    searchElement?.focus();
+  }
+
   private registerCommands() {
     this.addCommand({
       id: "excalibrain-start",
       name: t("COMMAND_START"),
-      callback: () => {
+      callback: async () => {
         if(!this.excalidrawAvailable()) return;
+        if(this.scene && !this.scene.terminated) {
+          this.revealBrainLeaf();
+          return;
+        }
+        const leaf = this.getBrainLeaf();
+        if(leaf) {
+          this.scene = new Scene(this,true,leaf);
+          this.scene.initialize(true);
+          this.revealBrainLeaf();
+          return;
+        }
+        this.focusSearchAfterInitiation = true;
+        await Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,leaf);
+      },
+    });
+
+    this.addCommand({
+      id: "excalibrain-stop-brain",
+      name: t("COMMAND_STOP"),
+      checkCallback: (checking: boolean) => {
+        if(checking) {
+          return(this.scene && !this.scene.terminated);
+        }
         if(this.scene && !this.scene.terminated) {
           this.scene.unloadScene();
           this.scene = null;
-        } else {
-          const leaf = this.getBrainLeaf();
-          //@ts-ignore
-          if(leaf && leaf.view && leaf.view.file && leaf.view.file.path == this.settings.excalibrainFilepath) {
-            this.scene = new Scene(this,true,leaf);
-            this.scene.initialize();
-            return;
-          }
-          Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,leaf);
+          return;
         }
-      },
-    });
+      }
+    })
+
+    this.addCommand({
+      id: "excalibrain-open-hover",
+      name: t("COMMAND_START_HOVER"),
+      checkCallback: (checking: boolean) => {
+        //@ts-ignore
+        const hoverEditor = app.plugins.getPlugin("obsidian-hover-editor");
+        if(checking) {
+          return hoverEditor;
+        }
+        if(!this.excalidrawAvailable()) return;        
+        if(this.scene && !this.scene.terminated) {
+          this.revealBrainLeaf();
+          return;
+        }
+        try {
+          //getBrainLeaf will only return one leaf. If there are multiple leaves open, some in hover editors other docked, the
+          //current logic might miss the open hover editor. However, this is likely an uncommon scenario, thus no
+          //value in making the logic more sophisticated.
+          const brainLeaf = this.getBrainLeaf();
+          if(brainLeaf) {
+            const activeEditor = hoverEditor.activePopovers.filter((he:any) => he.leaves()[0] === brainLeaf)[0];
+            if(activeEditor) {
+              app.workspace.revealLeaf(brainLeaf);
+              if(brainLeaf.view.containerEl.offsetHeight === 0) { //if hover editor is minimized
+                activeEditor.titleEl.querySelector("a.popover-action.mod-maximize").click();
+              }
+              this.scene = new Scene(this,true,brainLeaf);
+              this.scene.initialize(true);              
+              return;
+            }
+          }
+          const leaf = hoverEditor.spawnPopover(undefined,()=>{
+            this.app.workspace.setActiveLeaf(leaf, false, true);
+            const activeEditor = hoverEditor.activePopovers.filter((he:any) => he.leaves()[0] === leaf)[0];
+            if(!activeEditor) {
+              new Notice(t("HOVER_EDITOR_ERROR"), 6000);
+              return false;
+            }
+            //@ts-ignore
+            setTimeout(()=>app.commands.commands["obsidian-hover-editor:snap-active-popover-to-viewport"].checkCallback(false));
+            this.focusSearchAfterInitiation = true;
+            Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,leaf);
+          });
+        } catch(e) {
+          new Notice(t("HOVER_EDITOR_ERROR"), 6000);
+        }
+      }
+    })
+    
+    /*
+    this.addCommand({
+      id: "excalibrain-search",
+      name: t("COMMAND_SEARCH"),
+      checkCallback: (checking: boolean) => {
+        if(checking) {
+          return this.scene && !this.scene.terminated;
+        }
+        this.revealBrainLeaf();
+        const searchElement = this.scene.toolsPanel?.searchElement;
+        searchElement?.focus();
+      }
+    })*/
   }
 
   getBrainLeaf():WorkspaceLeaf {
@@ -351,7 +448,15 @@ export default class ExcaliBrain extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-    
+    this.settings.baseLinkStyle = {
+      ...DEFAULT_LINK_STYLE,
+      ...this.settings.baseLinkStyle,
+    };
+    this.settings.baseNodeStyle = {
+      ...DEFAULT_NODE_STYLE,
+      ...this.settings.baseNodeStyle,
+    };
+
     this.hierarchyLowerCase.parents = [];
     this.settings.hierarchy.parents.forEach(f=>this.hierarchyLowerCase.parents.push(f.toLowerCase().replaceAll(" ","-")))
     this.hierarchyLowerCase.children = [];
@@ -505,7 +610,8 @@ export default class ExcaliBrain extends Plugin {
       return;
     }
     this.scene = new Scene(this,true,leaf)
-    this.scene.initialize();
+    this.scene.initialize(this.focusSearchAfterInitiation);
+    this.focusSearchAfterInitiation = false;
   }
 
   /*  private registerDataviewEventHandlers() {

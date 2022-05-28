@@ -35,11 +35,12 @@ export class Scene {
   private removeOnDelete: Function;
   private removeOnRename: Function;
   private blockUpdateTimer: boolean = false;
-  private toolsPanel: ToolsPanel;
+  public toolsPanel: ToolsPanel;
   private historyPanel: HistoryPanel;
   private vaultFileChanged: boolean = false;
   public pinLeaf: boolean = false;
-  
+  public focusSearchAfterInitiation: boolean = true;
+
   constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
     this.ea = plugin.EA;
     this.plugin = plugin;
@@ -49,10 +50,11 @@ export class Scene {
     this.links = new Links(plugin);
   }
 
-  public async initialize() {
+  public async initialize(focusSearchAfterInitiation: boolean) {
+    this.focusSearchAfterInitiation = focusSearchAfterInitiation;
     await this.plugin.loadSettings();
-    await this.initializeScene();
     this.toolsPanel = new ToolsPanel((this.leaf.view as TextFileView).contentEl,this.plugin);
+    await this.initializeScene();
     this.historyPanel = new HistoryPanel((this.leaf.view as TextFileView).contentEl,this.plugin);
   }
 
@@ -207,7 +209,7 @@ export class Scene {
       });
       return;
     }
-    await (leaf ?? app.workspace.getLeaf(true)).openFile(file as TFile);   
+    await (leaf ?? app.workspace.getLeaf(true)).openFile(file as TFile);
   }
 
   public async initializeScene() {
@@ -256,7 +258,7 @@ export class Scene {
       "under 'Links and Transclusion'.\n\n⚠ ExcaliBrain may need to wait for " +
       "DataView to initialize its index.\nThis can take up to a few minutes after starting Obsidian.", {textAlign:"center"});
     await ea.addElementsToView();
-    ea.getExcalidrawAPI().zoomToFit(null, 5, 0.1);
+    ea.getExcalidrawAPI().zoomToFit(null, 5, 0.15);
     
     ea.targetView.linksAlwaysOpenInANewPane = true;
     
@@ -482,17 +484,20 @@ export class Scene {
     // Render
     this.ea.style.opacity = 100;
     this.layouts.forEach(layout => layout.render());
+    const nodeElements = this.ea.getElements();
     this.links.render(Array.from(this.toolsPanel.linkTagFilter.selectedLinks));
        
-    const elements = this.ea.getElements();
+    const linkElements = this.ea.getElements().filter(el=>!nodeElements.includes(el));
     this.ea.getExcalidrawAPI().updateScene({
-      elements: elements.filter(
-        el=>el.type==="arrow"
-      ).concat(elements.filter(el=>el.type!=="arrow"))
+      elements: linkElements.concat(nodeElements) //send link elements behind node elements
     })
-    this.ea.getExcalidrawAPI().zoomToFit(null,5,0.1);
+    this.ea.getExcalidrawAPI().zoomToFit(null,5,0.15);
 
     this.toolsPanel.rerender();
+    if(this.focusSearchAfterInitiation) {
+      this.toolsPanel.searchElement.focus();
+      this.focusSearchAfterInitiation = false;
+    }
     this.blockUpdateTimer = false;
   }
 
