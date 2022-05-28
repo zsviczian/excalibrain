@@ -267,21 +267,6 @@ export default class ExcaliBrain extends Plugin {
     });
 
     this.addCommand({
-      id: "excalibrain-stop-brain",
-      name: t("COMMAND_STOP"),
-      checkCallback: (checking: boolean) => {
-        if(checking) {
-          return(this.scene && !this.scene.terminated);
-        }
-        if(this.scene && !this.scene.terminated) {
-          this.scene.unloadScene();
-          this.scene = null;
-          return;
-        }
-      }
-    })
-
-    this.addCommand({
       id: "excalibrain-open-hover",
       name: t("COMMAND_START_HOVER"),
       checkCallback: (checking: boolean) => {
@@ -329,20 +314,6 @@ export default class ExcaliBrain extends Plugin {
         }
       }
     })
-    
-    /*
-    this.addCommand({
-      id: "excalibrain-search",
-      name: t("COMMAND_SEARCH"),
-      checkCallback: (checking: boolean) => {
-        if(checking) {
-          return this.scene && !this.scene.terminated;
-        }
-        this.revealBrainLeaf();
-        const searchElement = this.scene.toolsPanel?.searchElement;
-        searchElement?.focus();
-      }
-    })*/
   }
 
   getBrainLeaf():WorkspaceLeaf {
