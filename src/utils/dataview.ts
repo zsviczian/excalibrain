@@ -29,24 +29,31 @@ const readDVField = (app: App, field: any, file:TFile):string[] => {
 
   //the field is a list of links
   if(field.values) {
+    //List of links
     field
-    .values
-    .filter((l:any)=>l.type === "file" || l.type === "header")
-    .forEach((l:any)=>{
-      const path = getPathOrSelf(app, l.path,file.path);
-      if(path) {
-        res.add(path);
-      }
-    });
-    if(res.size > 0) return Array.from(res);
+      .values
+      .filter((l:any)=>l.type === "file" || l.type === "header")
+      .forEach((l:any)=>{
+        const path = getPathOrSelf(app, l.path,file.path);
+        if(path) {
+          res.add(path);
+        }
+      });
 
-    if(typeof field.values[0] === "string") {
-      return readLinksFromString(field.values.join(" "),file);
-    }
+    //string: e.g. list of virtual links
+    const stringLinks:string[] = readLinksFromString(field
+      .values
+      .filter((l:any)=>typeof l === "string")
+      .join(" "),file)
 
-    if(typeof field.values[0] === "object" && typeof field.values[0].values[0] === "string") {
-      return [getPathOrSelf(app,field.values[0]?.values[0],file.path)];
-    }
+    //links in the frontmatter
+    //! currently there is an issue with case sensitivity. DataView retains case sensitivity of links for the front matter, but not the others
+    const objectLinks:string[] = field
+      .values
+      .filter((l:any) => typeof l === "object" && l.values && typeof l.values[0] === "string")
+      .map((l:any)=>getPathOrSelf(app,l.values[0],file.path))
+
+    return Array.from(res).concat(stringLinks).concat(objectLinks);
   }
 
   //the field is a single link
