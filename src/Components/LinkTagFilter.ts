@@ -78,7 +78,6 @@ export class LinkTagFilter {
       onDropdownClose: (selectedItems) => {
         this.isOpen = false;
         if(selectedItems !== this.selectedItems) {
-          console.log("rerender");
           this.plugin.scene?.reRender(false);
         }
       }

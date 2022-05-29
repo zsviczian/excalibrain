@@ -47,6 +47,7 @@ export class Page {
   public neighbours: Map<string,Relation>;
   public dvPage: Record<string, any>;
   public primaryStyleTag: string;
+  public dvIndexReady: boolean = false;
   
   constructor(
     public path:string,
@@ -93,7 +94,7 @@ export class Page {
     }
   }
 
-  private getNeighbours(): [string, Relation][] {
+  public getNeighbours(): [string, Relation][] {
     const { showVirtualNodes, showAttachments, showFolderNodes, showTagNodes, showPageNodes } = this.plugin.settings
     return Array.from(this.neighbours)
       .filter(x=> (showVirtualNodes || !x[1].target.isVirtual) && 

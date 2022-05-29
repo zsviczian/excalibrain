@@ -180,19 +180,22 @@ export default class ExcaliBrain extends Plugin {
     //timestamps._4ResolvedLinks = Date.now();
     //Iterate all pages and add defined links based on Dataview fields
 
-    this.pages.forEach((page:Page)=>{
+    //This eats up 75% of the indexing resources
+    //I moved this code to Scene.render() because there I can run it only for
+    //those nodes that I actually plan to display
+    /*this.pages.forEach((page:Page)=>{
       if(!page?.file) return;
       this.pages.addDVFieldLinksToPage(page);
-    })
+    })*/
     //timestamps._5DataviewLinks = Date.now();
 
     /*console.log({
-      total: timestamps._5DataviewLinks-timestamps.start,
+      total: timestamps._4ResolvedLinks-timestamps.start,
       files: timestamps._1FoldersAndFiles-timestamps.start,
       tags: timestamps._2Tags - timestamps._1FoldersAndFiles,
       "unresolved links": timestamps._3UnresolvedLinks - timestamps._2Tags,
       "resolved links": timestamps._4ResolvedLinks - timestamps._3UnresolvedLinks,
-      "Dataview fields": timestamps._5DataviewLinks - timestamps._4ResolvedLinks,
+      //"Dataview fields": timestamps._5DataviewLinks - timestamps._4ResolvedLinks,
       size: this.pages.size
     })*/
 
