@@ -1,8 +1,6 @@
 import { App } from "obsidian";
 import ExcaliBrain from "src/main";
 import { LinkDirection, Relation, RelationType } from "src/Types";
-import { getDVFieldLinksForPage } from "src/utils/dataview";
-import { log } from "src/utils/utils";
 import { Page} from "./Page";
 
 export class Pages {
@@ -51,31 +49,6 @@ export class Pages {
     this.pages.delete(toBeDeletedPath);
   }
 
-  /*public addWithConnections(file:TFile) {
-    const page = new Page(file.path,file,this.plugin);
-    this.add(file.path, page);
-
-    const backlinksSet = new Set(
-      //@ts-ignore
-      Object.keys((app.metadataCache.getBacklinksForFile(file)?.data)??{})
-      .map(l=>app.metadataCache.getFirstLinkpathDest(l,file.path)?.path??l)
-    );
-
-    backlinksSet.forEach(link=>{
-      const parent = this.pages.get(link);
-      if(!link) {
-        log(`Unexpected: ${page.file.path} is referenced from ${link} as backlink in metadataCache, but page for ${link} has not yet been registered in ExcaliBrain index.`);
-        return;
-      }
-      parent.addChild(page,RelationType.INFERRED,LinkDirection.TO);
-      page.addParent(parent,RelationType.INFERRED,LinkDirection.FROM);
-    })
-    
-    this.addUnresolvedLinks(page);
-    this.addResolvedLinks(page);
-    this.addDVFieldLinksToPage(page);
-  }*/
-
   public addResolvedLinks(page?: Page) {
     const resolvedLinks = this.app.metadataCache.resolvedLinks;
     Object.keys(resolvedLinks).forEach(parentPath=>{
@@ -113,7 +86,7 @@ export class Pages {
         return;
       }
       Object.keys(unresolvedLinks[parentPath]).forEach(childPath=>{
-        const newPage = this.get(childPath) ?? new Page(childPath,null,this.plugin);
+        const newPage = this.get(childPath) ?? new Page(this,childPath,null,this.plugin);
         if(this.plugin.settings.inferAllLinksAsFriends) {
           newPage.addFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
           parent.addFriend(newPage,RelationType.INFERRED, LinkDirection.TO);
@@ -124,55 +97,5 @@ export class Pages {
         this.add(childPath,newPage);
       })
     });
-  }
-
-  public addDVFieldLinksToPage(page: Page) {
-    if(page.isFolder || page.isTag) {
-      return;
-    }
-    const dvPage = this.plugin.DVAPI.page(page.file.path);
-    if(!dvPage) {
-      return;
-    }
-    page.dvPage = dvPage;
-    if(!dvPage) return;
-    (dvPage.file?.etags?.values??[]).forEach((tag:string)=>{
-      tag = "tag:" + tag.substring(1);
-      const parent = this.pages.get(tag);
-      if(!parent) return;
-      page.addParent(parent,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
-      parent.addChild(page,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
-    })    
-
-    const parentFields = this.plugin.hierarchyLowerCase.parents;
-    getDVFieldLinksForPage(this.plugin,dvPage,parentFields).forEach(item=>{
-      const referencedPage = this.pages.get(item.link);
-      if(!referencedPage) {
-        log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
-        return;
-      }
-      page.addParent(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
-      referencedPage.addChild(page,RelationType.DEFINED,LinkDirection.FROM, item.field);
-    });
-    const childFields = this.plugin.hierarchyLowerCase.children;
-    getDVFieldLinksForPage(this.plugin,dvPage,childFields).forEach(item=>{
-      const referencedPage = this.pages.get(item.link);
-      if(!referencedPage) {
-        log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
-        return;
-      }        
-      page.addChild(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
-      referencedPage.addParent(page,RelationType.DEFINED,LinkDirection.FROM, item.field);
-    });
-    const friendFields = this.plugin.hierarchyLowerCase.friends;
-    getDVFieldLinksForPage(this.plugin,dvPage,friendFields).forEach(item=>{
-      const referencedPage = this.pages.get(item.link);
-      if(!referencedPage) {
-        log(`Unexpected: ${page.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
-        return;
-      }        
-      page.addFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
-      referencedPage.addFriend(page,RelationType.DEFINED,LinkDirection.FROM, item.field);
-    });     
   }
 }

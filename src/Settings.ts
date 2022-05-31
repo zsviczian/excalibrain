@@ -187,11 +187,13 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     this.ea.canvas.viewBackgroundColor = this.plugin.settings.backgroundColor;    
 
     const page = new Page(
+      null,
       "Start node",
       null,
       this.plugin
     )
     const page2 = new Page(
+      null,
       "End node",
       null,
       this.plugin
@@ -1138,11 +1140,13 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
 
     //initialize sample 
     const page = new Page(
+      null,
       "This is a demo node that is 46 characters long",
       null,
       this.plugin
     )
     const page2 = new Page(
+      null,
       "This is a child node",
       null,
       this.plugin

@@ -10,9 +10,6 @@ import { ToolsPanel } from "./Components/ToolsPanel";
 import { Neighbour, RelationType, Role } from "./Types";
 import { HistoryPanel } from "./Components/HistoryPanel";
 import { WarningPrompt } from "./utils/Prompts";
-import { log } from "./utils/utils";
-import { getPrimaryTag } from "./utils/dataview";
-import { stringify } from "querystring";
 
 export class Scene {
   ea: ExcalidrawAutomate;
@@ -291,36 +288,16 @@ export class Scene {
   }
 
   private async render() {
-    //const timestamps:{[key:string]: number} = {};
-    //timestamps.start = Date.now();
-
     if(this.historyPanel) {
       this.historyPanel.rerender()
     }
     const centralPage = this.plugin.pages.get(this.centralPagePath);
 
-    //do the more resource intensive dataview parsing only for the nodes I am going to display
-    if(centralPage.file && !centralPage.dvIndexReady) {
-      this.plugin.pages.addDVFieldLinksToPage(centralPage);
-      centralPage.dvIndexReady = true;
-    }
-    const neighbours = centralPage.getNeighbours();
-    neighbours.forEach(([path,{target}])=>{
-      if(!target?.file || target.dvIndexReady) {
-        return;
-      }
-      this.plugin.pages.addDVFieldLinksToPage(target);
-      target.dvIndexReady = true;
-    });
-    
-    //timestamps._1DVIndexNeighbours = Date.now();
-    //clear the drawing
     this.ea.clear();
     this.ea.getExcalidrawAPI().updateScene({elements:[]});
     this.ea.style.verticalAlign = "middle";
     
     //List nodes for the graph
-    centralPage.getParents().forEach(x => x.page.primaryStyleTag = getPrimaryTag(x.page.dvPage,this.plugin.settings));
     const parents = centralPage.getParents()
       .filter(x => 
         (x.page.path !== centralPage.path) &&
@@ -329,7 +306,6 @@ export class Scene {
       .slice(0,this.plugin.settings.maxItemCount);
     const parentPaths = parents.map(x=>x.page.path);
 
-    centralPage.getChildren().forEach(x => x.page.primaryStyleTag = getPrimaryTag(x.page.dvPage,this.plugin.settings));
     const children =centralPage.getChildren()
       .filter(x => 
         (x.page.path !== centralPage.path) &&
@@ -337,7 +313,6 @@ export class Scene {
         (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
       .slice(0,this.plugin.settings.maxItemCount);
     
-    centralPage.getFriends().forEach(x => x.page.primaryStyleTag = getPrimaryTag(x.page.dvPage,this.plugin.settings));
     const friends = centralPage.getFriends()
       .filter(x => 
         (x.page.path !== centralPage.path) &&
@@ -345,33 +320,19 @@ export class Scene {
         (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
       .slice(0,this.plugin.settings.maxItemCount);
 
-    //timestamps._2ListParentsChildrenFriends = Date.now();
-
-    //processing all neighbors of neighbors because some might turn out to be siblings due to DVField links
-    neighbours.forEach(([path,{target}]) => {
-      target.getNeighbours().forEach(([path,{target}])=>{
-        if(!target?.file || target.dvIndexReady) {
-          return;
-        }
-        this.plugin.pages.addDVFieldLinksToPage(target);
-        target.dvIndexReady = true;
-      });
-    });
-
     const rawSiblings = centralPage
-    .getSiblings()
-    .filter(s => 
-      //the node is not included already as a parent, child, or friend
-      !(parents.some(p=>p.page.path === s.page.path)  ||
-        children.some(c=>c.page.path === s.page.path) ||
-        friends.some(f=>f.page.path === s.page.path)  ||
-        //or not exluded via folder path in settings
-        this.plugin.settings.excludeFilepaths.some(p => s.page.path.startsWith(p))
-      ) && 
-      //it is not the current central page
-      (s.page.path !== centralPage.path));
+      .getSiblings()
+      .filter(s => 
+        //the node is not included already as a parent, child, or friend
+        !(parents.some(p=>p.page.path === s.page.path)  ||
+          children.some(c=>c.page.path === s.page.path) ||
+          friends.some(f=>f.page.path === s.page.path)  ||
+          //or not exluded via folder path in settings
+          this.plugin.settings.excludeFilepaths.some(p => s.page.path.startsWith(p))
+        ) && 
+        //it is not the current central page
+        (s.page.path !== centralPage.path));
 
-    rawSiblings.forEach(x => x.page.primaryStyleTag = getPrimaryTag(x.page.dvPage,this.plugin.settings));
     const siblings = rawSiblings
       .filter(s => 
         //Only display siblings for which the parents are actually displayed.
@@ -381,7 +342,6 @@ export class Scene {
         (!s.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(s.page.primaryStyleTag)))
       .slice(0,this.plugin.settings.maxItemCount);
 
-    //timestamps._3DVIndexSiblings = Date.now();
     //-------------------------------------------------------
     // Generate layout and nodes
     this.nodesMap = new Map<string,Node>();
@@ -501,7 +461,6 @@ export class Scene {
       });
     }
 
-    //timestamps._4AddedNodes = Date.now();
     //-------------------------------------------------------
     // Generate links for all displayed nodes
     const addLinks = (nodeA: Node, neighbours:Neighbour[],role: Role) => {
@@ -529,7 +488,6 @@ export class Scene {
       addLinks(nodeA, nodeA.page.getFriends(),Role.FRIEND);
     });
   
-    //timestamps._5AddedLinks = Date.now();
     //-------------------------------------------------------
     // Render
     this.ea.style.opacity = 100;
@@ -538,7 +496,7 @@ export class Scene {
     this.links.render(Array.from(this.toolsPanel.linkTagFilter.selectedLinks));
     
     const linkElements = this.ea.getElements().filter(el=>!nodeElements.includes(el));
-    //timestamps._6generateEA = Date.now();
+
     this.ea.getExcalidrawAPI().updateScene({
       elements: linkElements.concat(nodeElements) //send link elements behind node elements
     })
@@ -549,17 +507,7 @@ export class Scene {
       this.toolsPanel.searchElement.focus();
       this.focusSearchAfterInitiation = false;
     }
-    //timestamps._7Render = Date.now();
-    /*console.log({
-      total: timestamps._7Render - timestamps.start,
-      DVIndexNeighbours: timestamps._1DVIndexNeighbours-timestamps.start,
-      listParentsChildrenFriends: timestamps._2ListParentsChildrenFriends-timestamps._1DVIndexNeighbours,
-      DVIndexSiblings: timestamps._3DVIndexSiblings - timestamps._2ListParentsChildrenFriends,
-      createNodes: timestamps._4AddedNodes - timestamps._3DVIndexSiblings,
-      createLinks: timestamps._5AddedLinks - timestamps._4AddedNodes,
-      generateWithEA: timestamps._6generateEA - timestamps._5AddedLinks,
-      ExcalidrawRender: timestamps._7Render - timestamps._6generateEA
-    })*/
+
     this.blockUpdateTimer = false;
   }
 

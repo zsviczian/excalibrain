@@ -1,7 +1,10 @@
 import { TFile } from "obsidian";
 import ExcaliBrain from "src/main";
 import { LinkDirection, Neighbour, Relation, RelationType } from "src/Types";
+import { getDVFieldLinksForPage, getPrimaryTag } from "src/utils/dataview";
 import { getFilenameFromPath } from "src/utils/fileUtils";
+import { log } from "src/utils/utils";
+import { Pages } from "./Pages";
 
 const DEFAULT_RELATION:Relation = {
   target: null,
@@ -50,6 +53,7 @@ export class Page {
   public dvIndexReady: boolean = false;
   
   constructor(
+    private pages: Pages,
     public path:string,
     public file:TFile,
     public plugin: ExcaliBrain,
@@ -66,6 +70,73 @@ export class Page {
     }
     this.mtime = file ? file.stat.mtime : null;
     this.neighbours = new Map<string,Relation>();
+  }
+
+  public addDVFieldLinksToPage() {
+    if(this.isFolder || !this.pages) {
+      return;
+    }
+
+    if(this.isTag) {
+      this.plugin.DVAPI.index.etags.invMap.get("#"+this.path.substring(4)).forEach(path=>{
+        const child = this.pages.get(path);
+        if(!child) {
+          return;
+        }
+        child.addParent(this,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
+        this.addChild(child,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
+      })
+      return;
+    }
+
+    if(!this.file) {
+      return;
+    }
+
+    const dvPage = this.plugin.DVAPI.page(this.file.path);
+    if(!dvPage) {
+      return;
+    }
+    this.dvPage = dvPage;
+    if(!dvPage) return;
+    (dvPage.file?.etags?.values??[]).forEach((tag:string)=>{
+      tag = "tag:" + tag.substring(1);
+      const parent = this.pages.get(tag);
+      if(!parent) return;
+      this.addParent(parent,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
+      parent.addChild(this,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
+    })    
+
+    const parentFields = this.plugin.hierarchyLowerCase.parents;
+    getDVFieldLinksForPage(this.plugin,dvPage,parentFields).forEach(item=>{
+      const referencedPage = this.pages.get(item.link);
+      if(!referencedPage) {
+        log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+        return;
+      }
+      this.addParent(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
+      referencedPage.addChild(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+    });
+    const childFields = this.plugin.hierarchyLowerCase.children;
+    getDVFieldLinksForPage(this.plugin,dvPage,childFields).forEach(item=>{
+      const referencedPage = this.pages.get(item.link);
+      if(!referencedPage) {
+        log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+        return;
+      }        
+      this.addChild(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
+      referencedPage.addParent(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+    });
+    const friendFields = this.plugin.hierarchyLowerCase.friends;
+    getDVFieldLinksForPage(this.plugin,dvPage,friendFields).forEach(item=>{
+      const referencedPage = this.pages.get(item.link);
+      if(!referencedPage) {
+        log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+        return;
+      }        
+      this.addFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
+      referencedPage.addFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+    });     
   }
 
   public getTitle(): string {
@@ -94,7 +165,12 @@ export class Page {
     }
   }
 
-  public getNeighbours(): [string, Relation][] {
+  private getNeighbours(): [string, Relation][] {
+    if(!this.dvIndexReady) {
+      this.dvIndexReady = true;
+      this.addDVFieldLinksToPage();
+      this.primaryStyleTag = getPrimaryTag(this.dvPage,this.plugin.settings);
+    }
     const { showVirtualNodes, showAttachments, showFolderNodes, showTagNodes, showPageNodes } = this.plugin.settings
     return Array.from(this.neighbours)
       .filter(x=> (showVirtualNodes || !x[1].target.isVirtual) && 

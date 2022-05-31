@@ -44,6 +44,7 @@ export default class ExcaliBrain extends Plugin {
     super(app, manifest);
     this.starred = [
       new Page(
+        null,
         "Initializing index, please wait",
         null,this,false,false,
         "Initializing index, please wait"
@@ -118,22 +119,19 @@ export default class ExcaliBrain extends Plugin {
       await sleep(100);
     }
 
-    //const timestamps:{[key:string]: number} = {};
-    
-    //timestamps.start = Date.now();
     //Add all folders and files
     const addFolderChildren = (parentFolder: TFolder, parent: Page) => {
-      const children = parentFolder.children; //.filter(f=>f instanceof TFolder) as TFolder[];
+      const children = parentFolder.children; 
       children.forEach(f => {
         if(f instanceof TFolder) {
-          const child = new Page("folder:"+f.path, null, this, true, false, f.name);
+          const child = new Page(this.pages,"folder:"+f.path, null, this, true, false, f.name);
           this.pages.add("folder:"+f.path,child);
           child.addParent(parent,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
           parent.addChild(child,RelationType.DEFINED,LinkDirection.TO,"file-tree");
           addFolderChildren(f,child);
           return;
         } else {
-          const child = new Page(f.path,f as TFile,this);
+          const child = new Page(this.pages,f.path,f as TFile,this);
           this.pages.add(f.path,child);
           child.addParent(parent,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
           parent.addChild(child,RelationType.DEFINED,LinkDirection.TO,"file-tree");
@@ -141,10 +139,9 @@ export default class ExcaliBrain extends Plugin {
       })
     }
     const rootFolder = app.vault.getRoot();
-    const rootFolderPage = new Page("folder:/", null, this, true, false, "/");
+    const rootFolderPage = new Page(this.pages,"folder:/", null, this, true, false, "/");
     this.pages.add("folder:/",rootFolderPage);
     addFolderChildren(rootFolder, rootFolderPage);
-    //timestamps._1FoldersAndFiles = Date.now();
 
     //Add all tags
     //@ts-ignore
@@ -158,7 +155,7 @@ export default class ExcaliBrain extends Plugin {
           tagPages.push(child);
           return;
         }
-        child = new Page(path, null, this, false, true, el);
+        child = new Page(this.pages,path, null, this, false, true, el);
         this.pages.add(path,child);
         tagPages.push(child);
         if(idx>0) {
@@ -168,36 +165,12 @@ export default class ExcaliBrain extends Plugin {
         }
       })
     })
-    //timestamps._2Tags = Date.now();
     
     //Add all unresolved links and make child of page where it was found
     this.pages.addUnresolvedLinks()
-    //timestamps._3UnresolvedLinks = Date.now();
 
     //Add all links as inferred children to pages on which they were found
     this.pages.addResolvedLinks();
-
-    //timestamps._4ResolvedLinks = Date.now();
-    //Iterate all pages and add defined links based on Dataview fields
-
-    //This eats up 75% of the indexing resources
-    //I moved this code to Scene.render() because there I can run it only for
-    //those nodes that I actually plan to display
-    /*this.pages.forEach((page:Page)=>{
-      if(!page?.file) return;
-      this.pages.addDVFieldLinksToPage(page);
-    })*/
-    //timestamps._5DataviewLinks = Date.now();
-
-    /*console.log({
-      total: timestamps._4ResolvedLinks-timestamps.start,
-      files: timestamps._1FoldersAndFiles-timestamps.start,
-      tags: timestamps._2Tags - timestamps._1FoldersAndFiles,
-      "unresolved links": timestamps._3UnresolvedLinks - timestamps._2Tags,
-      "resolved links": timestamps._4ResolvedLinks - timestamps._3UnresolvedLinks,
-      //"Dataview fields": timestamps._5DataviewLinks - timestamps._4ResolvedLinks,
-      size: this.pages.size
-    })*/
 
     const self = this;
     setTimeout(async()=>{
@@ -587,34 +560,5 @@ export default class ExcaliBrain extends Plugin {
     this.scene.initialize(this.focusSearchAfterInitiation);
     this.focusSearchAfterInitiation = false;
   }
-
-  /*  private registerDataviewEventHandlers() {
-    const metaCache: MetadataCache = self.app.metadataCache;
-    this.registerEvent(
-      metaCache.on("dataview:metadata-change",(type:string, file: TAbstractFile|TFile, oldPath?: string) => {
-        if(type!=="rename") return;
-        if(!(file instanceof TFile)) return;
-        this.pages.delete(oldPath);
-        this.pages.addWithConnections(file);
-        //register page: path
-        log({type,fileType: file instanceof TFile ? "file":"folder", path:file.path,oldPath});
-      })
-    );
-    this.registerEvent(
-      metaCache.on("dataview:metadata-change",(type:string, file: TFile) => {
-        if(type==="rename") return;
-        switch (type) {
-          case "update":
-            this.pages.delete(file.path);
-            this.pages.addWithConnections(file);
-            break;
-          case "delete":
-            this.pages.delete(file.path);
-            break;
-        }
-        log({type, path:file.path});       
-      })
-    );
-  }*/
 }
 
