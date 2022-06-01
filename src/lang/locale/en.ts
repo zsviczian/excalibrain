@@ -10,7 +10,7 @@ export default {
   EXCALIBRAIN_FILE_DESC: "⚠ This file will be overwritten by the plugin. If you stop the script and make changes to the graph, you " +
     "should rename the file so your edits are preserved, because the next time you initiate ExcaliBrain your edits will be overwritten by " +
     "the automatically generated ExcaliBrain graph.",
-  HIERARCHY_HEAD: "Hierarchy",
+  HIERARCHY_HEAD: "Ontology",
   HIERARCHY_DESC: "Enter the Dataview field names separated by comma (,) that you will use to define link directions in your graph.",
   INFER_NAME: "Infer all implicit relationships as Friend",
   INFER_DESC: "<b>Toggle On:</b> All implicit links in the document are interpreted as FRIENDS.<br>" + 
@@ -21,6 +21,12 @@ export default {
   PARENTS_NAME: "Parents",
   CHILDREN_NAME: "Children",
   FRIENDS_NAME: "Friends",
+  ONTOLOGY_SUGGESTER_NAME: "Ongology Suggester",
+  ONTOLOGY_SUGGESTER_DESC: "Activate ontology suggester in the markdown editor. If enabled then typing the trigger sequence at the beginning of a paragraph "+
+    "will activate the suggester listing your ontology fields defined above.",
+  ONTOLOGY_SUGGESTER_PARENT_NAME: "Character sequence to trigger parent suggester",
+  ONTOLOGY_SUGGESTER_CHILD_NAME: "Character sequence to trigger child suggester",
+  ONTOLOGY_SUGGESTER_FRIEND_NAME: "Character sequence to trigger friend suggester",
   DISPLAY_HEAD: "Display",
   EXCLUDE_PATHLIST_NAME: "Filepaths to exclude",
   EXCLUDE_PATHLIST_DESC: "Enter comma-separated list of filepaths to exclude from the index.",

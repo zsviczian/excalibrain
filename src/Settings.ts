@@ -51,6 +51,10 @@ export interface ExcaliBrainSettings {
   tagLinkStyle: LinkStyle;
   hierarchyLinkStyles: {[key: string]: LinkStyle};
   navigationHistory: string[];
+  allowOntologySuggester: boolean;
+  ontologySuggesterParentTrigger: string;
+  ontologySuggesterChildTrigger: string;
+  ontologySuggesterFriendTrigger: string;
 }
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
@@ -119,6 +123,10 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   },
   hierarchyLinkStyles: {},
   navigationHistory: [],
+  allowOntologySuggester: true,
+  ontologySuggesterParentTrigger: "::p",
+  ontologySuggesterChildTrigger: "::c",
+  ontologySuggesterFriendTrigger: "::f",
 };
 
 const HIDE_DISABLED_STYLE = "excalibrain-hide-disabled";
@@ -280,6 +288,15 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
   async hide() {
     if(!this.dirty) {
       return;
+    }
+    if(this.plugin.settings.ontologySuggesterParentTrigger === "") {
+      this.plugin.settings.ontologySuggesterParentTrigger = "::p";
+    }
+    if(this.plugin.settings.ontologySuggesterChildTrigger === "") {
+      this.plugin.settings.ontologySuggesterChildTrigger = "::c";
+    }
+    if(this.plugin.settings.ontologySuggesterFriendTrigger === "") {
+      this.plugin.settings.ontologySuggesterFriendTrigger = "::c";
     }
     this.plugin.setHierarchyLinkStylesExtended();
     this.plugin.settings.tagStyleList = Object.keys(this.plugin.settings.tagNodeStyles);
@@ -1275,6 +1292,60 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           })
         )
 
+    let pSeq:Setting, cSeq:Setting, fSeq:Setting;
+
+    new Setting(containerEl)
+      .setName(t("ONTOLOGY_SUGGESTER_NAME"))
+      .setDesc(t("ONTOLOGY_SUGGESTER_DESC"))
+      .addToggle(toggle=> 
+        toggle
+          .setValue(this.plugin.settings.allowOntologySuggester)
+          .onChange(value => {
+            this.plugin.settings.allowOntologySuggester = value;
+            pSeq.setDisabled(!value);
+            cSeq.setDisabled(!value);
+            fSeq.setDisabled(!value);
+            this.dirty = true;
+          })
+      )
+
+    pSeq = new Setting(containerEl)
+      .setName(t("ONTOLOGY_SUGGESTER_PARENT_NAME"))
+      .setDisabled(!this.plugin.settings.allowOntologySuggester)
+      .addText(text=>
+        text
+          .setValue(this.plugin.settings.ontologySuggesterParentTrigger)
+          .onChange(value => {
+            this.plugin.settings.ontologySuggesterParentTrigger = value;
+            this.dirty = true;
+          })  
+      )
+    
+
+    cSeq = new Setting(containerEl)
+      .setName(t("ONTOLOGY_SUGGESTER_CHILD_NAME"))
+      .setDisabled(!this.plugin.settings.allowOntologySuggester)
+      .addText(text=>
+        text
+          .setValue(this.plugin.settings.ontologySuggesterChildTrigger)
+          .onChange(value => {
+            this.plugin.settings.ontologySuggesterChildTrigger = value;
+            this.dirty = true;
+          })  
+      )
+
+    fSeq = new Setting(containerEl)
+      .setName(t("ONTOLOGY_SUGGESTER_FRIEND_NAME"))
+      .setDisabled(!this.plugin.settings.allowOntologySuggester)
+      .addText(text=>
+        text
+          .setValue(this.plugin.settings.ontologySuggesterFriendTrigger)
+          .onChange(value => {
+            this.plugin.settings.ontologySuggesterFriendTrigger = value;
+            this.dirty = true;
+          })  
+      )
+    
     this.containerEl.createEl("h1", {
       cls: "excalibrain-settings-h1",
       text: t("DISPLAY_HEAD") 

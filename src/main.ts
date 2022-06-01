@@ -12,6 +12,7 @@ import { ExcalidrawAutomate, search } from 'obsidian-excalidraw-plugin/lib/Excal
 import { Scene } from './Scene';
 import { LinkStyles, NodeStyles, LinkStyle, RelationType, LinkDirection } from './Types';
 import { WarningPrompt } from './utils/Prompts';
+import { FieldSuggester } from './Suggesters/OntologySuggester';
 
 declare module "obsidian" {
   interface App {
@@ -55,6 +56,7 @@ export default class ExcaliBrain extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new ExcaliBrainSettingTab(this.app, this));
+    this.registerEditorSuggest(new FieldSuggester(this));
     this.app.workspace.onLayoutReady(()=>{
       this.DVAPI = getAPI();
       if(!this.DVAPI) {
