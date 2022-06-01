@@ -73,19 +73,25 @@ export class Page {
   }
 
   public addDVFieldLinksToPage() {
-    if(this.isFolder || !this.pages) {
+    if(this.dvIndexReady || this.isFolder || !this.pages) {
       return;
     }
 
+    this.dvIndexReady = true;
+
     if(this.isTag) {
-      this.plugin.DVAPI.index.etags.invMap.get("#"+this.path.substring(4)).forEach(path=>{
+      const invMap = this.plugin.DVAPI.index.etags.invMap.get("#"+this.path.substring(4));
+      if(!invMap) {
+        return;
+      }
+      invMap.forEach(path=>{
         const child = this.pages.get(path);
         if(!child) {
           return;
         }
         child.addParent(this,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
         this.addChild(child,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
-      })
+      });
       return;
     }
 
@@ -99,6 +105,8 @@ export class Page {
     }
     this.dvPage = dvPage;
     if(!dvPage) return;
+    this.primaryStyleTag = getPrimaryTag(this.dvPage,this.plugin.settings);
+
     (dvPage.file?.etags?.values??[]).forEach((tag:string)=>{
       tag = "tag:" + tag.substring(1);
       const parent = this.pages.get(tag);
@@ -166,11 +174,9 @@ export class Page {
   }
 
   private getNeighbours(): [string, Relation][] {
-    if(!this.dvIndexReady) {
-      this.dvIndexReady = true;
-      this.addDVFieldLinksToPage();
-      this.primaryStyleTag = getPrimaryTag(this.dvPage,this.plugin.settings);
-    }
+    this.addDVFieldLinksToPage();
+    this.neighbours.forEach(n=>n.target.addDVFieldLinksToPage());
+
     const { showVirtualNodes, showAttachments, showFolderNodes, showTagNodes, showPageNodes } = this.plugin.settings
     return Array.from(this.neighbours)
       .filter(x=> (showVirtualNodes || !x[1].target.isVirtual) && 
