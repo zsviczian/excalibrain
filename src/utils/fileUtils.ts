@@ -1,16 +1,19 @@
 import { App, normalizePath, TAbstractFile, TFile, TFolder, Vault } from "obsidian";
 import { errorlog } from "./utils";
 
-export const getFilenameFromPath = (path:string) => {
+export const getFilenameFromPath = (path:string):string => {
   const mdFile = path.endsWith(".md");
   const filename = path.substring(path.lastIndexOf("/")+1);
   return mdFile ? filename.slice(0,-3) : filename;
 }
 
-const getExtension = (path:string) => {
-  const lastDot = path.lastIndexOf(".");
-  if(lastDot === -1) return "md";
-  return path.slice(lastDot+1);
+const getExtension = (path:string):string => {
+  if(!path) {
+    return;
+  }
+  const extension = path.match(/\.([^/]*)$/);
+  if(!extension) return "md";
+  return extension[1];
 }
 
 export function splitFolderAndFilename(filepath: string): {

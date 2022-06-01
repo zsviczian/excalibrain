@@ -1,4 +1,5 @@
 import { TFile } from "obsidian";
+import { Literal } from "obsidian-dataview/lib/data-model/value";
 import ExcaliBrain from "src/main";
 import { LinkDirection, Neighbour, Relation, RelationType } from "src/Types";
 import { getDVFieldLinksForPage, getPrimaryTag } from "src/utils/dataview";
@@ -48,7 +49,7 @@ const relationTypeToSet = (currentType: RelationType, newType: RelationType):Rel
 export class Page {
   public mtime: number;
   public neighbours: Map<string,Relation>;
-  public dvPage: Record<string, any>;
+  public dvPage: Record<string, Literal>;
   public primaryStyleTag: string;
   public dvIndexReady: boolean = false;
   

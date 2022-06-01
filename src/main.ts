@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, PluginManifest, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
+import { App, Notice, Plugin, PluginManifest, TextFileView, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { Page } from './graph/Page';
 import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './Settings';
 import { errorlog } from './utils/utils';
@@ -175,7 +175,11 @@ export default class ExcaliBrain extends Plugin {
     const self = this;
     setTimeout(async()=>{
       //@ts-ignore
-      self.starred = (await app.internalPlugins.getPluginById("starred").loadData())
+      const starredPlugin = app.internalPlugins.getPluginById("starred");
+      if(!starredPlugin) {
+        return;
+      }
+      self.starred = (await starredPlugin.loadData())
         .items
         .filter((i: any)=>i.type==="file")
         .map((i: any)=>i.path)
@@ -224,8 +228,12 @@ export default class ExcaliBrain extends Plugin {
     this.addCommand({
       id: "excalibrain-start",
       name: t("COMMAND_START"),
-      callback: async () => {
-        if(!this.excalidrawAvailable()) return;
+      checkCallback: (checking:boolean) => {
+        if(checking) {
+          return this.excalidrawAvailable();
+        }
+        if(!this.excalidrawAvailable()) return; //still need this in case user sets a hotkey
+        
         if(this.scene && !this.scene.terminated) {
           this.revealBrainLeaf();
           return;
@@ -238,7 +246,7 @@ export default class ExcaliBrain extends Plugin {
           return;
         }
         this.focusSearchAfterInitiation = true;
-        await Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,leaf);
+        Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,leaf);
       },
     });
 
@@ -249,9 +257,10 @@ export default class ExcaliBrain extends Plugin {
         //@ts-ignore
         const hoverEditor = app.plugins.getPlugin("obsidian-hover-editor");
         if(checking) {
-          return hoverEditor;
+          return hoverEditor && this.excalidrawAvailable();
         }
-        if(!this.excalidrawAvailable()) return;        
+        if(!this.excalidrawAvailable() || !hoverEditor) return;        
+
         if(this.scene && !this.scene.terminated) {
           this.revealBrainLeaf();
           return;
@@ -281,7 +290,7 @@ export default class ExcaliBrain extends Plugin {
               return false;
             }
             //@ts-ignore
-            setTimeout(()=>app.commands.commands["obsidian-hover-editor:snap-active-popover-to-viewport"].checkCallback(false));
+            setTimeout(()=>app.commands.executeCommandById("obsidian-hover-editor:snap-active-popover-to-viewport"));
             this.focusSearchAfterInitiation = true;
             Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,leaf);
           });
@@ -297,8 +306,8 @@ export default class ExcaliBrain extends Plugin {
     app.workspace.iterateAllLeaves(leaf=>{
       if(
         leaf.view &&
-        this.EA.isExcalidrawView(leaf.view) &&
-        //@ts-ignore
+        this.EA.isExcalidrawView(leaf.view) && 
+        leaf.view instanceof TextFileView && 
         leaf.view.file.path === this.settings.excalibrainFilepath
       ) {
         brainLeaf = leaf;

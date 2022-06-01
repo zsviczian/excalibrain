@@ -1,4 +1,5 @@
 import { App, TFile } from "obsidian";
+import { Literal } from "obsidian-dataview/lib/data-model/value";
 import ExcaliBrain from "src/main";
 import { ExcaliBrainSettings } from "src/Settings";
 import { NodeStyle } from "src/Types";
@@ -66,7 +67,7 @@ const readDVField = (app: App, field: any, file:TFile):string[] => {
   return readLinksFromString(field,file);
 }
 
-export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<string, any>, fields: string[]):{link:string,field:string}[] => {
+export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<string, Literal>, fields: string[]):{link:string,field:string}[] => {
   const links:{link:string,field:string}[] = [];
   const processed = new Set();
   fields.forEach(f => {
@@ -81,7 +82,7 @@ export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<strin
 }
 
 export const getPrimaryTag = (
-  dvPage: Record<string, any>,
+  dvPage: Record<string, Literal>,
   settings: ExcaliBrainSettings
 ):string => {
   if(!dvPage) return null;
