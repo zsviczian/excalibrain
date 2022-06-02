@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, PluginManifest, TextFileView, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
+import { App, MarkdownView, Notice, Plugin, PluginManifest, TextFileView, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { Page } from './graph/Page';
 import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './Settings';
 import { errorlog } from './utils/utils';
@@ -227,6 +227,86 @@ export default class ExcaliBrain extends Plugin {
   }
 
   private registerCommands() {
+    
+    const addFieldToOntology = (checking: boolean, desc: string):boolean => {
+      const activeView = app.workspace.activeLeaf?.view; 
+      if(checking) {
+        return (activeView instanceof MarkdownView) && activeView.getMode() === "source";
+      }
+      if(!(activeView instanceof MarkdownView) || activeView.getMode() !== "source") {
+        return false;
+      }
+      const cursor = activeView.editor.getCursor();
+      const line = activeView.editor.getLine(cursor.line);
+      const field = line.match(/^([^\:]*)::/);
+      if(!field) {
+        return false;
+      }
+
+      (async() => {
+        const nh = this.settings.navigationHistory;
+        await this.loadSettings();
+        this.settings.navigationHistory = nh;
+
+        if(this.settings.hierarchy.parents.includes(field[1])) {
+          new Notice(`${field[1]} is already registered as a PARENT`);
+          return;
+        }
+        if(this.settings.hierarchy.children.includes(field[1])) {
+          new Notice(`${field[1]} is already registered as a CHILD`);
+          return;
+        }
+        if(this.settings.hierarchy.friends.includes(field[1])) {
+          new Notice(`${field[1]} is already registered as a FRIEND`);
+          return;
+        }
+        switch (desc) {
+          case "parent":
+            this.settings.hierarchy.parents.push(field[1]);
+            this.settings.hierarchy.parents = this.settings.hierarchy.parents.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
+            this.hierarchyLowerCase.parents = [];
+            this.settings.hierarchy.parents.forEach(f=>this.hierarchyLowerCase.parents.push(f.toLowerCase().replaceAll(" ","-")))    
+            break;
+          case "child":
+            this.settings.hierarchy.children.push(field[1]);
+            this.settings.hierarchy.children = this.settings.hierarchy.children.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
+            this.hierarchyLowerCase.children = [];
+            this.settings.hierarchy.children.forEach(f=>this.hierarchyLowerCase.children.push(f.toLowerCase().replaceAll(" ","-")))    
+            break;
+          default:
+            this.settings.hierarchy.friends.push(field[1]);
+            this.settings.hierarchy.friends = this.settings.hierarchy.friends.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
+            this.hierarchyLowerCase.friends = [];
+            this.settings.hierarchy.friends.forEach(f=>this.hierarchyLowerCase.friends.push(f.toLowerCase().replaceAll(" ","-")))    
+        }
+        await this.saveSettings();
+        if (this.scene && !this.scene.terminated) {
+          this.scene.vaultFileChanged = true;
+        }
+        new Notice(`Added ${field[1]} as ${desc}`);
+      })();
+      
+      return true;
+    } 
+
+    this.addCommand({
+      id: "excalibrain-addParentField",
+      name: t("COMMAND_ADD_PARENT_FIELD"),
+      checkCallback: (checking: boolean) => addFieldToOntology(checking, "parent"),
+    });
+
+    this.addCommand({
+      id: "excalibrain-addChildField",
+      name: t("COMMAND_ADD_CHILD_FIELD"),
+      checkCallback: (checking: boolean) => addFieldToOntology(checking, "child"),
+    });
+
+    this.addCommand({
+      id: "excalibrain-addFriendField",
+      name: t("COMMAND_ADD_FRIEND_FIELD"),
+      checkCallback: (checking: boolean) => addFieldToOntology(checking, "friend"),
+    });
+
     this.addCommand({
       id: "excalibrain-start",
       name: t("COMMAND_START"),
@@ -416,11 +496,14 @@ export default class ExcaliBrain extends Plugin {
     };
 
     this.hierarchyLowerCase.parents = [];
-    this.settings.hierarchy.parents.forEach(f=>this.hierarchyLowerCase.parents.push(f.toLowerCase().replaceAll(" ","-")))
+    this.settings.hierarchy.parents = this.settings.hierarchy.parents.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
+    this.settings.hierarchy.parents.forEach(f=>this.hierarchyLowerCase.parents.push(f.toLowerCase().replaceAll(" ","-")));
     this.hierarchyLowerCase.children = [];
-    this.settings.hierarchy.children.forEach(f=>this.hierarchyLowerCase.children.push(f.toLowerCase().replaceAll(" ","-")))
+    this.settings.hierarchy.children = this.settings.hierarchy.children.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
+    this.settings.hierarchy.children.forEach(f=>this.hierarchyLowerCase.children.push(f.toLowerCase().replaceAll(" ","-")));
     this.hierarchyLowerCase.friends = [];
-    this.settings.hierarchy.friends.forEach(f=>this.hierarchyLowerCase.friends.push(f.toLowerCase().replaceAll(" ","-")))
+    this.settings.hierarchy.friends = this.settings.hierarchy.friends.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
+    this.settings.hierarchy.friends.forEach(f=>this.hierarchyLowerCase.friends.push(f.toLowerCase().replaceAll(" ","-")));
 
 
     this.setHierarchyLinkStylesExtended();
@@ -528,14 +611,16 @@ export default class ExcaliBrain extends Plugin {
       display: t("NODESTYLE_TAG"),
       getInheritedStyle: ()=> this.settings.baseNodeStyle     
     };
-    Object.entries(this.settings.tagNodeStyles).forEach(item=>{
-      this.nodeStyles[item[0]] = {
-        style: item[1],
-        allowOverride: true,
-        userStyle: true,
-        display: item[0],
-        getInheritedStyle: ()=> this.settings.baseNodeStyle
-      }
+    Object.entries(this.settings.tagNodeStyles)
+      .sort((a,b)=>a[0].toLowerCase()<b[0].toLowerCase()?-1:1)
+      .forEach(item=>{
+        this.nodeStyles[item[0]] = {
+          style: item[1],
+          allowOverride: true,
+          userStyle: true,
+          display: item[0],
+          getInheritedStyle: ()=> this.settings.baseNodeStyle
+        }
     })
 	}
 

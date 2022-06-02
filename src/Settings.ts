@@ -1152,7 +1152,10 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
   }  
 
   async display() {
+    const nh = this.plugin.settings.navigationHistory;
     await this.plugin.loadSettings(); //in case sync loaded changed settings in the background
+    this.plugin.settings.navigationHistory = nh;
+
     this.ea = getEA();
 
     //initialize sample 
@@ -1242,7 +1245,10 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
         text
           .setValue(this.plugin.settings.hierarchy.parents.join(", "))
           .onChange(value => {
-            this.plugin.settings.hierarchy.parents = value.split(",").map(s=>s.trim());
+            this.plugin.settings.hierarchy.parents = value
+              .split(",")
+              .map(s=>s.trim())
+              .sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
             this.plugin.hierarchyLowerCase.parents = [];
             this.plugin.settings.hierarchy.parents.forEach(f=>this.plugin.hierarchyLowerCase.parents.push(f.toLowerCase().replaceAll(" ","-")))
             onHierarchyChange();
@@ -1257,7 +1263,10 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
         text
           .setValue(this.plugin.settings.hierarchy.children.join(", "))
           .onChange(value => {
-            this.plugin.settings.hierarchy.children = value.split(",").map(s=>s.trim());
+            this.plugin.settings.hierarchy.children = value
+              .split(",")
+              .map(s=>s.trim())
+              .sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
             this.plugin.hierarchyLowerCase.children = [];
             this.plugin.settings.hierarchy.children.forEach(f=>this.plugin.hierarchyLowerCase.children.push(f.toLowerCase().replaceAll(" ","-")))
             onHierarchyChange();
@@ -1272,7 +1281,10 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
         text
           .setValue(this.plugin.settings.hierarchy.friends.join(", "))
           .onChange(value => {
-            this.plugin.settings.hierarchy.friends = value.split(",").map(s=>s.trim());
+            this.plugin.settings.hierarchy.friends = value
+              .split(",")
+              .map(s=>s.trim())
+              .sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
             this.plugin.hierarchyLowerCase.friends = [];
             this.plugin.settings.hierarchy.friends.forEach(f=>this.plugin.hierarchyLowerCase.friends.push(f.toLowerCase().replaceAll(" ","-")))
             onHierarchyChange();
@@ -1474,12 +1486,12 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
         text.inputEl.style.height = "200px";
         text.inputEl.style.width = "100%";
         text
-          .setValue(this.plugin.settings.tagStyleList.join(", "))
+          .setValue(this.plugin.settings.tagStyleList.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1).join(", "))
           .onChange(value => {
             const tagStyles = this.plugin.settings.tagNodeStyles
             const nodeStyles = this.plugin.nodeStyles;
             value = value.replaceAll("\n"," ");
-            const tags = value.split(",").map(s=>s.trim());
+            const tags = value.split(",").map(s=>s.trim()).sort((a,b)=>a.toLocaleLowerCase()<b.toLocaleLowerCase()?-1:1);
             this.plugin.settings.tagStyleList = tags;
             Object.keys(tagStyles).forEach(key => {
               if(!tags.contains(key)) {
@@ -1675,8 +1687,28 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       for(let i=linkStylesDropdown.selectEl.options.length-1;i>=0;i--) {
         linkStylesDropdown.selectEl.remove(i);
       }
-      Object.entries(linkStyles).forEach(item=>{
-        linkStylesDropdown.addOption(item[0],item[1].display)
+      const h = this.plugin.settings.hierarchy;
+      const sortHelper = (a:string):string =>
+        PREDEFINED_LINK_STYLES.includes(a)
+        ? ("0"+a.toLowerCase())
+        : h.parents.includes(a)
+          ? ("1"+a.toLowerCase())
+          : h.children.includes(a)
+            ? ("2"+a.toLowerCase())
+            : ("3"+a.toLowerCase());
+      Object.entries(linkStyles)
+        .sort((a,b)=>sortHelper(a[0])<sortHelper(b[0])?-1:1)
+        .forEach(item=>{
+          linkStylesDropdown.addOption(
+            item[0],
+            this.plugin.settings.hierarchy.parents.includes(item[1].display)
+                ? ("Parent > " + item[1].display)
+                : this.plugin.settings.hierarchy.children.includes(item[1].display)
+                  ? ("Child > " + item[1].display)
+                  : this.plugin.settings.hierarchy.friends.includes(item[1].display)
+                    ? ("Friend > " + item[1].display)
+                    : item[1].display
+          )
       })
       if(linkStyles[selectedItem]) {
         linkStylesDropdown.setValue(selectedItem);

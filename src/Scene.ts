@@ -35,7 +35,7 @@ export class Scene {
   private blockUpdateTimer: boolean = false;
   public toolsPanel: ToolsPanel;
   private historyPanel: HistoryPanel;
-  private vaultFileChanged: boolean = false;
+  public vaultFileChanged: boolean = false;
   public pinLeaf: boolean = false;
   public focusSearchAfterInitiation: boolean = true;
 

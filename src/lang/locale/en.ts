@@ -11,7 +11,10 @@ export default {
     "should rename the file so your edits are preserved, because the next time you initiate ExcaliBrain your edits will be overwritten by " +
     "the automatically generated ExcaliBrain graph.",
   HIERARCHY_HEAD: "Ontology",
-  HIERARCHY_DESC: "Enter the Dataview field names separated by comma (,) that you will use to define link directions in your graph.",
+  HIERARCHY_DESC: "Enter the Dataview field names separated by comma (,) that you will use to define link directions in your graph.<br>" +
+    "You can also add fields to the ontology on the fly from the markdown editor by typing the new field at the beginning of a paragraph (e.g.: 'Consits of::') " +
+    "and then calling one of the command palette actions to <code>Add dataview field to ontology as PARENT</code>, or <code>as CHILD</code>, " +
+    "or <code>as FRIEND</code>",
   INFER_NAME: "Infer all implicit relationships as Friend",
   INFER_DESC: "<b>Toggle On:</b> All implicit links in the document are interpreted as FRIENDS.<br>" + 
     "<b>Toggle Off:</b> The following logic is used:<ul>" +
@@ -107,6 +110,9 @@ export default {
   DATAVIEW_NOT_FOUND: `Dataview plugin not found. Please install or enable Dataview then try restarting ${APPNAME}.`,
   EXCALIDRAW_NOT_FOUND: `Excalidraw plugin not found. Please install or enable Excalidraw then try restarting ${APPNAME}.`,
   EXCALIDRAW_MINAPP_VERSION: `ExcaliBrain requires Excalidraw ${MINEXCALIDRAWVERSION} or higher. Please upgrade Excalidraw then try restarting ${APPNAME}.`,
+  COMMAND_ADD_PARENT_FIELD: "Add dataview field to ontology as PARENT",
+  COMMAND_ADD_CHILD_FIELD: "Add dataview field to ontology as CHILD",
+  COMMAND_ADD_FRIEND_FIELD: "Add dataview field to ontology as FRIEND",
   COMMAND_START: "ExcaliBrain Normal",
   COMMAND_START_HOVER: "ExcaliBrain Hover-Editor",
   //COMMAND_SEARCH: "Search",

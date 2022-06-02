@@ -72,7 +72,8 @@ export class FieldSuggester extends EditorSuggest<string> {
 
   getSuggestions = (context: EditorSuggestContext) => {
     const query = context.query.toLowerCase();
-    return this.getKeys().filter((sug) => sug.toLowerCase().includes(query));
+    return this.getKeys()
+      .filter((sug) => sug.toLowerCase().includes(query));
   };
 
   renderSuggestion(suggestion: string, el: HTMLElement): void {
