@@ -35,3 +35,16 @@ https://user-images.githubusercontent.com/14358394/166160307-707c787e-b03e-4271-
 
 ## How to install
 https://user-images.githubusercontent.com/14358394/166163247-8af788d9-4de3-4b86-9d0c-b62b4d99d76c.mp4
+
+# Feedback, questions, ideas, problems
+Please head over to [GitHub](https://github.com/zsviczian/excalibrain/issues) to report a bug or request an enhancement.
+
+# Say Thank You
+If you are enjoying ExcaliBrain then please support my work and enthusiasm by buying me a coffee on [https://ko-fi/zsolt](https://ko-fi.com/zsolt).
+
+Please also help spread the word by sharing about the ExcaliBrain Plugin on Twitter, Reddit, or any other social media platform you regularly use. 
+
+You can find me on Twitter [@zsviczian](https://twitter.com/zsviczian), on Discord OMG (zsviczian#6093), and on my blog [zsolt.blog](https://zsolt.blog).
+
+[<img style="float:left" src="https://user-images.githubusercontent.com/14358394/115450238-f39e8100-a21b-11eb-89d0-fa4b82cdbce8.png" width="200">](https://ko-fi.com/zsolt)
+
