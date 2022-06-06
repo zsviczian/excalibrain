@@ -76,7 +76,12 @@ export class PageSuggest extends TextInputSuggest<Page> {
     }
 
     renderSuggestion(page: Page, el: HTMLElement): void {
-        el.setText(page.path);
+        el.ariaLabel = page.path;
+        el.setText(
+          (page.isFolder || page.isTag)
+            ? page.path
+            : page.name
+        );
     }
 
     selectSuggestion(page: Page): void {

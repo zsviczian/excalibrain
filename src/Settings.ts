@@ -25,6 +25,7 @@ export interface ExcaliBrainSettings {
   hierarchy: Hierarchy;
   inferAllLinksAsFriends: boolean;
   renderAlias: boolean;
+  nodeTitleScript: string;
   backgroundColor: string;
   excludeFilepaths: string[];
   showInferredNodes: boolean;
@@ -66,6 +67,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   },
   inferAllLinksAsFriends: false,
   renderAlias: true,
+  nodeTitleScript: "",
   backgroundColor: "#0c3e6aff",
   excludeFilepaths: [],
   showInferredNodes: true,
@@ -300,6 +302,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     }
     this.plugin.setHierarchyLinkStylesExtended();
     this.plugin.settings.tagStyleList = Object.keys(this.plugin.settings.tagNodeStyles);
+    this.plugin.loadCustomNodeLabelFunction();
     this.plugin.saveSettings();
     this.plugin.scene?.reRender();
   }
@@ -1378,7 +1381,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
           });
         })
-    filepathList.descEl.style.maxWidth="400px";
+    filepathList.descEl.style.width = "90%";
+    filepathList.controlEl.style.width = "90%";
 
     new Setting(containerEl)
       .setName(t("RENDERALIAS_NAME"))
@@ -1391,7 +1395,23 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
           })
       );
-    
+
+    const nodeScriptSetting = new Setting(containerEl)
+      .setName(t("NODETITLE_SCRIPT_NAME"))
+      .setDesc(fragWithHTML(t("NODETITLE_SCRIPT_DESC")))
+      .addTextArea(text=> {
+        text.inputEl.style.height = "200px";
+        text.inputEl.style.width = "100%";
+        text
+          .setValue(this.plugin.settings.nodeTitleScript)
+          .onChange(value => {
+            this.plugin.settings.nodeTitleScript = value;
+            this.dirty = true;
+          })
+        });
+    nodeScriptSetting.descEl.style.width="90%";
+    nodeScriptSetting.controlEl.style.width="90%";
+
     new Setting(containerEl)
       .setName(t("SHOWINFERRED_NAME"))
       .setDesc(fragWithHTML(t("SHOWINFERRED_DESC")))
@@ -1528,7 +1548,8 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
         })
       })
 
-    taglist.descEl.style.maxWidth="400px";
+    taglist.descEl.style.width="90%";
+    taglist.controlEl.style.width="90%";
     const nodeStylesWrapper = containerEl.createDiv({cls:"setting-item"});
     const nodeStylesDropdownWrapper = nodeStylesWrapper.createDiv({cls:"setting-item-info"});
     nodeStylesDropdown = new DropdownComponent(nodeStylesDropdownWrapper);

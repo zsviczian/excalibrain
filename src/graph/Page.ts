@@ -4,7 +4,7 @@ import ExcaliBrain from "src/main";
 import { LinkDirection, Neighbour, Relation, RelationType } from "src/Types";
 import { getDVFieldLinksForPage, getPrimaryTag } from "src/utils/dataview";
 import { getFilenameFromPath } from "src/utils/fileUtils";
-import { log } from "src/utils/utils";
+import { errorlog, log } from "src/utils/utils";
 import { Pages } from "./Pages";
 
 const DEFAULT_RELATION:Relation = {
@@ -152,9 +152,25 @@ export class Page {
     const aliases = (this.file && this.plugin.settings.renderAlias)
       ? (this.dvPage?.file?.aliases?.values??[])
       : [];
-    return aliases.length > 0 
+    const defaultName = aliases.length > 0 
       ? aliases[0] 
       : this.name
+
+    if(this.dvPage?.file && this.plugin.customNodeLabel) {
+      try {
+        return this.plugin.customNodeLabel(this.dvPage, defaultName);
+      } 
+      catch(e) {
+        errorlog({
+          fn: this.getTitle,
+          message: "Error executing cutomer node label function. The script is: " + this.plugin.settings.nodeTitleScript,
+          data: this.dvPage,
+          where: "Page.getTitle()",
+          error: e
+        })
+      }
+    }
+    return defaultName;
   }
 
   private getRelationVector (r:Relation):{

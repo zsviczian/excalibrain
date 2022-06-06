@@ -35,6 +35,17 @@ export default {
   EXCLUDE_PATHLIST_DESC: "Enter comma-separated list of filepaths to exclude from the index.",
   RENDERALIAS_NAME: "Display alias if available",
   RENDERALIAS_DESC: "Displays the page alias instead of the filename if it is specified in the page's front matter.",
+  NODETITLE_SCRIPT_NAME: "Javascript for rendering node names",
+  NODETITLE_SCRIPT_DESC: "Javascript code to render the node title. If you don't need it, just leave this field empty.<br>" +
+    "Function definition: <code>customNodeLabel: (dvPage: Literal, defaultName:string) => string</code><br>" +
+    "In your script you may refer to the dataview page object via the <code>dvPage</code> variable; and the default page name (filename or alias if available) via the <code>defaultName</code> variable. " +
+    "Use the following expression syntax:<br><code>dvPage['field 1']??defaultName</code> - this example will display the vaule of 'field 1' if available else the defaultName<br>" +
+    "⚠ Your line of code will be executed as is, make sure you add proper exception handling. Beyond <code>defaultName</code> and dataview field names, you also have the freedom to " + 
+    "use any javascript function (e.g. <code>defaultName.toLowerCase()</code>) and any value that appears on the <code>dvPage</code> object, e.g. <code>dvPage.file.path</code>, etc. <br> " +
+    "To explore the dataview page object open Developer Console and enter the following code:<br>" + 
+    "<code>DataviewAPI.page('full filepath including extension')</code><br>" + 
+    "Here's an example code that will display the value of the title field if available, else the filename, followed by the state (if available): <br>" +
+    "<code>dvPage.title??defaultName & (dvPage.state ? ' - ' & dvPage.state : '')</code>",
   SHOWINFERRED_NAME: "Display inferred relationships",
   SHOWINFERRED_DESC: "<b>Toggle ON</b>: Display both explicitly defined and inferred links. Forward links are children, backlinks are parents, " +
     "if two page mutually referes to one another then relationship is inferred to be a friendship. Explicitly defined relationships always " +

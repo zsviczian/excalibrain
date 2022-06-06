@@ -11,12 +11,19 @@ const getPathOrSelf = (app: App, link:string, hostPath:string):string => {
 
 const readLinksFromString = (data: string, file:TFile):string[] => {
   const res = new Set<string>();
-  const linkReg = /[^[]*\[\[([^#\]\|]*)[^\]]*]]/g;
+  //               wiki link                    markdown link 
+  const linkReg = /[^[]*\[\[(?<wikiLink>[^#\]\|]*)[^\]]*]]|\[[^\]]*]\((?<mdLink>[^)]*)\)/g;
   const m = data.matchAll(linkReg);
   let r;
   while(!(r=m.next()).done) {
-    if(r.value[1]) {
-      const path = getPathOrSelf(app, r.value[1],file.path);
+    if(r.value.groups.wikiLink) {
+      const path = getPathOrSelf(app, r.value.groups.wikiLink,file.path);
+      if(path) { 
+        res.add(path);
+      }
+    }
+    if(r.value.groups.mdLink) {
+      const path = getPathOrSelf(app, decodeURIComponent(r.value.groups.mdLink),file.path);
       if(path) { 
         res.add(path);
       }

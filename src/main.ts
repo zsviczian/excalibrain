@@ -13,6 +13,7 @@ import { Scene } from './Scene';
 import { LinkStyles, NodeStyles, LinkStyle, RelationType, LinkDirection } from './Types';
 import { WarningPrompt } from './utils/Prompts';
 import { FieldSuggester } from './Suggesters/OntologySuggester';
+import { Literal } from 'obsidian-dataview/lib/data-model/value';
 
 declare module "obsidian" {
   interface App {
@@ -40,6 +41,7 @@ export default class ExcaliBrain extends Plugin {
   private pluginLoaded: boolean = false;
   public starred: Page[] = [];
   private focusSearchAfterInitiation:boolean = false;
+  public customNodeLabel: (dvPage: Literal, defaultName:string) => string
   
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
@@ -484,8 +486,30 @@ export default class ExcaliBrain extends Plugin {
     })
   }
 
+  loadCustomNodeLabelFunction() {
+    if(!this.settings.nodeTitleScript) {
+      this.customNodeLabel = null;
+      return;
+    }
+    try{
+      //@ts-ignore
+      this.customNodeLabel = new Function("dvPage","defaultName","return " + this.settings.nodeTitleScript);
+    } catch(e) {
+      errorlog({
+        fn: this.loadCustomNodeLabelFunction,
+        message: "error processing custom node label script",
+        where: "loadCustomNodeLabelFunction()",
+        data: this.settings.nodeTitleScript,
+        error: e
+      });
+      new Notice("Could not load custom node label function. See Developer console for details");
+      this.customNodeLabel = null;
+    }
+  }
+
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.loadCustomNodeLabelFunction();
     this.settings.baseLinkStyle = {
       ...DEFAULT_LINK_STYLE,
       ...this.settings.baseLinkStyle,
