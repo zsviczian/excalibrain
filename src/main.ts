@@ -73,6 +73,18 @@ export default class ExcaliBrain extends Plugin {
         });
         return;
       }
+      if(!this.DVAPI.version.compare('>=', '0.5.31')) {
+        (new WarningPrompt(
+          app,
+          "⚠ ExcaliBrain Disabled: Dataview upgrade requried",
+          t("DATAVIEW_UPGRADE"))
+        ).show(async (result: boolean) => {
+          new Notice("Disabling ExcaliBrain Plugin", 8000);
+          errorlog({fn:this.onload, where:"main.ts/onload()", message:"Dataview version error"});
+          this.app.plugins.disablePlugin(PLUGIN_NAME)  
+        });
+        return;
+      }
 
       this.EA = getEA();
       if(!this.EA) {

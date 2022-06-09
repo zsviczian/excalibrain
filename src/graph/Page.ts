@@ -120,7 +120,7 @@ export class Page {
     getDVFieldLinksForPage(this.plugin,dvPage,parentFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
-        log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+        //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         return;
       }
       this.addParent(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
@@ -130,7 +130,7 @@ export class Page {
     getDVFieldLinksForPage(this.plugin,dvPage,childFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
-        log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+        //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         return;
       }        
       this.addChild(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
@@ -140,7 +140,7 @@ export class Page {
     getDVFieldLinksForPage(this.plugin,dvPage,friendFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
-        log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+      //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         return;
       }        
       this.addFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
@@ -221,7 +221,7 @@ export class Page {
   // add relationships
   //-----------------------------------------------
   addParent(page: Page, relationType:RelationType,  direction: LinkDirection, definition?: string) {
-    if(page.path === this.plugin.settings.excalibrainFilepath) {
+    if(page.path === this.plugin.settings.excalibrainFilepath || page.path === this.path) {
       return;
     };
     const neighbour = this.neighbours.get(page.path);
@@ -243,7 +243,7 @@ export class Page {
   }
 
   addChild(page: Page, relationType:RelationType, direction: LinkDirection, definition?: string) {
-    if(page.path === this.plugin.settings.excalibrainFilepath) {
+    if(page.path === this.plugin.settings.excalibrainFilepath || page.path === this.path) {
       return;
     };
     const neighbour = this.neighbours.get(page.path);
@@ -265,7 +265,7 @@ export class Page {
   }
 
   addFriend(page: Page, relationType:RelationType, direction: LinkDirection, definition?: string) {
-    if(page.path === this.plugin.settings.excalibrainFilepath) {
+    if(page.path === this.plugin.settings.excalibrainFilepath || page.path === this.path) {
       return;
     };
     const neighbour = this.neighbours.get(page.path);

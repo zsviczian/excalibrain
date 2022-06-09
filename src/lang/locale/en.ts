@@ -119,6 +119,7 @@ export default {
   LINKSTYLE_TAG: "Style of tag link",
   //main
   DATAVIEW_NOT_FOUND: `Dataview plugin not found. Please install or enable Dataview then try restarting ${APPNAME}.`,
+  DATAVIEW_UPGRADE: `Please upgrade Dataview to 0.5.31 or newer. Please update Dataview then try restarting ${APPNAME}.`,
   EXCALIDRAW_NOT_FOUND: `Excalidraw plugin not found. Please install or enable Excalidraw then try restarting ${APPNAME}.`,
   EXCALIDRAW_MINAPP_VERSION: `ExcaliBrain requires Excalidraw ${MINEXCALIDRAWVERSION} or higher. Please upgrade Excalidraw then try restarting ${APPNAME}.`,
   COMMAND_ADD_PARENT_FIELD: "Add dataview field to ontology as PARENT",

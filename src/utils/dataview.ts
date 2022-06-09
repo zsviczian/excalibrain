@@ -36,11 +36,12 @@ const readDVField = (app: App, field: any, file:TFile):string[] => {
   const res = new Set<string>();
 
   //the field is a list of links
+  
   if(field.values) {
+    const values =  Array.from(field.values())
     //List of links
-    field
-      .values
-      .filter((l:any)=>l.type === "file" || l.type === "header")
+    values
+      .filter((l:any)=>l?.type && (l.type === "file" || l.type === "header"))
       .forEach((l:any)=>{
         const path = getPathOrSelf(app, l.path,file.path);
         if(path) {
@@ -49,16 +50,14 @@ const readDVField = (app: App, field: any, file:TFile):string[] => {
       });
 
     //string: e.g. list of virtual links
-    const stringLinks:string[] = readLinksFromString(field
-      .values
+    const stringLinks:string[] = readLinksFromString(values
       .filter((l:any)=>typeof l === "string")
       .join(" "),file)
 
     //links in the frontmatter
     //! currently there is an issue with case sensitivity. DataView retains case sensitivity of links for the front matter, but not the others
-    const objectLinks:string[] = field
-      .values
-      .filter((l:any) => typeof l === "object" && l.values && typeof l.values[0] === "string")
+    const objectLinks:string[] = values
+      .filter((l:any) => l?.values && typeof l === "object" && typeof l.values[0] === "string")
       .map((l:any)=>getPathOrSelf(app,l.values[0],file.path))
 
     return Array.from(res).concat(stringLinks).concat(objectLinks);
