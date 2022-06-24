@@ -145,6 +145,7 @@
   display: inline-flex;
 }
 
+/*-----------*/
 /*MULTISELECT*/
 .multiselect-container {
   padding-left: 5px;
@@ -152,28 +153,47 @@
   pointer-events: all;
 }
 
-.multiselect-container *{
-  box-sizing:border-box
+.multiselect-container * {
+  box-sizing:border-box;
 }
 
 .multiselect-container .multiselect-header {
   width:100%;
-  margin-bottom:6px
+  margin-bottom:6px;
 }
+
 .multiselect-container .multiselect-wrapper {
   position:relative;
   width:100%;
-  height:30px;
-  background: var(--background-modifier-form-field);
-  border: 1px solid var(--background-modifier-border);
+  height:32px;
+  border:1px solid red;
   display:flex;
   align-items:center;
   padding:0 8px;
-  cursor:pointer
+  cursor:pointer;
 }
 
-.multiselect-container .multiselect-wrapper:after{content:'';position:absolute;width:8px;height:8px;right:12px;top:8px;border-right:2px solid var(--text-normal) ;border-top:2px solid var(--text-normal) ;transform:rotate(135deg);transform-origin:center center;transition:all 0.2s ease-in-out}
-.multiselect-container .multiselect-wrapper .selected-value{padding-right:30px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.multiselect-container .multiselect-wrapper:after {
+  content:'';
+  position:absolute;
+  width:8px;
+  height:8px;
+  right:12px;
+  top:8px;
+  border-right:2px solid black;
+  border-top:2px solid black;
+  transform:rotate(135deg);
+  transform-origin:center center;
+  transition:all 0.2s ease-in-out;
+}
+
+.multiselect-container .multiselect-wrapper .selected-value {
+  padding-right:30px;
+  text-overflow:ellipsis;
+  overflow:hidden;
+  white-space:nowrap;
+}
+
 .multiselect-container .multiselect-wrapper .options-wrapper {
   position:absolute;
   top:100%;
@@ -181,27 +201,90 @@
   width:100%;
   max-height:300px;
   overflow:auto;
-  background-color:var(--background-secondary);
-  border:1px solid var(--background-modifier-border);
+  background-color:rgba(0,0,0,0.1);
+  border:1px solid grey;
   display:none;
-  flex-direction:column
+  flex-direction:column;
 }
 
 .multiselect-container .multiselect-wrapper .option:hover {
   cursor:pointer;
-  background-color:rgba(255,255,255,0.1)
+  background-color:rgba(0,0,0,0.1);
 }
 
-.multiselect-container .multiselect-wrapper .option-text{display:none;padding:6px 12px}
-.multiselect-container .multiselect-wrapper .checkbox-wrapper{display:flex;align-items:center;min-height:19px;position:relative;padding:6px 12px 6px 36px;cursor:pointer;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}
-.multiselect-container .multiselect-wrapper .checkbox-wrapper .checkbox-checkmark{position:absolute;top:6px;left:6px;height:19px;width:19px;background-color:#eee;border-radius:4px;border:1px solid #000}
-.multiselect-container .multiselect-wrapper .checkbox-wrapper .checkbox-checkmark:after{content:'';position:absolute;display:none;left:6px;top:2px;width:4px;height:8px;border:solid white;border-width:0 2px 2px 0;transform:rotate(45deg)}
-.multiselect-container .multiselect-wrapper .checkbox-wrapper input{position:absolute;opacity:0;cursor:pointer;height:0;width:0}
-.multiselect-container .multiselect-wrapper .checkbox-wrapper input:checked ~ .checkbox-checkmark{background-color:#2196F3}
-.multiselect-container .multiselect-wrapper .checkbox-wrapper input:checked ~ .checkbox-checkmark:after{display:block}
-.multiselect-container .multiselect-wrapper.single-select .checkbox-wrapper{display:none}
-.multiselect-container .multiselect-wrapper.single-select .option-text{display:block}
-.multiselect-container .multiselect-wrapper.single-select .option-text.selected{background-color:#2196F3}
-.multiselect-container .multiselect-wrapper.opened:after{top:12px;transform:rotate(315deg)}
-.multiselect-container .multiselect-wrapper.opened .options-wrapper{display:flex}
+.multiselect-container .multiselect-wrapper .option-text {
+  display:none;
+  padding:6px 12px;
+}
 
+.multiselect-container .multiselect-wrapper .checkbox-wrapper {
+  display:flex;
+  align-items:center;min-height:19px;
+  position:relative;
+  padding:6px 12px 6px 36px;
+  cursor:pointer;
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  -ms-user-select:none;
+  user-select:none;
+}
+
+.multiselect-container .multiselect-wrapper .checkbox-wrapper .checkbox-checkmark {
+  position:absolute;
+  top:6px;
+  left:6px;
+  height:19px;
+  width:19px;
+  background-color:#eee;
+  border-radius:4px;
+  border:1px solid #000;
+}
+
+.multiselect-container .multiselect-wrapper .checkbox-wrapper .checkbox-checkmark:after {
+  content:'';
+  position:absolute;display:none;
+  left:6px;
+  top:2px;
+  width:4px;
+  height:8px;
+  border:solid white;
+  border-width:0 2px 2px 0;
+  transform:rotate(45deg);
+}
+
+.multiselect-container .multiselect-wrapper .checkbox-wrapper input {
+  position:absolute;
+  opacity:0;
+  cursor:pointer;
+  height:0;
+  width:0;
+}
+
+.multiselect-container .multiselect-wrapper .checkbox-wrapper input:checked ~ .checkbox-checkmark {
+  background-color:#2196F3;
+}
+
+.multiselect-container .multiselect-wrapper .checkbox-wrapper input:checked ~ .checkbox-checkmark:after {
+  display:block;
+}
+
+.multiselect-container .multiselect-wrapper.single-select .checkbox-wrapper {
+  display:none;
+}
+
+.multiselect-container .multiselect-wrapper.single-select .option-text {
+  display:block;
+}
+
+.multiselect-container .multiselect-wrapper.single-select .option-text.selected {
+  background-color:#2196F3;
+}
+
+.multiselect-container .multiselect-wrapper.opened:after {
+  top:12px;
+  transform:rotate(315deg);
+}
+
+.multiselect-container .multiselect-wrapper.opened .options-wrapper {
+  display:flex;
+}

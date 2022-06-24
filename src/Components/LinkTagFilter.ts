@@ -1,6 +1,5 @@
-import { link } from "fs";
 import ExcaliBrain from "src/main";
-import { Multiselect } from "ts-multiselect";
+import { Multiselect } from "src/Components/ts-multiselect/modules/multiselect.class"
 
 export class LinkTagFilter {
   selectedLinks: Set<string> = new Set<string>();
@@ -54,7 +53,7 @@ export class LinkTagFilter {
     tags.forEach(tag=>options.push({label:tag, value:tag}))
 
     const ms = new Multiselect({
-      id: "filter",
+      origin: this.filterDiv,
       placeholder: "filter links and tags",
       options: options.sort((a,b)=>a.label>b.label?1:-1),
       selected: selected,

@@ -17,8 +17,7 @@
   "license": "MIT",
   "dependencies": {
     "obsidian-dataview": "^0.5.31",
-    "@popperjs/core": "^2.11.2",
-    "ts-multiselect": "^0.0.10"
+    "@popperjs/core": "^2.11.2"
   },
   "devDependencies": {
     "obsidian-excalidraw-plugin": "1.6.33",
