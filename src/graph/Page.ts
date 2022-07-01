@@ -200,7 +200,7 @@ export class Page {
         (showAttachments || !x[1].target.isAttachment) &&
         (showFolderNodes || !x[1].target.isFolder) &&
         (showTagNodes || !x[1].target.isTag) &&
-        (showPageNodes || x[1].target.isFolder || x[1].target.isTag)
+        (showPageNodes || x[1].target.isFolder || x[1].target.isTag || x[1].target.isAttachment)
         )
   }
   
@@ -302,6 +302,14 @@ export class Page {
         : null;
   };
 
+  childrenCount():number {
+    return this.getNeighbours()
+    .reduce((prev,x) => {
+      const rt = this.isChild(x[1]);
+      return prev + ((rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED) ? 1:0);
+    },0);
+  }
+
   hasChildren ():boolean {
     return this.getNeighbours()
     .some(x => {
@@ -334,6 +342,13 @@ export class Page {
         : null;
   }
   
+  parentCount():number {
+    return this.getNeighbours()
+    .reduce((prev,x) => {
+      const rt = this.isParent(x[1]);
+      return prev + ((rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED) ? 1:0);
+    },0);
+  }
 
   hasParents():boolean { 
     return this.getNeighbours()
@@ -367,7 +382,14 @@ export class Page {
         ? RelationType.INFERRED
         : null;
   }
-    
+
+  friendCount():number {
+    return this.getNeighbours()
+    .reduce((prev,x) => {
+      const rt = this.isFriend(x[1]);
+      return prev + ((rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED) ? 1:0);
+    },0);
+  }
 
   hasFriends():boolean {
     return this.getNeighbours()

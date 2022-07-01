@@ -4,6 +4,7 @@ import {
   PluginSettingTab,
   Setting,
   SliderComponent,
+  TextAreaComponent,
   TextComponent,
   ToggleComponent,
 } from "obsidian";
@@ -34,6 +35,8 @@ export interface ExcaliBrainSettings {
   showFolderNodes: boolean;
   showTagNodes: boolean;
   showPageNodes: boolean;
+  showNeighborCount: boolean;
+  showFullTagName: boolean;
   maxItemCount: number;
   renderSiblings: boolean;
   baseNodeStyle: NodeStyle;
@@ -56,11 +59,16 @@ export interface ExcaliBrainSettings {
   ontologySuggesterParentTrigger: string;
   ontologySuggesterChildTrigger: string;
   ontologySuggesterFriendTrigger: string;
+  ontologySuggesterTrigger: string;
 }
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   excalibrainFilepath: "excalibrain.md",
   hierarchy: {
+    exclusions: ["excalidraw-font","excalidraw-font-color","excalidraw-css","excalidraw-plugin",
+      "excalidraw-link-brackets","excalidraw-link-prefix","excalidraw-border-color","excalidraw-default-mode",
+      "excalidraw-export-dark","excalidraw-export-transparent","excalidraw-export-svgpadding","excalidraw-export-pngscale",
+      "excalidraw-url-prefix", "excalidraw-linkbutton-opacity", "excalidraw-onload-script", "kanban-plugin"],
     parents: ["Parent", "Parents", "up", "u"],
     children: ["Children", "Child", "down", "d"],
     friends: ["Friends", "Friend", "Jump", "Jumps", "j"]
@@ -76,6 +84,8 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   showFolderNodes: false,
   showTagNodes: false,
   showPageNodes: true,
+  showNeighborCount: true,
+  showFullTagName: false,
   maxItemCount: 30,
   renderSiblings: true,
   baseNodeStyle: DEFAULT_NODE_STYLE,
@@ -129,6 +139,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   ontologySuggesterParentTrigger: "::p",
   ontologySuggesterChildTrigger: "::c",
   ontologySuggesterFriendTrigger: "::f",
+  ontologySuggesterTrigger: ":::",
 };
 
 const HIDE_DISABLED_STYLE = "excalibrain-hide-disabled";
@@ -299,6 +310,9 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     }
     if(this.plugin.settings.ontologySuggesterFriendTrigger === "") {
       this.plugin.settings.ontologySuggesterFriendTrigger = "::c";
+    }
+    if(this.plugin.settings.ontologySuggesterTrigger === "") {
+      this.plugin.settings.ontologySuggesterTrigger = ":::";
     }
     this.plugin.setHierarchyLinkStylesExtended();
     this.plugin.settings.tagStyleList = Object.keys(this.plugin.settings.tagNodeStyles);
@@ -1154,6 +1168,43 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
 
   }  
 
+  getUnusedFieldNames():string {
+    const fieldSet = new Set();
+    //@ts-ignore
+    this.plugin.DVAPI.index.pages.forEach(p=>{
+      const keys:IterableIterator<string> = p?.fields.keys();
+      if(!keys) return;
+      let f;
+      while(!(f = keys.next()).done) {
+        if(!f.value.contains(",")) fieldSet.add(f.value);
+      }
+    });
+    const fieldNameMap = new Map();
+    fieldSet.forEach((f:string)=>{
+      fieldNameMap.set(f,f.toLowerCase().replaceAll(" ","-"))
+    });
+    const assigned = new Set();
+    this.plugin.settings.hierarchy.parents.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
+    this.plugin.settings.hierarchy.children.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
+    this.plugin.settings.hierarchy.friends.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
+    this.plugin.settings.hierarchy.exclusions.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
+
+    Array.from(fieldNameMap.entries()).forEach(([k,v])=>{
+      if(assigned.has(k.toLowerCase().replaceAll(" ","-"))) {
+        fieldNameMap.delete(k);
+        fieldNameMap.delete(v);
+        return;
+      }
+      if(assigned.has(v)) {
+        fieldNameMap.delete(k);
+        fieldNameMap.delete(v);
+        return;
+      }
+      if(k!==v) fieldNameMap.delete(v);
+    });
+    return Array.from(fieldNameMap.keys()).join(", ")
+  }
+
   async display() {
     const nh = this.plugin.settings.navigationHistory;
     await this.plugin.loadSettings(); //in case sync loaded changed settings in the background
@@ -1240,10 +1291,11 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     const hierarchyDesc = this.containerEl.createEl("p", {});
     hierarchyDesc.innerHTML =  t("HIERARCHY_DESC");
 
-    let onHierarchyChange: Function = ()=>{};    
-    new Setting(containerEl)
+    let onHierarchyChange: Function = ()=>{};
+    const hierarchyParentSetting = new Setting(containerEl)
       .setName(t("PARENTS_NAME"))
-      .addText((text)=> {
+      .addTextArea((text)=> {
+        text.inputEl.style.height = "90px";
         text.inputEl.style.width = "100%";
         text
           .setValue(this.plugin.settings.hierarchy.parents.join(", "))
@@ -1258,10 +1310,14 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
           })
       })
+    hierarchyParentSetting.nameEl.addClass("excalibrain-setting-nameEl");
+    hierarchyParentSetting.descEl.addClass("excalibrain-setting-descEl");
+    hierarchyParentSetting.controlEl.addClass("excalibrain-setting-controlEl");
 
-    new Setting(containerEl)
+    const hierarchyChildSetting = new Setting(containerEl)
       .setName(t("CHILDREN_NAME"))
-      .addText((text)=> {
+      .addTextArea((text)=> {
+        text.inputEl.style.height = "90px";
         text.inputEl.style.width = "100%";
         text
           .setValue(this.plugin.settings.hierarchy.children.join(", "))
@@ -1276,10 +1332,14 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
           })
       })
-
-    new Setting(containerEl)
+    hierarchyChildSetting.nameEl.addClass("excalibrain-setting-nameEl");
+    hierarchyChildSetting.descEl.addClass("excalibrain-setting-descEl");
+    hierarchyChildSetting.controlEl.addClass("excalibrain-setting-controlEl");
+  
+    const hierarchyFriendSetting = new Setting(containerEl)
       .setName(t("FRIENDS_NAME"))
-      .addText((text)=> {
+      .addTextArea((text)=> {
+        text.inputEl.style.height = "90px";
         text.inputEl.style.width = "100%";
         text
           .setValue(this.plugin.settings.hierarchy.friends.join(", "))
@@ -1294,6 +1354,45 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
           })
       })
+    hierarchyFriendSetting.nameEl.addClass("excalibrain-setting-nameEl");
+    hierarchyFriendSetting.descEl.addClass("excalibrain-setting-descEl");
+    hierarchyFriendSetting.controlEl.addClass("excalibrain-setting-controlEl");
+   
+    const hierarchyExclusionSetting = new Setting(containerEl)
+      .setName(t("EXCLUSIONS_NAME"))
+      .setDesc(t("EXCLUSIONS_DESC"))
+      .addTextArea((text)=> {
+        text.inputEl.style.height = "90px";
+        text.inputEl.style.width = "100%";
+        text
+          .setValue(this.plugin.settings.hierarchy.exclusions.join(", "))
+          .onChange(value => {
+            this.plugin.settings.hierarchy.exclusions = value
+              .split(",")
+              .map(s=>s.trim())
+              .sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
+              onHierarchyChange();
+            this.dirty = true;
+          })
+      })
+    hierarchyExclusionSetting.nameEl.addClass("excalibrain-setting-nameEl");
+    hierarchyExclusionSetting.descEl.addClass("excalibrain-setting-descEl");
+    hierarchyExclusionSetting.controlEl.addClass("excalibrain-setting-controlEl");
+
+    let unassingedFieldsTextArea: TextAreaComponent;
+    const hierarchyUnassignedSetting =new Setting(containerEl)
+      .setName(t("UNASSIGNED_NAME"))
+      .setDesc(t("UNASSIGNED_DESC"))
+      .addTextArea((text)=> {
+        unassingedFieldsTextArea = text;
+        text.inputEl.style.height = "90px";
+        text.inputEl.style.width = "100%";
+        text.setValue(this.getUnusedFieldNames())
+        text.setDisabled(true);
+      })
+    hierarchyUnassignedSetting.nameEl.addClass("excalibrain-setting-nameEl");
+    hierarchyUnassignedSetting.descEl.addClass("excalibrain-setting-descEl");
+    hierarchyUnassignedSetting.controlEl.addClass("excalibrain-setting-controlEl");
 
     new Setting(containerEl)
       .setName(t("INFER_NAME"))
@@ -1307,7 +1406,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           })
         )
 
-    let pSeq:Setting, cSeq:Setting, fSeq:Setting;
+    let pSeq:Setting, cSeq:Setting, fSeq:Setting, seq: Setting;
 
     new Setting(containerEl)
       .setName(t("ONTOLOGY_SUGGESTER_NAME"))
@@ -1317,11 +1416,24 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.allowOntologySuggester)
           .onChange(value => {
             this.plugin.settings.allowOntologySuggester = value;
+            seq.setDisabled(!value);
             pSeq.setDisabled(!value);
             cSeq.setDisabled(!value);
             fSeq.setDisabled(!value);
             this.dirty = true;
           })
+      )
+
+    seq = new Setting(containerEl)
+      .setName(t("ONTOLOGY_SUGGESTER_ALL_NAME"))
+      .setDisabled(!this.plugin.settings.allowOntologySuggester)
+      .addText(text=>
+        text
+          .setValue(this.plugin.settings.ontologySuggesterTrigger)
+          .onChange(value => {
+            this.plugin.settings.ontologySuggesterTrigger = value;
+            this.dirty = true;
+          })  
       )
 
     pSeq = new Setting(containerEl)
@@ -1383,6 +1495,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
         })
     filepathList.descEl.style.width = "90%";
     filepathList.controlEl.style.width = "90%";
+
+    new Setting(containerEl)
+      .setName(t("SHOW_FULL_TAG_PATH_NAME"))
+      .setDesc(fragWithHTML(t("SHOW_FULL_TAG_PATH_DESC")))
+      .addToggle(toggle => 
+        toggle
+          .setValue(this.plugin.settings.showFullTagName)
+          .onChange(value => {
+            this.plugin.settings.showFullTagName = value;
+            this.dirty = true;
+          }))
 
     new Setting(containerEl)
       .setName(t("RENDERALIAS_NAME"))
@@ -1459,6 +1582,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       false,
       30
     )
+
+    new Setting(containerEl)
+    .setName(t("SHOW_COUNT_NAME"))
+    .setDesc(fragWithHTML(t("SHOW_COUNT_DESC")))
+    .addToggle(toggle => 
+      toggle
+        .setValue(this.plugin.settings.showNeighborCount)
+        .onChange(value => {
+          this.plugin.settings.showNeighborCount = value;
+          this.dirty = true;
+        }))
      
     containerEl.createEl("h1", {
       cls: "excalibrain-settings-h1",
@@ -1677,6 +1811,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       this.updateLinkDemoImg();
 
     onHierarchyChange = () => {
+      unassingedFieldsTextArea.setValue(this.getUnusedFieldNames());
       const hierarchyLinkStyles = this.plugin.settings.hierarchyLinkStyles
       const linkStyles = this.plugin.linkStyles;
 

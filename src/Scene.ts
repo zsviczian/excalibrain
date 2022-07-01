@@ -291,7 +291,13 @@ export class Scene {
     if(this.historyPanel) {
       this.historyPanel.rerender()
     }
-    const centralPage = this.plugin.pages.get(this.centralPagePath);
+    let centralPage = this.plugin.pages.get(this.centralPagePath);
+    if(!centralPage) {
+      //path case sensitivity issue
+      this.centralPagePath = this.plugin.lowercasePathMap.get(this.centralPagePath.toLowerCase());
+      centralPage = this.plugin.pages.get(this.centralPagePath);
+      if(!centralPage) return;
+    }
 
     this.ea.clear();
     this.ea.getExcalidrawAPI().updateScene({elements:[]});

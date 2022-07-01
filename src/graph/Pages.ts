@@ -57,7 +57,11 @@ export class Pages {
       }
       const parent = this.pages.get(parentPath);
       Object.keys(resolvedLinks[parentPath]).forEach(childPath=>{
-        const child = this.pages.get(childPath);
+        let child = this.pages.get(childPath);
+        if(!child) {
+          //path case sensitivity issue
+          child = this.pages.get(this.plugin.lowercasePathMap.get(childPath.toLowerCase()));
+        }
         if(this.plugin.settings.inferAllLinksAsFriends) {
           child.addFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
           parent.addFriend(child,RelationType.INFERRED, LinkDirection.TO);
@@ -81,7 +85,13 @@ export class Pages {
       if(page && page.path !== parentPath) {
         return;
       }
-      const parent = this.pages.get(parentPath);
+      let parent = this.pages.get(parentPath);
+      if(!parent) {
+        //path case sensitivity issue
+        //Obsidian seems to store an all lower case path and a proper-case path in unresolvedLinks
+        //I can throw away parentPaths that do not resolve, as the version with the proper case is also there
+        return;
+      }
       if(parentPath === this.plugin.settings.excalibrainFilepath) {
         return;
       }

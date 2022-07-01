@@ -24,9 +24,14 @@ export default {
   PARENTS_NAME: "Parents",
   CHILDREN_NAME: "Children",
   FRIENDS_NAME: "Friends",
+  EXCLUSIONS_NAME: "Excluded",
+  EXCLUSIONS_DESC: "Dataview or YAML fields that are never used for ontology",
+  UNASSIGNED_NAME: "Unassigned",
+  UNASSIGNED_DESC: "Fields in your Vault that are neither excluded nor part of the defined ontology.",
   ONTOLOGY_SUGGESTER_NAME: "Ongology Suggester",
   ONTOLOGY_SUGGESTER_DESC: "Activate ontology suggester in the markdown editor. If enabled then typing the trigger sequence at the beginning of a paragraph "+
     "will activate the suggester listing your ontology fields defined above.",
+  ONTOLOGY_SUGGESTER_ALL_NAME: "Character sequence to trigger generic suggester. The Generic suggester will include all the ontology fields regardless of their direction.",
   ONTOLOGY_SUGGESTER_PARENT_NAME: "Character sequence to trigger parent suggester",
   ONTOLOGY_SUGGESTER_CHILD_NAME: "Character sequence to trigger child suggester",
   ONTOLOGY_SUGGESTER_FRIEND_NAME: "Character sequence to trigger friend suggester",
@@ -64,6 +69,11 @@ export default {
     "All other styles may have partial definitions. e.g. You may add a prefix and override the base node-background color in the tag-based style, " + 
     "override the font color in the inferred-node style and set the border stroke style to dotted in the virtual-node style.",
   CANVAS_BGCOLOR: "Canvas color",
+  SHOW_FULL_TAG_PATH_NAME: "Display full tag name",
+  SHOW_FULL_TAG_PATH_DESC: "<b>Toggle on:</b> will display the full tag e.g. #reading/books/sci-fi</br>" +
+    "<b>Toggle off:</b> will display the current section of the tag, e.g. assuming the tag above, the graph will display only #reading, #books, #sci-fi respectively as you navigate the tag hierarchy.",
+  SHOW_COUNT_NAME: "Display neighbor count",
+  SHOW_COUNT_DESC: "Show the number of children, parents, friends next to the node gate",
   TAGLIST_NAME: "Formatted tags",
   TAGLIST_DESC: "You can specify special formatting rules for Nodes based on tags. If multiple tags are present on the page the first matching a specification " +
     "will be used. <br>Tagnames should start with <mark>#</mark> and may be incomplete. i.e. <code>#book</code> will match #books, #book/fiction, etc.<br>" +
@@ -127,6 +137,7 @@ export default {
   COMMAND_ADD_FRIEND_FIELD: "Add dataview field to ontology as FRIEND",
   COMMAND_START: "ExcaliBrain Normal",
   COMMAND_START_HOVER: "ExcaliBrain Hover-Editor",
+  COMMAND_START_POPOUT: "ExcaliBrain Popout Window",
   //COMMAND_SEARCH: "Search",
   COMMAND_STOP: "Stop ExcaliBrain",
   HOVER_EDITOR_ERROR: "I am sorry. Something went wrong. Most likely there was a version update to Hover Editor which I haven't addressed properly in ExcaliBrain. Normally I should get this fixed within few days",

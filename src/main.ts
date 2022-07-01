@@ -119,8 +119,11 @@ export default class ExcaliBrain extends Plugin {
     });
 	}
 
+  public lowercasePathMap: Map<string,string>;
+
   public async createIndex() {
     this.pages = new Pages(this);
+    this.lowercasePathMap = new Map<string,string>();
 
     //wait for Dataview to complete reloading the index
     let counter = 0;
@@ -147,6 +150,7 @@ export default class ExcaliBrain extends Plugin {
           addFolderChildren(f,child);
           return;
         } else {
+          this.lowercasePathMap.set(f.path.toLowerCase(),f.path); //path case sensitivity issue (see Pages.ts and Scene.ts for more)
           const child = new Page(this.pages,f.path,f as TFile,this);
           this.pages.add(f.path,child);
           child.addParent(parent,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
@@ -165,13 +169,14 @@ export default class ExcaliBrain extends Plugin {
     tags.forEach(tag => {
       const tagPages: Page[] = [];
       tag.forEach((el,idx,t)=> {
-        const path = "tag:" + t.slice(0,idx+1).join("/");
+        const tagPath = t.slice(0,idx+1).join("/")
+        const path = "tag:" + tagPath;
         let child = this.pages.get(path);
         if(child) {
           tagPages.push(child);
           return;
         }
-        child = new Page(this.pages,path, null, this, false, true, el);
+        child = new Page(this.pages,path, null, this, false, true, this.settings.showFullTagName?tagPath:el);
         this.pages.add(path,child);
         tagPages.push(child);
         if(idx>0) {
@@ -343,6 +348,33 @@ export default class ExcaliBrain extends Plugin {
         }
         this.focusSearchAfterInitiation = true;
         Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,leaf);
+      },
+    });
+
+    
+    this.addCommand({
+      id: "excalibrain-start-popout",
+      name: t("COMMAND_START_POPOUT"),
+      checkCallback: (checking:boolean) => {
+        if(checking) {
+          return this.excalidrawAvailable();
+        }
+        if(!this.excalidrawAvailable()) return; //still need this in case user sets a hotkey
+        
+        if(this.scene && !this.scene.terminated) {
+          this.revealBrainLeaf();
+          return;
+        }
+        const leaf = this.getBrainLeaf();
+        if(leaf) {
+          this.scene = new Scene(this,true,leaf);
+          this.scene.initialize(true);
+          this.revealBrainLeaf();
+          return;
+        }
+        this.focusSearchAfterInitiation = true;
+        //@ts-ignore
+        Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,app.workspace.openPopoutLeaf());
       },
     });
 
@@ -521,6 +553,10 @@ export default class ExcaliBrain extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    if(!this.settings.hierarchy.exclusions) {
+      this.settings.hierarchy.exclusions = DEFAULT_SETTINGS.hierarchy.exclusions;
+    }
+
     this.loadCustomNodeLabelFunction();
     this.settings.baseLinkStyle = {
       ...DEFAULT_LINK_STYLE,
@@ -530,7 +566,7 @@ export default class ExcaliBrain extends Plugin {
       ...DEFAULT_NODE_STYLE,
       ...this.settings.baseNodeStyle,
     };
-
+    
     this.hierarchyLowerCase.parents = [];
     this.settings.hierarchy.parents = this.settings.hierarchy.parents.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
     this.settings.hierarchy.parents.forEach(f=>this.hierarchyLowerCase.parents.push(f.toLowerCase().replaceAll(" ","-")));
@@ -540,7 +576,7 @@ export default class ExcaliBrain extends Plugin {
     this.hierarchyLowerCase.friends = [];
     this.settings.hierarchy.friends = this.settings.hierarchy.friends.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
     this.settings.hierarchy.friends.forEach(f=>this.hierarchyLowerCase.friends.push(f.toLowerCase().replaceAll(" ","-")));
-
+    this.settings.hierarchy.exclusions = this.settings.hierarchy.exclusions.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
 
     this.setHierarchyLinkStylesExtended();
 

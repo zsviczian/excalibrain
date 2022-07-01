@@ -10,7 +10,7 @@ import type ExcalidrawPlugin from "../main";
 
 export class FieldSuggester extends EditorSuggest<string> {
   plugin: ExcalidrawPlugin;
-  suggestType: "parent" | "child" | "friend";
+  suggestType: "all" | "parent" | "child" | "friend";
   latestTriggerInfo: EditorSuggestTriggerInfo;
 
   constructor(plugin: ExcalidrawPlugin) {
@@ -26,19 +26,23 @@ export class FieldSuggester extends EditorSuggest<string> {
     const settings = this.plugin.settings;
     if (settings.allowOntologySuggester) {
       const sub = editor.getLine(cursor.line).substring(0, cursor.ch);
+      const allTrigger = new RegExp(`^${settings.ontologySuggesterTrigger}(.*)$`);
       const parentTrigger = new RegExp(`^${settings.ontologySuggesterParentTrigger}(.*)$`);
       const childTrigger = new RegExp(`^${settings.ontologySuggesterChildTrigger}(.*)$`);
       const friendTrigger = new RegExp(`^${settings.ontologySuggesterFriendTrigger}(.*)$`);
       const match =
+        sub.match(allTrigger)?.[1] ??
         sub.match(parentTrigger)?.[1] ??
         sub.match(childTrigger)?.[1] ??
         sub.match(friendTrigger)?.[1];
       if (match !== undefined) {
-        this.suggestType = sub.match(parentTrigger)
+        this.suggestType = sub.match(allTrigger)
+          ? "all"
+          : (sub.match(parentTrigger)
           ? "parent"
           : sub.match(childTrigger)
           ? "child"
-          : "friend";
+          : "friend");
         
         this.latestTriggerInfo = {
           end: cursor,
@@ -55,19 +59,27 @@ export class FieldSuggester extends EditorSuggest<string> {
   }
 
   getKeys = ():string[] => {
-    return this.suggestType === "parent"
-      ? this.plugin.settings.hierarchy.parents
-      : this.suggestType === "child"
-      ? this.plugin.settings.hierarchy.children
-      : this.plugin.settings.hierarchy.friends;
+    const h = this.plugin.settings.hierarchy;
+    const t = this.suggestType;
+    return t === "all"
+      ? h.parents.concat(h.children).concat(h.friends).sort((a,b)=>a.toLowerCase()>b.toLowerCase()?1:-1)
+      : t === "parent"
+        ? h.parents
+        : t === "child"
+          ? h.children
+          : h.friends;
   }
 
   getTrigger = ():string => {
-    return this.suggestType === "parent"
-      ? this.plugin.settings.ontologySuggesterParentTrigger
-      : this.suggestType === "child"
-      ? this.plugin.settings.ontologySuggesterChildTrigger
-      : this.plugin.settings.ontologySuggesterFriendTrigger
+    const t = this.suggestType;
+    const s = this.plugin.settings;
+    return t === "all"
+      ? s.ontologySuggesterTrigger
+      : t === "parent"
+        ? s.ontologySuggesterParentTrigger
+        : t === "child"
+          ? s.ontologySuggesterChildTrigger
+          : s.ontologySuggesterFriendTrigger
   }
 
   getSuggestions = (context: EditorSuggestContext) => {

@@ -16,13 +16,13 @@ const readLinksFromString = (data: string, file:TFile):string[] => {
   const m = data.matchAll(linkReg);
   let r;
   while(!(r=m.next()).done) {
-    if(r.value.groups.wikiLink) {
+    if(r?.value?.groups?.wikiLink) {
       const path = getPathOrSelf(app, r.value.groups.wikiLink,file.path);
       if(path) { 
         res.add(path);
       }
     }
-    if(r.value.groups.mdLink) {
+    if(r?.value?.groups?.mdLink) {
       const path = getPathOrSelf(app, decodeURIComponent(r.value.groups.mdLink),file.path);
       if(path) { 
         res.add(path);
@@ -69,8 +69,13 @@ const readDVField = (app: App, field: any, file:TFile):string[] => {
     return path ? [path] : [];
   }
 
-  //the field is a string that may contain a link
-  return readLinksFromString(field,file);
+  if(typeof field === "string") {
+    //the field is a string that may contain a link
+    return readLinksFromString(field,file);
+  }
+
+  //other type of field, e.g. Datetime field
+  return [];
 }
 
 export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<string, Literal>, fields: string[]):{link:string,field:string}[] => {

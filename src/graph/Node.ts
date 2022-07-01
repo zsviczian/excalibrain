@@ -72,6 +72,7 @@ export class Node {
   render() {
     const ea = this.ea;
     const label = this.displayText();
+    const gateDiameter = this.style.gateRadius*2;
     ea.style.fontSize = this.style.fontSize;
     ea.style.fontFamily = this.style.fontFamily;
     const labelSize = ea.measureText(label);
@@ -101,35 +102,71 @@ export class Node {
     ea.style.fillStyle = this.style.gateFillStyle;
     ea.style.strokeColor = this.style.gateStrokeColor;
     ea.style.strokeStyle = "solid";
-    ea.style.backgroundColor =  this.page.hasFriends() 
+
+    const friendCount = this.page.friendCount()
+    ea.style.backgroundColor =  friendCount > 0 
       ? this.style.gateBackgroundColor
       : "transparent";
     this.friendGateId = ea.addEllipse(
       this.friendGateOnLeft
-        ? this.center.x - this.style.gateRadius * 2 - this.style.padding - labelSize.width / 2
+        ? this.center.x - gateDiameter - this.style.padding - labelSize.width / 2
         : this.center.x + this.style.padding + labelSize.width / 2,
       this.center.y - this.style.gateRadius,
-      this.style.gateRadius * 2,
-      this.style.gateRadius * 2
+      gateDiameter,
+      gateDiameter
     );
-    ea.style.backgroundColor =  this.page.hasParents()
+    if(this.settings.showNeighborCount && friendCount>0) {
+      ea.style.fontSize = gateDiameter;
+      ea.addText(
+        this.friendGateOnLeft
+        ? friendCount>9
+          ? this.center.x - 2*gateDiameter - this.style.padding - labelSize.width / 2
+          : this.center.x - gateDiameter - this.style.padding - labelSize.width / 2
+        : this.center.x + this.style.padding + labelSize.width / 2,
+        this.friendGateOnLeft
+        ? this.center.y - 2*gateDiameter
+        : this.center.y - this.style.gateRadius + gateDiameter,
+        friendCount.toString()
+      );
+    }
+
+    const parentCount = this.page.parentCount()
+    ea.style.backgroundColor =  parentCount > 0
       ? this.style.gateBackgroundColor
       : "transparent";
     this.parentGateId = ea.addEllipse(
       this.center.x - this.style.gateRadius - this.style.gateOffset,
-      this.center.y - 2 * this.style.gateRadius - this.style.padding - labelSize.height / 2,
-      this.style.gateRadius * 2,
-      this.style.gateRadius * 2
+      this.center.y - gateDiameter - this.style.padding - labelSize.height / 2,
+      gateDiameter,
+      gateDiameter
     );
-    ea.style.backgroundColor =  this.page.hasChildren()
+    if(this.settings.showNeighborCount && parentCount>0) {
+      ea.style.fontSize = gateDiameter;
+      ea.addText(
+        this.center.x + gateDiameter - this.style.gateOffset,
+        this.center.y - gateDiameter - this.style.padding - labelSize.height / 2,
+        parentCount.toString()
+      );
+    }
+
+    const childrenCount = this.page.childrenCount()
+    ea.style.backgroundColor =  childrenCount > 0
       ? this.style.gateBackgroundColor
       : "transparent";
     this.childGateId = ea.addEllipse(
       this.center.x - this.style.gateRadius + this.style.gateOffset,
       this.center.y + this.style.padding + labelSize.height / 2,
-      this.style.gateRadius * 2,
-      this.style.gateRadius * 2
+      gateDiameter,
+      gateDiameter
     );
+    if(this.settings.showNeighborCount && childrenCount>0) {
+      ea.style.fontSize = gateDiameter;
+      ea.addText(
+        this.center.x + gateDiameter + this.style.gateOffset,
+        this.center.y + this.style.padding + labelSize.height / 2,
+        childrenCount.toString()
+      );
+    }
     
     ea.addToGroup([this.friendGateId,this.parentGateId,this.childGateId,this.id, box.boundElements[0].id]);
   }

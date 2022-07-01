@@ -27,6 +27,20 @@
   max-width: 400px;
 }
 
+.excalibrain-setting-nameEl {
+  min-width: 10em;
+  max-width: 20em;
+}
+
+.excalibrain-setting-descEl {
+  min-width: 10em;
+  max-width: 20em;
+}
+
+.excalibrain-setting-controlEl {
+  width: 90%;
+}
+
 .excalibrain-contentEl {
   position: relative;
 }
@@ -165,26 +179,27 @@
 .multiselect-container .multiselect-wrapper {
   position:relative;
   width:100%;
-  height:32px;
-  border:1px solid red;
+  height:30px;
+  background:var(--background-modifier-form-field);
+  border:1px solid var(--background-modifier-border);
   display:flex;
   align-items:center;
   padding:0 8px;
-  cursor:pointer;
+  cursor:pointer
 }
 
 .multiselect-container .multiselect-wrapper:after {
-  content:'';
+  content:"";
   position:absolute;
   width:8px;
   height:8px;
   right:12px;
   top:8px;
-  border-right:2px solid black;
-  border-top:2px solid black;
+  border-right:2px solid var(--text-normal);
+  border-top:2px solid var(--text-normal);
   transform:rotate(135deg);
   transform-origin:center center;
-  transition:all 0.2s ease-in-out;
+  transition:all .2s ease-in-out;
 }
 
 .multiselect-container .multiselect-wrapper .selected-value {
@@ -201,8 +216,8 @@
   width:100%;
   max-height:300px;
   overflow:auto;
-  background-color:rgba(0,0,0,0.1);
-  border:1px solid grey;
+  background-color:var(--background-secondary);
+  border:1px solid var(--background-modifier-border);
   display:none;
   flex-direction:column;
 }

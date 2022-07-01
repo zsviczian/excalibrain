@@ -36,7 +36,8 @@ export type Relation = {
 export type Hierarchy = {
   parents: string[],
   children: string[],
-  friends: string[]
+  friends: string[],
+  exclusions: string[],
 }
 
 export type NodeStyle = {
