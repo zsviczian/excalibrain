@@ -10,6 +10,7 @@ import { ToolsPanel } from "./Components/ToolsPanel";
 import { Neighbour, RelationType, Role } from "./Types";
 import { HistoryPanel } from "./Components/HistoryPanel";
 import { WarningPrompt } from "./utils/Prompts";
+import { debug } from "./utils/utils";
 
 export class Scene {
   ea: ExcalidrawAutomate;
@@ -136,7 +137,7 @@ export class Scene {
       if(!this.centralLeaf || !app.workspace.getLeafById(this.centralLeaf.id)) {
         this.centralLeaf = this.ea.openFileInNewOrAdjacentLeaf(page.file);
       } else {
-        this.centralLeaf.openFile(page.file);
+        this.centralLeaf.openFile(page.file, {active: false});
       }
       this.addToHistory(page.file.path);
     } else {
@@ -276,6 +277,7 @@ export class Scene {
         return; 
       }
       const node = new Node({
+        ea: this.ea,
         page: n.page,
         isInferred: n.relationType === RelationType.INFERRED,
         isCentral: x.isCentral,
@@ -291,6 +293,7 @@ export class Scene {
     if(this.historyPanel) {
       this.historyPanel.rerender()
     }
+    if(!this.centralPagePath) return;
     let centralPage = this.plugin.pages.get(this.centralPagePath);
     if(!centralPage) {
       //path case sensitivity issue
@@ -423,6 +426,7 @@ export class Scene {
     this.layouts.push(lSiblings);
 
     const rootNode = new Node({
+      ea: this.ea,
       page: centralPage,
       isInferred: false,
       isCentral: true,

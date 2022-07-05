@@ -60,6 +60,8 @@ export interface ExcaliBrainSettings {
   ontologySuggesterChildTrigger: string;
   ontologySuggesterFriendTrigger: string;
   ontologySuggesterTrigger: string;
+  ontologySuggesterMidSentenceTrigger: string;
+  boldFields: boolean;
 }
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
@@ -140,6 +142,8 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   ontologySuggesterChildTrigger: "::c",
   ontologySuggesterFriendTrigger: "::f",
   ontologySuggesterTrigger: ":::",
+  ontologySuggesterMidSentenceTrigger: "(",
+  boldFields: false,
 };
 
 const HIDE_DISABLED_STYLE = "excalibrain-hide-disabled";
@@ -234,6 +238,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     }
 
     const demoNode = new Node({
+      ea: this.ea,
       page,
       isInferred: false,
       isCentral: true,
@@ -244,6 +249,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     demoNode.setCenter({x:0,y:0}) 
 
     const demoNode2 = new Node({
+      ea: this.ea,
       page: page2,
       isInferred:false,
       isCentral: false,
@@ -314,6 +320,10 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     if(this.plugin.settings.ontologySuggesterTrigger === "") {
       this.plugin.settings.ontologySuggesterTrigger = ":::";
     }
+    if(this.plugin.settings.ontologySuggesterMidSentenceTrigger === "") {
+      this.plugin.settings.ontologySuggesterMidSentenceTrigger = "(";
+    }
+
     this.plugin.setHierarchyLinkStylesExtended();
     this.plugin.settings.tagStyleList = Object.keys(this.plugin.settings.tagNodeStyles);
     this.plugin.loadCustomNodeLabelFunction();
@@ -1176,7 +1186,12 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       if(!keys) return;
       let f;
       while(!(f = keys.next()).done) {
-        if(!f.value.contains(",")) fieldSet.add(f.value);
+        if(
+          !f.value.contains(",") && 
+          !(f.value.startsWith("**") && f.value.endsWith("**"))
+        ) {
+          fieldSet.add(f.value);
+        }
       }
     });
     const fieldNameMap = new Map();
@@ -1202,7 +1217,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       }
       if(k!==v) fieldNameMap.delete(v);
     });
-    return Array.from(fieldNameMap.keys()).join(", ")
+    return Array.from(fieldNameMap.keys()).sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1).join(", ")
   }
 
   async display() {
@@ -1228,6 +1243,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     page.addChild(page2,RelationType.DEFINED,LinkDirection.FROM);
     page2.addParent(page,RelationType.DEFINED,LinkDirection.TO);
     this.demoNode = new Node({
+      ea: this.ea,
       page,
       isInferred: false,
       isCentral: false,
@@ -1406,7 +1422,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           })
         )
 
-    let pSeq:Setting, cSeq:Setting, fSeq:Setting, seq: Setting;
+    let pSetting:Setting, cSetting:Setting, fSetting:Setting, gSetting: Setting, mSetting: Setting, bSetting: Setting;
 
     new Setting(containerEl)
       .setName(t("ONTOLOGY_SUGGESTER_NAME"))
@@ -1416,15 +1432,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.allowOntologySuggester)
           .onChange(value => {
             this.plugin.settings.allowOntologySuggester = value;
-            seq.setDisabled(!value);
-            pSeq.setDisabled(!value);
-            cSeq.setDisabled(!value);
-            fSeq.setDisabled(!value);
+            gSetting.setDisabled(!value);
+            pSetting.setDisabled(!value);
+            cSetting.setDisabled(!value);
+            fSetting.setDisabled(!value);
+            mSetting.setDisabled(!value);
+            bSetting.setDisabled(!value);
             this.dirty = true;
           })
       )
 
-    seq = new Setting(containerEl)
+    gSetting = new Setting(containerEl)
       .setName(t("ONTOLOGY_SUGGESTER_ALL_NAME"))
       .setDisabled(!this.plugin.settings.allowOntologySuggester)
       .addText(text=>
@@ -1436,7 +1454,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           })  
       )
 
-    pSeq = new Setting(containerEl)
+    pSetting = new Setting(containerEl)
       .setName(t("ONTOLOGY_SUGGESTER_PARENT_NAME"))
       .setDisabled(!this.plugin.settings.allowOntologySuggester)
       .addText(text=>
@@ -1449,7 +1467,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       )
     
 
-    cSeq = new Setting(containerEl)
+    cSetting = new Setting(containerEl)
       .setName(t("ONTOLOGY_SUGGESTER_CHILD_NAME"))
       .setDisabled(!this.plugin.settings.allowOntologySuggester)
       .addText(text=>
@@ -1461,7 +1479,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           })  
       )
 
-    fSeq = new Setting(containerEl)
+    fSetting = new Setting(containerEl)
       .setName(t("ONTOLOGY_SUGGESTER_FRIEND_NAME"))
       .setDisabled(!this.plugin.settings.allowOntologySuggester)
       .addText(text=>
@@ -1472,6 +1490,31 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
           })  
       )
+    
+    mSetting = new Setting(containerEl)
+      .setName(t("MID_SENTENCE_SUGGESTER_TRIGGER_NAME"))
+      .setDesc(fragWithHTML(t("MID_SENTENCE_SUGGESTER_TRIGGER_DESC")))
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption("(","(")
+          .addOption("[","[")
+          .setValue(this.plugin.settings.ontologySuggesterMidSentenceTrigger)
+          .onChange(value => {
+            this.plugin.settings.ontologySuggesterMidSentenceTrigger = value;
+            this.dirty = true;
+          })
+      })
+
+    bSetting = new Setting(containerEl)
+      .setName(t("BOLD_FIELDS_NAME"))
+      .setDesc(fragWithHTML(t("BOLD_FIELDS_DESC")))
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.boldFields)
+          .onChange(value => {
+            this.plugin.settings.boldFields = value;
+            this.dirty = true;
+          }))
     
     this.containerEl.createEl("h1", {
       cls: "excalibrain-settings-h1",

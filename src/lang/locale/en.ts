@@ -28,13 +28,21 @@ export default {
   EXCLUSIONS_DESC: "Dataview or YAML fields that are never used for ontology",
   UNASSIGNED_NAME: "Unassigned",
   UNASSIGNED_DESC: "Fields in your Vault that are neither excluded nor part of the defined ontology.",
-  ONTOLOGY_SUGGESTER_NAME: "Ongology Suggester",
+  ONTOLOGY_SUGGESTER_NAME: "Ontology Suggester",
   ONTOLOGY_SUGGESTER_DESC: "Activate ontology suggester in the markdown editor. If enabled then typing the trigger sequence at the beginning of a paragraph "+
     "will activate the suggester listing your ontology fields defined above.",
   ONTOLOGY_SUGGESTER_ALL_NAME: "Character sequence to trigger generic suggester. The Generic suggester will include all the ontology fields regardless of their direction.",
   ONTOLOGY_SUGGESTER_PARENT_NAME: "Character sequence to trigger parent suggester",
   ONTOLOGY_SUGGESTER_CHILD_NAME: "Character sequence to trigger child suggester",
   ONTOLOGY_SUGGESTER_FRIEND_NAME: "Character sequence to trigger friend suggester",
+  MID_SENTENCE_SUGGESTER_TRIGGER_NAME: "Mid-sentence dataview field suggester trigger",
+  MID_SENTENCE_SUGGESTER_TRIGGER_DESC: "You may add fields mid-way in sentences following one of these two formats:<br>" +
+    "<code>We met at [location:: [[XYZ restaurant]]] with [candidate:: [[John Doe]]]</code><br>" +
+    "<code>We met at (location:: [[XYZ restaurant]]) with (candidate:: [[John Doe]])</code><br>" +
+    "If you set this trigger to e.g. <code>(</code> then typing <code>(:::</code> anywhere in the sentence will activate the suggester (assuming you are using the default generic suggester trigger commbination of <code>:::</code> - see setting above).<br>" +
+    "More info on inline fields: [DataView Help](https://blacksmithgu.github.io/obsidian-dataview/data-annotation/)",
+  BOLD_FIELDS_NAME: "Add selected field with BOLD",
+  BOLD_FIELDS_DESC: "Add selected field to text with bold typeface, i.e. (**field name**:: ) resulting in (<b>field name</b>:: )",
   DISPLAY_HEAD: "Display",
   EXCLUDE_PATHLIST_NAME: "Filepaths to exclude",
   EXCLUDE_PATHLIST_DESC: "Enter comma-separated list of filepaths to exclude from the index.",

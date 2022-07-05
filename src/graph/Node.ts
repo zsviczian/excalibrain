@@ -18,6 +18,7 @@ export class Node {
   public title: string;
 
   constructor(x:{
+    ea: ExcalidrawAutomate,
     page:Page,
     isInferred: boolean,
     isCentral: boolean,
@@ -26,7 +27,7 @@ export class Node {
   }) {
     this.page = x.page;
     this.settings = x.page.plugin.settings;
-    this.ea = x.page.plugin.EA;
+    this.ea = x.ea;
     if(this.page.isFolder) {
       this.style = {
         ...this.settings.baseNodeStyle,

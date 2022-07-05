@@ -26,23 +26,40 @@ export class FieldSuggester extends EditorSuggest<string> {
     const settings = this.plugin.settings;
     if (settings.allowOntologySuggester) {
       const sub = editor.getLine(cursor.line).substring(0, cursor.ch);
-      const allTrigger = new RegExp(`^${settings.ontologySuggesterTrigger}(.*)$`);
-      const parentTrigger = new RegExp(`^${settings.ontologySuggesterParentTrigger}(.*)$`);
-      const childTrigger = new RegExp(`^${settings.ontologySuggesterChildTrigger}(.*)$`);
-      const friendTrigger = new RegExp(`^${settings.ontologySuggesterFriendTrigger}(.*)$`);
-      const match =
-        sub.match(allTrigger)?.[1] ??
-        sub.match(parentTrigger)?.[1] ??
-        sub.match(childTrigger)?.[1] ??
-        sub.match(friendTrigger)?.[1];
+
+      const triggerREG = new RegExp(
+        `(^${settings.ontologySuggesterTrigger}|\\${settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterTrigger
+        }|^${settings.ontologySuggesterParentTrigger}|\\${settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterParentTrigger
+        }|^${settings.ontologySuggesterChildTrigger}|\\${settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterChildTrigger
+        }|^${settings.ontologySuggesterFriendTrigger}|\\${settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterFriendTrigger
+        })([^\\s\\${settings.ontologySuggesterTrigger}]*)`,"g"
+      );
+
+      let match:string, trigger: string, v;
+      const r=sub.matchAll(triggerREG);
+        while(!(v=r.next()).done) {
+          trigger = v.value[1];
+          match = v.value[2];
+        }
+
       if (match !== undefined) {
-        this.suggestType = sub.match(allTrigger)
-          ? "all"
-          : (sub.match(parentTrigger)
-          ? "parent"
-          : sub.match(childTrigger)
-          ? "child"
-          : "friend");
+        switch(trigger) {
+          case settings.ontologySuggesterTrigger:
+          case settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterTrigger:
+            this.suggestType = "all";
+            break;
+          case settings.ontologySuggesterParentTrigger:
+          case settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterParentTrigger:
+            this.suggestType = "parent";
+            break;
+          case settings.ontologySuggesterChildTrigger:
+          case settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterChildTrigger:
+            this.suggestType = "child";
+            break;
+          default: 
+            this.suggestType = "friend";
+            break;
+        }
         
         this.latestTriggerInfo = {
           end: cursor,
@@ -95,7 +112,8 @@ export class FieldSuggester extends EditorSuggest<string> {
   selectSuggestion(suggestion: string): void {
     const { context } = this;
     if (context) {
-      const replacement = `${suggestion}:: `;
+      const bold = this.plugin.settings.boldFields;
+      const replacement = `${(bold?"**":"") + suggestion + (bold?"**":"")}:: `;
       context.editor.replaceRange(
         replacement,
         this.latestTriggerInfo.start,

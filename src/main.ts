@@ -219,7 +219,7 @@ export default class ExcaliBrain extends Plugin {
       new Notice("ExcaliBrain: Please start Excalidraw and try again.",4000);
       return false;
     }
-    if(!this.EA) {
+    if(!this.EA !== ea) {
       this.EA = ea;
       this.registerExcalidrawAutomateHooks()
     }
