@@ -481,6 +481,7 @@ export default class ExcaliBrain extends Plugin {
     this.EA.onLinkClickHook = (element,linkText,event) => {
       const path = linkText.match(/\[\[([^\]]*)/)[1];
       const page =  this.pages.get(path);
+      //shift click will offer to create the page for the unresolved link
       if(!event.shiftKey && page && page.isVirtual) {
         this.scene?.renderGraphForPath(path);
         return false;
@@ -499,6 +500,7 @@ export default class ExcaliBrain extends Plugin {
             return false;
           }
         }
+        this.scene?.renderGraphForPath(path);
         return true;
       }
       this.scene?.renderGraphForPath(path);
