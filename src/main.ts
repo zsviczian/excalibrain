@@ -500,7 +500,9 @@ export default class ExcaliBrain extends Plugin {
             return false;
           }
         }
-        this.scene?.renderGraphForPath(path);
+        //had to add this, because the leaf that opens the file does not get focus, thus the on leaf change
+        //event handler does not run
+        this.scene?.renderGraphForPath(path,false);
         return true;
       }
       this.scene?.renderGraphForPath(path);
@@ -711,6 +713,14 @@ export default class ExcaliBrain extends Plugin {
 
   public async start(leaf: WorkspaceLeaf) {
     if(!leaf.view) {
+      return;
+    }
+    if(!(leaf.view instanceof TextFileView)) {
+      new Notice("Wrong view type. Cannot start ExcaliBrain.");
+      return;
+    }
+    if(leaf.view.file.path !== this.settings.excalibrainFilepath) {
+      new Notice(`The brain file is not the one configured in settings!\nThe file in settings is ${this.settings.excalibrainFilepath}.\nThis file is ${leaf.view.file.path}.\nPlease start ExcaliBrain using the Command Palette action.`,5000);
       return;
     }
     let counter = 0;

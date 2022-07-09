@@ -89,7 +89,7 @@ export class Scene {
    * @param path 
    * @returns 
    */
-  public async renderGraphForPath(path: string) {
+  public async renderGraphForPath(path: string, openFile:boolean = true) {
     if(!this.isActive()) {
       return;
     }
@@ -132,7 +132,7 @@ export class Scene {
       return; //don't reload the file if it has not changed
     }
 
-    if(isFile) {
+    if(isFile && openFile) {
       //@ts-ignore
       if(!this.centralLeaf || !app.workspace.getLeafById(this.centralLeaf.id)) {
         this.centralLeaf = this.ea.openFileInNewOrAdjacentLeaf(page.file);
