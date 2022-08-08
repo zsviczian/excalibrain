@@ -20,7 +20,7 @@
     "@popperjs/core": "^2.11.2"
   },
   "devDependencies": {
-    "obsidian-excalidraw-plugin": "1.6.33",
+    "obsidian-excalidraw-plugin": "1.7.11",
     "@babel/core": "^7.16.12",
     "@babel/preset-env": "^7.16.11",
     "@babel/preset-react": "^7.16.7",

@@ -23,8 +23,10 @@ import { DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, PREDEFINED_LINK_STYLES } from "
 
 export interface ExcaliBrainSettings {
   excalibrainFilepath: string;
+  indexUpdateInterval: number;
   hierarchy: Hierarchy;
   inferAllLinksAsFriends: boolean;
+  inverseInfer: boolean;
   renderAlias: boolean;
   nodeTitleScript: string;
   backgroundColor: string;
@@ -66,6 +68,7 @@ export interface ExcaliBrainSettings {
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   excalibrainFilepath: "excalibrain.md",
+  indexUpdateInterval: 5000,
   hierarchy: {
     exclusions: ["excalidraw-font","excalidraw-font-color","excalidraw-css","excalidraw-plugin",
       "excalidraw-link-brackets","excalidraw-link-prefix","excalidraw-border-color","excalidraw-default-mode",
@@ -76,6 +79,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
     friends: ["Friends", "Friend", "Jump", "Jumps", "j"]
   },
   inferAllLinksAsFriends: false,
+  inverseInfer: false,
   renderAlias: true,
   nodeTitleScript: "",
   backgroundColor: "#0c3e6aff",
@@ -180,6 +184,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
   private demoLinkImg: HTMLImageElement;
   private demoLinkStyle: LinkStyleData;
   private demoNodeStyle: NodeStyleData;
+  private updateTimer: boolean = false;
 
   constructor(app: App, plugin: ExcaliBrain) {
     super(app, plugin);
@@ -328,6 +333,10 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     this.plugin.settings.tagStyleList = Object.keys(this.plugin.settings.tagNodeStyles);
     this.plugin.loadCustomNodeLabelFunction();
     this.plugin.saveSettings();
+    if(this.updateTimer && this.plugin.scene && !this.plugin.scene.terminated) {
+      this.plugin.scene.setTimer();
+    }
+      
     this.plugin.scene?.reRender();
   }
 
@@ -403,6 +412,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       el.value = getHex(getValue()??defaultValue);
       el.onchange = () => {
         setValue(el.value+ getAlphaHex(sliderComponent.getValue()));
+        this.dirty = true;
       }
     });
     setting.controlEl.appendChild(picker);
@@ -422,6 +432,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           setValue(picker.value + getAlphaHex(value));
           displayText.innerText = ` ${value.toString()}`;
           picker.style.opacity = value.toString();
+          this.dirty = true;
         })
     })
 
@@ -1299,6 +1310,21 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           })
           .inputEl.onblur = () => {text.setValue(this.plugin.settings.excalibrainFilepath)}
       )
+
+      this.numberslider(
+        containerEl,
+        t("INDEX_REFRESH_FREQ_NAME"),
+        t("INDEX_REFRESH_FREQ_DESC"),
+        {min:5,max:120, step:5},
+        ()=>this.plugin.settings.indexUpdateInterval/1000,
+        (val)=>{
+          this.plugin.settings.indexUpdateInterval = val*1000;
+          this.updateTimer = true;
+        },
+        ()=>{},
+        false,
+        5000
+      )
     
     this.containerEl.createEl("h1", {
       cls: "excalibrain-settings-h1",
@@ -1421,6 +1447,19 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
           })
         )
+
+    new Setting(containerEl)
+      .setName(t("REVERSE_NAME"))
+      .setDesc(fragWithHTML(t("REVERSE_DESC")))
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.inverseInfer)
+          .onChange(value => {
+            this.plugin.settings.inverseInfer = value;
+            this.dirty = true;
+          })
+        )
+
 
     let pSetting:Setting, cSetting:Setting, fSetting:Setting, gSetting: Setting, mSetting: Setting, bSetting: Setting;
 

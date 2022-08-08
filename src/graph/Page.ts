@@ -90,6 +90,7 @@ export class Page {
         if(!child) {
           return;
         }
+        if(this.neighbours.has(path)) return; //https://github.com/zsviczian/excalibrain/issues/74
         child.addParent(this,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
         this.addChild(child,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
       });

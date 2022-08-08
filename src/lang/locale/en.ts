@@ -10,6 +10,11 @@ export default {
   EXCALIBRAIN_FILE_DESC: "⚠ This file will be overwritten by the plugin. If you stop the script and make changes to the graph, you " +
     "should rename the file so your edits are preserved, because the next time you initiate ExcaliBrain your edits will be overwritten by " +
     "the automatically generated ExcaliBrain graph.",
+  INDEX_REFRESH_FREQ_NAME: "Index refresh frequency",
+  INDEX_REFRESH_FREQ_DESC: "ExcaliBrain will update its index whenever you switch work panes, in case a file has changed in your Vault since the last index update. <br>" +
+                           "This setting is thus only relevant when you are typing in a markdown editor (not switching files or panes) and you still want ExcaliBrain to update it's graph as you type. " +
+                           "Becuase frequent background index updates can be resource intensive you have an option to increase the time interval for the index-updates which in turn will reduce the " +
+                           "overhead on your system.",
   HIERARCHY_HEAD: "Ontology",
   HIERARCHY_DESC: "Enter the Dataview field names separated by comma (,) that you will use to define link directions in your graph.<br>" +
     "You can also add fields to the ontology on the fly from the markdown editor by typing the new field at the beginning of a paragraph (e.g.: 'Consits of::') " +
@@ -21,6 +26,8 @@ export default {
     "<li>A forward link is inferred as a CHILD</li>" +
     "<li>A backlink is inferred as a PARENT</li>" +
     "<li>If files mutually link to each other, they are FRIENDS</li></ul>",
+  REVERSE_NAME: "Reverse infer logic",
+  REVERSE_DESC: "<b>Toggle ON:</b> Treat backlinks as children and forward links as parents.<br><b>Toggle OFF:</b> Treat backlinks as parents and forward links as children</b>",
   PARENTS_NAME: "Parents",
   CHILDREN_NAME: "Children",
   FRIENDS_NAME: "Friends",
@@ -94,7 +101,7 @@ export default {
   NODESTYLE_PREFIX_NAME: "Prefix",
   NODESTYLE_PREFIX_DESC: "Prefix character or emoji to display in front of the node's label",
   NODESTYLE_BGCOLOR: "Background color",
-  NODESTYLE_BG_FILLSTYLE: "Bacground fill-style",
+  NODESTYLE_BG_FILLSTYLE: "Background fill-style",
   NODESTYLE_TEXTCOLOR: "Text color",
   NODESTYLE_BORDERCOLOR: "Border color",
   NODESTYLE_FONTSIZE: "Font size",

@@ -357,9 +357,9 @@ export default class ExcaliBrain extends Plugin {
       name: t("COMMAND_START_POPOUT"),
       checkCallback: (checking:boolean) => {
         if(checking) {
-          return this.excalidrawAvailable();
+          return !app.isMobile && this.excalidrawAvailable();
         }
-        if(!this.excalidrawAvailable()) return; //still need this in case user sets a hotkey
+        if(!this.excalidrawAvailable() || app.isMobile) return; //still need this in case user sets a hotkey
         
         if(this.scene && !this.scene.terminated) {
           this.revealBrainLeaf();

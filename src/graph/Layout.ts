@@ -25,8 +25,8 @@ export class Layout {
   }
   
   const getRowLayout = (items: number) => items%2
-    ? generateLayoutVector([(columns-items)/2,items,(columns-items)/2])
-    : generateLayoutVector([(columns-items)/2,items/2,1,items/2,(columns-items)/2]);
+    ? generateLayoutVector([(columns-items)/2,items,(columns-items)/2]) //odd
+    : generateLayoutVector([(columns-items)/2,items/2,1,items/2,(columns-items)/2]); //even
     
   const sortedNodes = this.nodes.sort((a,b) => a.title.toLowerCase() < b.title.toLowerCase() ? -1 : 1)
   const itemCount = sortedNodes.length;

@@ -53,8 +53,7 @@ export class Scene {
     this.focusSearchAfterInitiation = focusSearchAfterInitiation;
     await this.plugin.loadSettings();
     this.toolsPanel = new ToolsPanel((this.leaf.view as TextFileView).contentEl,this.plugin);
-    await this.initializeScene();
-    this.historyPanel = new HistoryPanel((this.leaf.view as TextFileView).contentEl,this.plugin);
+    this.initializeScene();
   }
 
   /**
@@ -78,10 +77,11 @@ export class Scene {
       return;
     }
     if(updateIndex) {
+      this.vaultFileChanged = false;
       await this.plugin.createIndex(); //temporary
     }
     await this.render();
-    this.toolsPanel.rerender();
+    //this.toolsPanel.rerender(); //this is also there at the end of render. Seems duplicate.
   }
 
   /**
@@ -216,10 +216,9 @@ export class Scene {
     const ea = this.ea;
     const style = this.plugin.settings.baseNodeStyle;
     let counter = 0;
-    ea.clear();
-    
+    ea.clear();    
     ea.setView(this.leaf.view as any)   
-    counter = 0;
+
     while(!ea.targetView.excalidrawAPI && counter++<10) {
       await sleep(50);
     }
@@ -227,42 +226,58 @@ export class Scene {
       new Notice(`Error initializing Excalidraw view`);
       return;
     }
+
+    const api = ea.getExcalidrawAPI();
     this.ea.registerThisAsViewEA();
     this.ea.targetView.semaphores.saving = true; //disable saving by setting this Excalidraw flag (not published API)
-    this.ea.targetView.excalidrawAPI.setMobileModeAllowed(false); //disable mobile view https://github.com/zsviczian/excalibrain/issues/9
+    api.setMobileModeAllowed(false); //disable mobile view https://github.com/zsviczian/excalibrain/issues/9
     ea.style.fontFamily = style.fontFamily;
     ea.style.fontSize = style.fontSize;
     this.textSize = ea.measureText("m".repeat(style.maxLabelLength+3));
     this.nodeWidth = this.textSize.width + 3 * style.padding;
     this.nodeHeight = 2 * (this.textSize.height + 2 * style.padding);
-    
-    ea.getExcalidrawAPI().updateScene({
-      appState: {
-        viewModeEnabled:true,
-        activeTool: {
-          lastActiveToolBeforeEraser: null,
-          locked: false,
-          type: "selection"
+
+    const frame1 = () => {
+      api.updateScene({
+        appState: {
+          viewModeEnabled:true,
+          activeTool: {
+            lastActiveToolBeforeEraser: null,
+            locked: false,
+            type: "selection"
+          },
+          theme: "light",
+        viewBackgroundColor: this.plugin.settings.backgroundColor
         },
-        theme: "light",
-      viewBackgroundColor: this.plugin.settings.backgroundColor
-      },
-      elements:[]
+        elements: []
+      });
+    }
+    const frame2 = () => {
+      ea.style.strokeColor = style.textColor;
+      ea.addText(0,0,"🚀 To get started\nselect a document using the search in the top left or\n" +
+        "open a document in another pane.\n\n" +
+        "✨ For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
+        "under 'Links and Transclusion'.\n\n⚠ ExcaliBrain may need to wait for " +
+        "DataView to initialize its index.\nThis can take up to a few minutes after starting Obsidian.", {textAlign:"center"});
+      ea.addElementsToView();
+    }
+    const frame3 = () => {
+      api.zoomToFit(null, 5, 0.15);
+      ea.targetView.linksAlwaysOpenInANewPane = true;
+      this.addEventHandler();
+      this.historyPanel = new HistoryPanel((this.leaf.view as TextFileView).contentEl,this.plugin);
+      new Notice("ExcaliBrain On");
+    }
+
+    ea.targetView.ownerWindow.requestAnimationFrame(()=>{
+      frame1();
+      ea.targetView.ownerWindow.requestAnimationFrame(()=>{
+        frame2();
+        ea.targetView.ownerWindow.requestAnimationFrame(()=>{
+          frame3();
+        });
+      });
     });
-    
-    ea.style.strokeColor = style.textColor;
-    ea.addText(0,0,"🚀 To get started\nselect a document using the search in the top left or\n" +
-      "open a document in another pane.\n\n" +
-      "✨ For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
-      "under 'Links and Transclusion'.\n\n⚠ ExcaliBrain may need to wait for " +
-      "DataView to initialize its index.\nThis can take up to a few minutes after starting Obsidian.", {textAlign:"center"});
-    await ea.addElementsToView();
-    ea.getExcalidrawAPI().zoomToFit(null, 5, 0.15);
-    
-    ea.targetView.linksAlwaysOpenInANewPane = true;
-    
-    this.addEventHandler();
-    new Notice("ExcaliBrain On");
   }
 
   addNodes(x:{
@@ -302,9 +317,11 @@ export class Scene {
       if(!centralPage) return;
     }
 
-    this.ea.clear();
-    this.ea.getExcalidrawAPI().updateScene({elements:[]});
-    this.ea.style.verticalAlign = "middle";
+    const ea = this.ea;
+
+    ea.clear();
+    ea.getExcalidrawAPI().updateScene({elements:[]});
+    ea.style.verticalAlign = "middle";
     
     //List nodes for the graph
     const parents = centralPage.getParents()
@@ -408,9 +425,9 @@ export class Scene {
     const siblingsStyle = this.plugin.settings.siblingNodeStyle;
     const siblingsPadding = siblingsStyle.padding??baseStyle.padding;
     const siblingsLabelLength = siblingsStyle.maxLabelLength??baseStyle.maxLabelLength;
-    this.ea.style.fontFamily = siblingsStyle.fontFamily;
-    this.ea.style.fontSize = siblingsStyle.fontSize;
-    const siblingsTextSize = this.ea.measureText("m".repeat(siblingsLabelLength+3));
+    ea.style.fontFamily = siblingsStyle.fontFamily;
+    ea.style.fontSize = siblingsStyle.fontSize;
+    const siblingsTextSize = ea.measureText("m".repeat(siblingsLabelLength+3));
     const siblingsNodeWidth = siblingsTextSize.width + 3 * siblingsPadding;
     const siblingsNodeHeight = 2 * (siblingsTextSize.height + 2 * siblingsPadding);
 
@@ -426,7 +443,7 @@ export class Scene {
     this.layouts.push(lSiblings);
 
     const rootNode = new Node({
-      ea: this.ea,
+      ea,
       page: centralPage,
       isInferred: false,
       isCentral: true,
@@ -486,7 +503,7 @@ export class Scene {
           neighbour.relationType,
           neighbour.typeDefinition,
           neighbour.linkDirection,
-          this.ea,
+          ea,
           this.plugin.settings
         )
       })
@@ -500,18 +517,24 @@ export class Scene {
   
     //-------------------------------------------------------
     // Render
-    this.ea.style.opacity = 100;
+    ea.style.opacity = 100;
     this.layouts.forEach(layout => layout.render());
-    const nodeElements = this.ea.getElements();
+    const nodeElements = ea.getElements();
     this.links.render(Array.from(this.toolsPanel.linkTagFilter.selectedLinks));
     
-    const linkElements = this.ea.getElements().filter(el=>!nodeElements.includes(el));
+    const linkElements = ea.getElements().filter(el=>!nodeElements.includes(el));
 
-    this.ea.getExcalidrawAPI().updateScene({
+    ea.getExcalidrawAPI().updateScene({
       elements: linkElements.concat(nodeElements) //send link elements behind node elements
     })
-    this.ea.getExcalidrawAPI().zoomToFit(null,5,0.15);
 
+    ea.targetView.ownerWindow.requestAnimationFrame(()=>{
+      ea.getExcalidrawAPI().updateScene({appState: {viewBackgroundColor: this.plugin.settings.backgroundColor}});
+      ea.targetView.ownerWindow.requestAnimationFrame(()=>{
+        ea.getExcalidrawAPI().zoomToFit(null,5,0.15);
+      });
+    });
+  
     this.toolsPanel.rerender();
     if(this.focusSearchAfterInitiation) {
       this.toolsPanel.searchElement.focus();
@@ -535,7 +558,8 @@ export class Scene {
       }
       self.blockUpdateTimer = true;
       //await self.plugin.createIndex();
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await sleep(100);
+
       //-------------------------------------------------------
       //terminate event handler if view no longer exists or file has changed
 
@@ -559,6 +583,9 @@ export class Scene {
       const rootFile = leaf.view.file;
       
       if (rootFile.path === self.ea.targetView.file.path) { //brainview drawing is the active leaf
+        if(this.vaultFileChanged) {
+          await this.reRender(true);
+        }
         self.blockUpdateTimer = false;
         return; 
       }
@@ -584,34 +611,13 @@ export class Scene {
       self.render();
     }
 
-    const updateTimer = async () => {
-      if(this.blockUpdateTimer) {
-        return;
-      }
-      if(this.vaultFileChanged) {
-        this.vaultFileChanged = false;
-        await this.plugin.createIndex();
-        if(this.centralPagePath) {
-          if(!this.plugin.pages.get(this.centralPagePath)) {
-            //@ts-ignore
-            if(this.centralLeaf && this.centralLeaf.view && this.centralLeaf.view.file) {
-              //@ts-ignore
-              this.centralPagePath = this.centralLeaf.view.file.path;
-            }
-          }
-        }
-        this.render();
-      }
-    }
-
     const fileChangeHandler = () => {
       this.vaultFileChanged = true;
     }
 
     app.workspace.on("active-leaf-change", brainEventHandler);
     this.removeEH = () => app.workspace.off("active-leaf-change",brainEventHandler);
-    const timer = setInterval(updateTimer,5000);
-    this.removeTimer = () => clearInterval(timer);
+    this.setTimer();
     app.vault.on("rename",fileChangeHandler);
     this.removeOnRename = () => app.vault.off("rename",fileChangeHandler)
     app.vault.on("modify",fileChangeHandler);
@@ -634,6 +640,37 @@ export class Scene {
       brainEventHandler(leaves[0]);
     }
   }
+
+  setTimer() {
+    const updateTimer = async () => {
+      if(this.blockUpdateTimer) {
+        return;
+      }
+      if(this.vaultFileChanged) {
+        this.vaultFileChanged = false;
+        await this.plugin.createIndex();
+        if(this.centralPagePath) {
+          if(!this.plugin.pages.get(this.centralPagePath)) {
+            //@ts-ignore
+            if(this.centralLeaf && this.centralLeaf.view && this.centralLeaf.view.file) {
+              //@ts-ignore
+              this.centralPagePath = this.centralLeaf.view.file.path;
+            }
+          }
+        }
+        this.render();
+      }
+    }
+    
+    if(this.removeTimer) {
+      this.removeTimer();
+      this.removeTimer = undefined;
+    }
+
+    const timer = setInterval(updateTimer,this.plugin.settings.indexUpdateInterval);
+    this.removeTimer = () => clearInterval(timer);
+  }
+
 
   public unloadScene() {
     if(this.removeEH) {

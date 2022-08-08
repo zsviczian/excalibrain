@@ -66,8 +66,13 @@ export class Pages {
           child.addFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
           parent.addFriend(child,RelationType.INFERRED, LinkDirection.TO);
         } else {
-          child.addParent(parent,RelationType.INFERRED, LinkDirection.FROM);
-          parent.addChild(child,RelationType.INFERRED, LinkDirection.TO);
+          if(this.plugin.settings.inverseInfer) { //https://github.com/zsviczian/excalibrain/issues/78
+            child.addChild(parent,RelationType.INFERRED, LinkDirection.FROM);
+            parent.addParent(child,RelationType.INFERRED, LinkDirection.TO);
+          } else {
+            child.addParent(parent,RelationType.INFERRED, LinkDirection.FROM);
+            parent.addChild(child,RelationType.INFERRED, LinkDirection.TO);
+          }
         }
       })
     }); 
@@ -101,8 +106,13 @@ export class Pages {
           newPage.addFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
           parent.addFriend(newPage,RelationType.INFERRED, LinkDirection.TO);
         } else {
-          newPage.addParent(parent,RelationType.INFERRED, LinkDirection.FROM);
-          parent.addChild(newPage,RelationType.INFERRED, LinkDirection.TO);
+          if(this.plugin.settings.inverseInfer) { //https://github.com/zsviczian/excalibrain/issues/78
+            newPage.addChild(parent,RelationType.INFERRED, LinkDirection.FROM);
+            parent.addParent(newPage,RelationType.INFERRED, LinkDirection.TO);
+          } else {
+            newPage.addParent(parent,RelationType.INFERRED, LinkDirection.FROM);
+            parent.addChild(newPage,RelationType.INFERRED, LinkDirection.TO);
+          }
         }
         this.add(childPath,newPage);
       })
