@@ -378,6 +378,31 @@ export class Scene {
     const singleParent = parents.length <= 1
     const baseStyle = this.plugin.settings.baseNodeStyle;
 
+    //-----------------------------------
+    //-----------------------------------
+    //WIP: even columns 
+    enum multitude {
+      one = 1,
+      few = 2,
+      more = 3,
+      many = 4
+    }
+
+    const count = (len:number):number => {
+      if(len <= 1) return multitude.one;
+      if(len <= 4) return multitude.few;
+      if(len < 10) return multitude.more;
+      return multitude.many;
+    }
+
+    const mChildren = count(children.length);
+    const mParent = count(parents.length);
+    const mSiblings = count(siblings.length);
+
+    //-----------------------------------
+    //-----------------------------------
+
+
     const lCenter = new Layout({
       origoX: 0,
       origoY: 0,
@@ -388,7 +413,7 @@ export class Scene {
       rowHeight: this.nodeHeight
     });
     this.layouts.push(lCenter);
-    
+
     const lChildren = new Layout({
       origoX: 0,
       origoY: 2.5 * this.nodeHeight,
@@ -661,7 +686,7 @@ export class Scene {
         this.render();
       }
     }
-    
+
     if(this.removeTimer) {
       this.removeTimer();
       this.removeTimer = undefined;

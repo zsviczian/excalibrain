@@ -11,7 +11,7 @@ export class Layout {
   }
 
   layout(columns = this.spec.columns) {
-    const generateLayoutVector = (pattern:number[]) => {
+    const generateOddLayoutVector = (pattern:number[]) => {
       const res:number[] = [];
       let cur = 1;
       let state = true;
@@ -21,23 +21,37 @@ export class Layout {
           for(let i=0;i<cnt;i++) res.push(state ? null : cur++);
           state = !state;
         });
-    return res;
-  }
+      return res;
+    }
+
+    const generateEvenLayoutVector = (pattern: number[]) => {
+      const res:number[] = [];
+      let i = 0;
+      for(i=columns/2;i>pattern[0];i--) res.push(null);
+      for(i=0;i<pattern[0];i++) res.push(i+1);
+      for (i=0;i<columns/2;i++) res.push(i<pattern[1]?pattern[0]+i+1:null);
+      return res;
+    }
   
-  const getRowLayout = (items: number) => items%2
-    ? generateLayoutVector([(columns-items)/2,items,(columns-items)/2]) //odd
-    : generateLayoutVector([(columns-items)/2,items/2,1,items/2,(columns-items)/2]); //even
+    const getRowLayout = (items: number) => columns%2
+      ? (items%2 //even columns
+        ? generateEvenLayoutVector([(items+1)/2,(items-1)/2]) //odd
+        : generateEvenLayoutVector([items/2,items/2])) //even
+      : (items%2 //odd columns
+        ? generateOddLayoutVector([(columns-items)/2,items,(columns-items)/2]) //odd
+        : generateOddLayoutVector([(columns-items)/2,items/2,1,items/2,(columns-items)/2])); //even
     
-  const sortedNodes = this.nodes.sort((a,b) => a.title.toLowerCase() < b.title.toLowerCase() ? -1 : 1)
-  const itemCount = sortedNodes.length;
-  if(itemCount === 0) {
-    return;
-  }
-  const rowCount = Math.ceil(itemCount / columns);
-  this.renderedNodes = Array<Node>(rowCount).fill(null).map((_,i) =>
-    (i+1 < rowCount) || (itemCount % columns === 0)
-      ? Array(columns).fill(null).map((_,j) => sortedNodes[i*columns+j]) //full row
-      : getRowLayout(itemCount % columns).map(idx => idx ? sortedNodes[i*columns+idx-1]:null));
+    const sortedNodes = this.nodes.sort((a,b) => a.title.toLowerCase() < b.title.toLowerCase() ? -1 : 1)
+    const itemCount = sortedNodes.length;
+    if(itemCount === 0) {
+      return;
+    }
+    const rowCount = Math.ceil(itemCount / columns);
+
+    this.renderedNodes = Array<Node>(rowCount).fill(null).map((_,i) =>
+      (i+1 < rowCount) || (itemCount % columns === 0)
+        ? Array(columns).fill(null).map((_,j) => sortedNodes[i*columns+j]) //full row
+        : getRowLayout(itemCount % columns).map(idx => idx ? sortedNodes[i*columns+idx-1]:null));
   }
 
   render() {

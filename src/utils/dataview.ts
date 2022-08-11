@@ -41,7 +41,7 @@ const readDVField = (app: App, field: any, file:TFile):string[] => {
     const values =  Array.from(field.values())
     //List of links
     values
-      .filter((l:any)=>l?.type && (l.type === "file" || l.type === "header"))
+      .filter((l:any)=>l?.type && (l.type === "file" || l.type === "header" || l.type=="block"))
       .forEach((l:any)=>{
         const path = getPathOrSelf(app, l.path,file.path);
         if(path) {
