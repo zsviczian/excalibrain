@@ -13,7 +13,7 @@ export default {
   INDEX_REFRESH_FREQ_NAME: "Index refresh frequency",
   INDEX_REFRESH_FREQ_DESC: "ExcaliBrain will update its index whenever you switch work panes, in case a file has changed in your Vault since the last index update. <br>" +
                            "This setting is thus only relevant when you are typing in a markdown editor (not switching files or panes) and you still want ExcaliBrain to update it's graph as you type. " +
-                           "Becuase frequent background index updates can be resource intensive you have an option to increase the time interval for the index-updates which in turn will reduce the " +
+                           "Because frequent background index updates can be resource intensive you have an option to increase the time interval for the index-updates which in turn will reduce the " +
                            "overhead on your system.",
   HIERARCHY_HEAD: "Ontology",
   HIERARCHY_DESC: "Enter the Dataview field names separated by comma (,) that you will use to define link directions in your graph.<br>" +
