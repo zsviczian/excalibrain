@@ -39,6 +39,7 @@ export class Scene {
   public vaultFileChanged: boolean = false;
   public pinLeaf: boolean = false;
   public focusSearchAfterInitiation: boolean = true;
+  private zoomToFitOnNextBrainLeafActivate: boolean = false; //this addresses the issue caused in Obsidian 0.16.0 when the brain graph is rendered while the leaf is hidden because tab is not active
 
   constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
     this.ea = plugin.EA;
@@ -304,6 +305,7 @@ export class Scene {
     });
   }
 
+  
   private async render() {
     if(this.historyPanel) {
       this.historyPanel.rerender()
@@ -318,6 +320,8 @@ export class Scene {
     }
 
     const ea = this.ea;
+
+    this.zoomToFitOnNextBrainLeafActivate = !ea.targetView.containerEl.isShown();
 
     ea.clear();
     ea.getExcalidrawAPI().updateScene({elements:[]});
@@ -609,7 +613,12 @@ export class Scene {
       
       if (rootFile.path === self.ea.targetView.file.path) { //brainview drawing is the active leaf
         if(this.vaultFileChanged) {
+          this.zoomToFitOnNextBrainLeafActivate = false;
           await this.reRender(true);
+        }
+        if(this.zoomToFitOnNextBrainLeafActivate) {
+          this.zoomToFitOnNextBrainLeafActivate = false;
+          self.ea.getExcalidrawAPI().zoomToFit(null, 5, 0.15);
         }
         self.blockUpdateTimer = false;
         return; 
