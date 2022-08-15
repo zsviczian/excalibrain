@@ -229,7 +229,9 @@ export class Page {
     if(neighbour) {
       neighbour.isParent = true;
       neighbour.parentType = relationTypeToSet(neighbour.parentType,relationType);
-      neighbour.parentTypeDefinition = concat(definition, neighbour.parentTypeDefinition);
+      if(definition && !neighbour.parentTypeDefinition?.contains(definition)) {
+        neighbour.parentTypeDefinition = concat(definition, neighbour.parentTypeDefinition);
+      }
       neighbour.direction = directionToSet(neighbour.direction, direction);
       return;
     }
@@ -251,7 +253,9 @@ export class Page {
     if(neighbour) {
       neighbour.isChild = true;
       neighbour.childType = relationTypeToSet(neighbour.childType,relationType);
-      neighbour.childTypeDefinition = concat(definition,neighbour.childTypeDefinition);
+      if(definition && !neighbour.childTypeDefinition?.contains(definition)) {
+        neighbour.childTypeDefinition = concat(definition,neighbour.childTypeDefinition);
+      }
       neighbour.direction = directionToSet(neighbour.direction, direction);
       return;
     }
@@ -273,7 +277,9 @@ export class Page {
     if(neighbour) {
       neighbour.isFriend = true;
       neighbour.friendType = relationTypeToSet(neighbour.friendType,relationType);
-      neighbour.friendTypeDefinition = concat(definition,neighbour.friendTypeDefinition);
+      if(definition && !neighbour.friendTypeDefinition?.contains(definition)) {
+        neighbour.friendTypeDefinition = concat(definition,neighbour.friendTypeDefinition);
+      }
       neighbour.direction = directionToSet(neighbour.direction, direction);
       return;
     }

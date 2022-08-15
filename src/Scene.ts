@@ -377,34 +377,20 @@ export class Scene {
     this.nodesMap = new Map<string,Node>();
     this.links = new Links(this.plugin);
     this.layouts = [];
-    const manyChildren = children.length >10;
-    const manySiblings = siblings.length > 10;
-    const singleParent = parents.length <= 1
+    const manyFriends = friends.length >= 10;
     const baseStyle = this.plugin.settings.baseNodeStyle;
+    const siblingsCols = siblings.length >= 20
+      ? 3
+      : siblings.length >= 10
+        ? 2
+        : 1;
+    const childrenCols = children.length <= 12 
+      ? [1, 1, 2, 3, 3, 3, 3, 4, 4, 5, 5, 4, 4][children.length]
+      : 5;
+    const parentCols = parents.length < 5
+      ? [1, 1, 2, 3, 2][parents.length]
+      : 3;
 
-    //-----------------------------------
-    //-----------------------------------
-    //WIP: even columns 
-    enum multitude {
-      one = 1,
-      few = 2,
-      more = 3,
-      many = 4
-    }
-
-    const count = (len:number):number => {
-      if(len <= 1) return multitude.one;
-      if(len <= 4) return multitude.few;
-      if(len < 10) return multitude.more;
-      return multitude.many;
-    }
-
-    const mChildren = count(children.length);
-    const mParent = count(parents.length);
-    const mSiblings = count(siblings.length);
-
-    //-----------------------------------
-    //-----------------------------------
 
 
     const lCenter = new Layout({
@@ -423,14 +409,14 @@ export class Scene {
       origoY: 2.5 * this.nodeHeight,
       top: 2 * this.nodeHeight,
       bottom: null,
-      columns: manyChildren ? 5 : 3,
+      columns: childrenCols,
       columnWidth: this.nodeWidth,
       rowHeight: this.nodeHeight
     });
     this.layouts.push(lChildren);
   
     const lFriends = new Layout({
-      origoX: (manyChildren ? -3 : -2)  * this.nodeWidth,
+      origoX: -(((manyFriends?1:0)+Math.max(childrenCols,parentCols)+1.9)/2.4) * this.nodeWidth, // (manyChildren ? -3 : -2)  * this.nodeWidth,
       origoY: 0,
       top: null,
       bottom: null,
@@ -445,7 +431,7 @@ export class Scene {
       origoY: -2.5 * this.nodeHeight,
       top: null,
       bottom: -2 * this.nodeHeight,
-      columns: 3,
+      columns: parentCols, // 3,
       columnWidth: this.nodeWidth,
       rowHeight: this.nodeHeight
     });
@@ -461,13 +447,13 @@ export class Scene {
     const siblingsNodeHeight = 2 * (siblingsTextSize.height + 2 * siblingsPadding);
 
     const lSiblings = new Layout({
-      origoX: this.nodeWidth * 1.3 * ((singleParent ? 0 : 1) + (manySiblings ? 2 : 1)),
+      origoX: this.nodeWidth * ((parentCols-1)/2 + (siblingsCols+1.5)/3),
       origoY: -2.5 * this.nodeHeight,
       top: null,
-      bottom: 0, //this.nodeHeight,
-      columns: (manySiblings ? 3 : 1),
-      columnWidth: siblingsNodeWidth, //this.nodeWidth,
-      rowHeight: siblingsNodeHeight, //this.nodeHeight
+      bottom: - this.nodeHeight/2, 
+      columns: siblingsCols, 
+      columnWidth: siblingsNodeWidth,
+      rowHeight: siblingsNodeHeight,
     })
     this.layouts.push(lSiblings);
 
