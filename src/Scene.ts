@@ -53,7 +53,6 @@ export class Scene {
   public async initialize(focusSearchAfterInitiation: boolean) {
     this.focusSearchAfterInitiation = focusSearchAfterInitiation;
     await this.plugin.loadSettings();
-    if(!this.leaf?.view) return;
     this.toolsPanel = new ToolsPanel((this.leaf.view as TextFileView).contentEl,this.plugin);
     this.initializeScene();
   }
@@ -271,10 +270,6 @@ export class Scene {
       new Notice("ExcaliBrain On");
     }
 
-    frame1();
-    frame2();
-    frame3();
-    /**REACT 18 
     ea.targetView.ownerWindow.requestAnimationFrame(()=>{
       frame1();
       ea.targetView.ownerWindow.requestAnimationFrame(()=>{
@@ -284,7 +279,6 @@ export class Scene {
         });
       });
     });
-    */
   }
 
   addNodes(x:{
@@ -549,17 +543,12 @@ export class Scene {
       elements: linkElements.concat(nodeElements) //send link elements behind node elements
     })
 
-    ea.getExcalidrawAPI().updateScene({appState: {viewBackgroundColor: this.plugin.settings.backgroundColor}});
-    ea.getExcalidrawAPI().zoomToFit(null,5,0.15);
-
-    /**REACT 18
     ea.targetView.ownerWindow.requestAnimationFrame(()=>{
       ea.getExcalidrawAPI().updateScene({appState: {viewBackgroundColor: this.plugin.settings.backgroundColor}});
       ea.targetView.ownerWindow.requestAnimationFrame(()=>{
         ea.getExcalidrawAPI().zoomToFit(null,5,0.15);
       });
     });
-    */
   
     this.toolsPanel.rerender();
     if(this.focusSearchAfterInitiation) {
