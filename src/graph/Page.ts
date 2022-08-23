@@ -81,7 +81,7 @@ export class Page {
     this.dvIndexReady = true;
 
     if(this.isTag) {
-      const invMap = this.plugin.DVAPI.index.etags.invMap.get("#"+this.path.substring(4));
+      const invMap = this.plugin.DVAPI.index.etags.getInverse("#"+this.path.substring(4));
       if(!invMap) {
         return;
       }
