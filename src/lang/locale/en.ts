@@ -89,6 +89,10 @@ export default {
     "<b>Toggle off:</b> will display the current section of the tag, e.g. assuming the tag above, the graph will display only #reading, #books, #sci-fi respectively as you navigate the tag hierarchy.",
   SHOW_COUNT_NAME: "Display neighbor count",
   SHOW_COUNT_DESC: "Show the number of children, parents, friends next to the node gate",
+  ALLOW_AUTOZOOM_NAME: "Autozoom",
+  ALLOW_AUTOZOOM_DESC: "<b>Toggle ON:</b> Allow autozoom<br><b>Toggle OFF:</b> Disable autozoom",
+  ALLOW_AUTOFOCUS_ON_SEARCH_NAME: "Autofocus on search",
+  ALLOW_AUTOFOCUS_ON_SEARCH_DESC: "<b>Toggle ON:</b> Allow autofocus on Search<br><b>Toggle OFF:</b> Disable autofocus",
   TAGLIST_NAME: "Formatted tags",
   TAGLIST_DESC: "You can specify special formatting rules for Nodes based on tags. If multiple tags are present on the page the first matching a specification " +
     "will be used. <br>Tagnames should start with <mark>#</mark> and may be incomplete. i.e. <code>#book</code> will match #books, #book/fiction, etc.<br>" +

@@ -500,6 +500,14 @@ export default class ExcaliBrain extends Plugin {
             return false;
           }
         }
+        if(this.scene?.isCentralLeafStillThere()) {
+          const f = app.vault.getAbstractFileByPath(path.split("#")[0]);
+          if(f && f instanceof TFile) {
+            this.scene.centralLeaf.openFile(f);
+            this.scene.renderGraphForPath(path);
+            return false;
+          }
+        }        
         //had to add this, because the leaf that opens the file does not get focus, thus the on leaf change
         //event handler does not run
         this.scene?.renderGraphForPath(path,false);

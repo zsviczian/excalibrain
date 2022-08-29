@@ -64,6 +64,8 @@ export interface ExcaliBrainSettings {
   ontologySuggesterTrigger: string;
   ontologySuggesterMidSentenceTrigger: string;
   boldFields: boolean;
+  allowAutozoom: boolean;
+  allowAutofocuOnSearch: boolean;
 }
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
@@ -148,6 +150,8 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   ontologySuggesterTrigger: ":::",
   ontologySuggesterMidSentenceTrigger: "(",
   boldFields: false,
+  allowAutozoom: true,
+  allowAutofocuOnSearch: true,
 };
 
 const HIDE_DISABLED_STYLE = "excalibrain-hide-disabled";
@@ -1675,7 +1679,29 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           this.plugin.settings.showNeighborCount = value;
           this.dirty = true;
         }))
-     
+
+    new Setting(containerEl)
+      .setName(t("ALLOW_AUTOZOOM_NAME"))
+      .setDesc(fragWithHTML(t("ALLOW_AUTOZOOM_DESC")))
+      .addToggle(toggle => 
+        toggle
+          .setValue(this.plugin.settings.allowAutozoom)
+          .onChange(value => {
+            this.plugin.settings.allowAutozoom = value;
+            this.dirty = true;
+          }))
+
+      new Setting(containerEl)
+        .setName(t("ALLOW_AUTOFOCUS_ON_SEARCH_NAME"))
+        .setDesc(fragWithHTML(t("ALLOW_AUTOFOCUS_ON_SEARCH_DESC")))
+        .addToggle(toggle => 
+          toggle
+            .setValue(this.plugin.settings.allowAutofocuOnSearch)
+            .onChange(value => {
+              this.plugin.settings.allowAutofocuOnSearch = value;
+              this.dirty = true;
+            }))
+
     containerEl.createEl("h1", {
       cls: "excalibrain-settings-h1",
       text: t("STYLE_HEAD")

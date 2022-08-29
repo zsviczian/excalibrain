@@ -264,7 +264,7 @@ export class Scene {
       ea.addElementsToView();
     }
     const frame3 = () => {
-      api.zoomToFit(null, 5, 0.15);
+      if(this.plugin.settings.allowAutozoom) api.zoomToFit(null, 5, 0.15);
       ea.targetView.linksAlwaysOpenInANewPane = true;
       this.addEventHandler();
       this.historyPanel = new HistoryPanel((this.leaf.view as TextFileView).contentEl,this.plugin);
@@ -550,19 +550,19 @@ export class Scene {
     })
 
     ea.getExcalidrawAPI().updateScene({appState: {viewBackgroundColor: this.plugin.settings.backgroundColor}});
-    ea.getExcalidrawAPI().zoomToFit(null,5,0.15);
+    if(this.plugin.settings.allowAutozoom) ea.getExcalidrawAPI().zoomToFit(null,5,0.15);
 
     /**REACT 18
     ea.targetView.ownerWindow.requestAnimationFrame(()=>{
       ea.getExcalidrawAPI().updateScene({appState: {viewBackgroundColor: this.plugin.settings.backgroundColor}});
       ea.targetView.ownerWindow.requestAnimationFrame(()=>{
-        ea.getExcalidrawAPI().zoomToFit(null,5,0.15);
+        if(this.plugin.settings.allowAutozoom) ea.getExcalidrawAPI().zoomToFit(null,5,0.15);
       });
     });
     */
   
     this.toolsPanel.rerender();
-    if(this.focusSearchAfterInitiation) {
+    if(this.focusSearchAfterInitiation && this.plugin.settings.allowAutofocuOnSearch) {
       this.toolsPanel.searchElement.focus();
       this.focusSearchAfterInitiation = false;
     }
@@ -615,7 +615,7 @@ export class Scene {
         }
         if(this.zoomToFitOnNextBrainLeafActivate) {
           this.zoomToFitOnNextBrainLeafActivate = false;
-          self.ea.getExcalidrawAPI().zoomToFit(null, 5, 0.15);
+          if(self.plugin.settings.allowAutozoom) self.ea.getExcalidrawAPI().zoomToFit(null, 5, 0.15);
         }
         self.blockUpdateTimer = false;
         return; 
@@ -667,8 +667,16 @@ export class Scene {
     
     await this.plugin.createIndex(); //temporary
     
+    let leafToOpen = leaves[0];
     if(leaves.length>0) {
-      brainEventHandler(leaves[0]);
+      const lastFilePath = app.workspace.getLastOpenFiles()[0];
+      if(lastFilePath && lastFilePath !== "") {
+        const leaf = leaves.filter(l=>(l.view as FileView)?.file.path === lastFilePath);
+        if(leaf.length>0) {
+          leafToOpen = leaf[0];
+        }
+      }
+      brainEventHandler(leafToOpen);
     }
   }
 
