@@ -1,6 +1,6 @@
 import { App, TFile } from "obsidian";
 import { Literal } from "obsidian-dataview/lib/data-model/value";
-import ExcaliBrain from "src/main";
+import ExcaliBrain from "src/excalibrain-main";
 import { ExcaliBrainSettings } from "src/Settings";
 import { NodeStyle } from "src/Types";
 

@@ -6,7 +6,7 @@ import {
   EditorSuggestTriggerInfo,
   TFile,
 } from "obsidian";
-import type ExcalidrawPlugin from "../main";
+import type ExcalidrawPlugin from "../excalibrain-main";
 
 export class FieldSuggester extends EditorSuggest<string> {
   plugin: ExcalidrawPlugin;

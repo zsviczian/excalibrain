@@ -2,7 +2,7 @@
 
 import { App,  prepareFuzzySearch, TFile } from "obsidian";
 import { Page } from "src/graph/Page";
-import ExcaliBrain from "src/main";
+import ExcaliBrain from "src/excalibrain-main";
 import { TextInputSuggest } from "./Suggest";
 
 export enum FileSuggestMode {

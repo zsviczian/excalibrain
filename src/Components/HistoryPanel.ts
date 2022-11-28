@@ -1,5 +1,5 @@
 import { TFile } from "obsidian";
-import ExcaliBrain from "src/main";
+import ExcaliBrain from "src/excalibrain-main";
 import { getPrimaryTag, getTagStyle } from "src/utils/dataview";
 
 export class HistoryPanel {

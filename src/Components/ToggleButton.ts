@@ -1,4 +1,4 @@
-import ExcaliBrain from "src/main";
+import ExcaliBrain from "src/excalibrain-main";
 
 export class ToggleButton {
   private button: HTMLButtonElement;

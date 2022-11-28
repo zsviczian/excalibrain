@@ -1,6 +1,6 @@
 import { link } from "fs";
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
-import ExcaliBrain from "src/main";
+import ExcaliBrain from "src/excalibrain-main";
 import { ExcaliBrainSettings } from "src/Settings";
 import { LinkStyle, RelationType, Role } from "src/Types";
 import { Node } from "./Node";

@@ -4,7 +4,7 @@ import { EMPTYBRAIN } from "./constants/emptyBrainFile";
 import { Layout } from "./graph/Layout";
 import { Links } from "./graph/Links";
 import { Node } from "./graph/Node";
-import ExcaliBrain from "./main";
+import ExcaliBrain from "./excalibrain-main";
 import { ExcaliBrainSettings } from "./Settings";
 import { ToolsPanel } from "./Components/ToolsPanel";
 import { Neighbour, RelationType, Role } from "./Types";

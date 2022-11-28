@@ -2,7 +2,7 @@ import { renderMatches } from "obsidian";
 import { ExcalidrawElement } from "obsidian-excalidraw-plugin";
 import { ToggleButton } from "src/Components/ToggleButton";
 import { t } from "src/lang/helpers";
-import ExcaliBrain from "src/main";
+import ExcaliBrain from "src/excalibrain-main";
 import { splitFolderAndFilename } from "src/utils/fileUtils";
 import { PageSuggest } from "../Suggesters/PageSuggester";
 import { LinkTagFilter } from "./LinkTagFilter";

@@ -10,9 +10,10 @@ const isProd = (process.env.NODE_ENV === "production");
 console.log("Is production", isProd);
 
 export default {
-  input: 'src/main.ts',
+  input: 'src/excalibrain-main.ts',
   output: {
     dir: '.',
+    entryFileNames: 'main.js',
     sourcemap: 'inline',
     format: 'cjs',
     exports: 'default',

@@ -1,4 +1,4 @@
-import ExcaliBrain from "src/main";
+import ExcaliBrain from "src/excalibrain-main";
 import { Multiselect } from "src/Components/ts-multiselect/modules/multiselect.class"
 
 export class LinkTagFilter {

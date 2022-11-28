@@ -12,7 +12,7 @@ import { FillStyle, getEA, StrokeSharpness, StrokeStyle } from "obsidian-excalid
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 import { Page } from "./graph/Page";
 import { t } from "./lang/helpers";
-import ExcaliBrain from "./main";
+import ExcaliBrain from "./excalibrain-main";
 import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData, LinkDirection, Role } from "./Types";
 import { WarningPrompt } from "./utils/Prompts";
 import { Node } from "./graph/Node";

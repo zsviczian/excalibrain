@@ -1,5 +1,5 @@
 import { App } from "obsidian";
-import ExcaliBrain from "src/main";
+import ExcaliBrain from "src/excalibrain-main";
 import { LinkDirection, Relation, RelationType } from "src/Types";
 import { Page} from "./Page";
 
