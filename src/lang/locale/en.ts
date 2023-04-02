@@ -51,6 +51,8 @@ export default {
   BOLD_FIELDS_NAME: "Add selected field with BOLD",
   BOLD_FIELDS_DESC: "Add selected field to text with bold typeface, i.e. (**field name**:: ) resulting in (<b>field name</b>:: )",
   DISPLAY_HEAD: "Display",
+  COMPACT_VIEW_NAME: "Compact view",
+  COMPACT_VIEW_DESC: "Display the graph in a compact view",
   EXCLUDE_PATHLIST_NAME: "Filepaths to exclude",
   EXCLUDE_PATHLIST_DESC: "Enter comma-separated list of filepaths to exclude from the index.",
   RENDERALIAS_NAME: "Display alias if available",

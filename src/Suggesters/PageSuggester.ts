@@ -79,7 +79,7 @@ export class PageSuggest extends TextInputSuggest<Page> {
         el.ariaLabel = page.path;
         el.setText(
           (page.isFolder || page.isTag)
-            ? page.path
+            ? page.path.replace(/^folder:/,this.plugin.settings.folderNodeStyle.prefix??"📂").replace(/^tag:/,this.plugin.settings.tagNodeStyle.prefix??"🏷️")
             : page.name
         );
     }

@@ -59,7 +59,8 @@
   z-index: 1;
   position: absolute;
   bottom: 0px;
-  padding-left: 10px;
+  padding-left: 7rem;
+  padding-bottom: 10px;
   width: 100%;
   padding-right: 10px;
   overflow: hidden;

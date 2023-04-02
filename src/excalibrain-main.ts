@@ -196,16 +196,39 @@ export default class ExcaliBrain extends Plugin {
     const self = this;
     setTimeout(async()=>{
       //@ts-ignore
-      const starredPlugin = app.internalPlugins.getPluginById("starred");
-      if(!starredPlugin) {
+      const bookmarksPlugin = app.internalPlugins.getPluginById("bookmarks");
+      if(!bookmarksPlugin) { //code to be removed when bookmarks plugin is released, only leave return
+        //@ts-ignore
+        const starredPlugin = app.internalPlugins.getPluginById("starred");
+        if(!starredPlugin) {
+          return;
+        }
+        self.starred = (await starredPlugin.loadData())
+          .items
+          .filter((i: any)=>i.type==="file")
+          .map((i: any)=>i.path)
+          .filter((p:string)=>(p!==self.settings.excalibrainFilepath) && self.pages.has(p))
+          .map((p:string)=>self.pages.get(p));
         return;
       }
-      self.starred = (await starredPlugin.loadData())
-        .items
-        .filter((i: any)=>i.type==="file")
-        .map((i: any)=>i.path)
-        .filter((p:string)=>(p!==self.settings.excalibrainFilepath) && self.pages.has(p))
-        .map((p:string)=>self.pages.get(p));
+      if(!bookmarksPlugin._loaded) await bookmarksPlugin.loadData();
+      const groupElements = (items: any[]):any[] => {
+        if(!items) return;
+        let elements = items
+          .filter((i: any)=>i.type==="file")
+          .map((i: any)=>i.path)
+          .filter((p:string)=>(p!==self.settings.excalibrainFilepath) && self.pages.has(p))
+          .map((p:string)=>self.pages.get(p));
+        elements = elements.concat(items
+          .filter((i: any)=>i.type==="folder")
+          .map((i: any)=>i.path)
+          .filter((p:string)=>(p!==self.settings.excalibrainFilepath) && self.pages.has(`folder:${p}`))
+          .map((p:string)=>self.pages.get(`folder:${p}`)));
+        items.filter((i: any)=>i.type==="group").forEach((g: any)=>
+          elements = elements.concat(groupElements(g.items)));
+        return elements;
+      }
+      self.starred = groupElements(bookmarksPlugin.instance.items);      
     })
   }
 

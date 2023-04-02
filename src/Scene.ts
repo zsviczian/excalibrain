@@ -237,6 +237,9 @@ export class Scene {
     ea.style.fontSize = style.fontSize;
     this.textSize = ea.measureText("m".repeat(style.maxLabelLength+3));
     this.nodeWidth = this.textSize.width + 3 * style.padding;
+    if(this.plugin.settings.compactView) {
+      this.nodeWidth = this.nodeWidth * 0.6;
+    }
     this.nodeHeight = 2 * (this.textSize.height + 2 * style.padding);
 
     const frame1 = () => {
@@ -390,13 +393,20 @@ export class Scene {
       : siblings.length >= 10
         ? 2
         : 1;
-    const childrenCols = children.length <= 12 
-      ? [1, 1, 2, 3, 3, 3, 3, 4, 4, 5, 5, 4, 4][children.length]
-      : 5;
-    const parentCols = parents.length < 5
-      ? [1, 1, 2, 3, 2][parents.length]
-      : 3;
-
+    const childrenCols = this.plugin.settings.compactView
+      ? (children.length <= 12 
+        ? [1, 1, 2, 3, 3, 3, 3, 2, 2, 3, 3, 2, 2][children.length]
+        : 3)
+      : (children.length <= 12 
+        ? [1, 1, 2, 3, 3, 3, 3, 4, 4, 5, 5, 4, 4][children.length]
+        : 5);
+    const parentCols = this.plugin.settings.compactView
+      ? (parents.length < 2
+        ? 1
+        : 2)
+      : (parents.length < 5
+        ? [1, 1, 2, 3, 2][parents.length]
+        : 3);
 
 
     const lCenter = new Layout({

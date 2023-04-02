@@ -14,7 +14,7 @@ export default {
   output: {
     dir: '.',
     entryFileNames: 'main.js',
-    sourcemap: 'inline',
+    sourcemap: isProd?false:'inline',
     format: 'cjs',
     exports: 'default',
   },

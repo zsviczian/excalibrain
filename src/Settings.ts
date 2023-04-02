@@ -22,6 +22,7 @@ import { Link } from "./graph/Link";
 import { DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, PREDEFINED_LINK_STYLES } from "./constants/constants";
 
 export interface ExcaliBrainSettings {
+  compactView: boolean;
   excalibrainFilepath: string;
   indexUpdateInterval: number;
   hierarchy: Hierarchy;
@@ -69,6 +70,7 @@ export interface ExcaliBrainSettings {
 }
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
+  compactView: false,
   excalibrainFilepath: "excalibrain.md",
   indexUpdateInterval: 5000,
   hierarchy: {
@@ -1564,6 +1566,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       text: t("DISPLAY_HEAD") 
     });
 
+    new Setting(containerEl)
+      .setName(t("COMPACT_VIEW_NAME"))
+      .setDesc(fragWithHTML(t("COMPACT_VIEW_DESC")))
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.compactView)
+        .onChange(value => {
+          this.plugin.settings.compactView = value;
+          this.dirty = true;
+        })
+      )
+        
     const filepathList = new Setting(containerEl)
       .setName(t("EXCLUDE_PATHLIST_NAME"))
       .setDesc(fragWithHTML(t("EXCLUDE_PATHLIST_DESC")))
