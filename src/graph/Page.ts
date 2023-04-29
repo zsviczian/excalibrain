@@ -153,10 +153,18 @@ export class Page {
     const aliases = (this.file && this.plugin.settings.renderAlias)
       ? (this.dvPage?.file?.aliases?.values??[])
       : [];
-    const defaultName = aliases.length > 0 
+    let defaultName = aliases.length > 0 
       ? aliases[0] 
       : this.name
 
+    //when the alias contains a colon, it is parsed by DataView as an object
+    if(defaultName === "[object Object]") {
+      if(this.dvPage.aliases?.[0]) {
+        defaultName = Object.entries(this.dvPage.aliases[0])[0].join(": ");
+      } else {
+        defaultName = this.name;
+      }
+    }
     if(this.dvPage?.file && this.plugin.customNodeLabel) {
       try {
         return this.plugin.customNodeLabel(this.dvPage, defaultName);
