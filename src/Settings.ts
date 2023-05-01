@@ -67,6 +67,7 @@ export interface ExcaliBrainSettings {
   boldFields: boolean;
   allowAutozoom: boolean;
   allowAutofocuOnSearch: boolean;
+  defaultAlwaysOnTop: boolean;
 }
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
@@ -154,6 +155,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   boldFields: false,
   allowAutozoom: true,
   allowAutofocuOnSearch: true,
+  defaultAlwaysOnTop: false,
 };
 
 const HIDE_DISABLED_STYLE = "excalibrain-hide-disabled";
@@ -1712,6 +1714,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             .setValue(this.plugin.settings.allowAutofocuOnSearch)
             .onChange(value => {
               this.plugin.settings.allowAutofocuOnSearch = value;
+              this.dirty = true;
+            }))
+
+      new Setting(containerEl)
+        .setName(t("ALWAYS_ON_TOP_NAME"))
+        .setDesc(fragWithHTML(t("ALWAYS_ON_TOP_DESC")))
+        .addToggle(toggle => 
+          toggle
+            .setValue(this.plugin.settings.defaultAlwaysOnTop)
+            .onChange(value => {
+              this.plugin.settings.defaultAlwaysOnTop = value;
               this.dirty = true;
             }))
 

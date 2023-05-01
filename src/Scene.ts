@@ -211,6 +211,13 @@ export class Scene {
       return;
     }
     await (leaf ?? app.workspace.getLeaf(true)).openFile(file as TFile);
+    if(settings.defaultAlwaysOnTop && leaf) {
+      //@ts-ignore
+      const ownerWindow = leaf.view?.ownerWindow;
+      if(ownerWindow && (ownerWindow !== window) && !ownerWindow.electronWindow.isMaximized()) {
+        ownerWindow.electronWindow.setAlwaysOnTop(true);
+      }
+    }
   }
 
   public async initializeScene() {

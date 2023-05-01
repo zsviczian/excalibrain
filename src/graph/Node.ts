@@ -76,7 +76,7 @@ export class Node {
     const gateDiameter = this.style.gateRadius*2;
     ea.style.fontSize = this.style.fontSize;
     ea.style.fontFamily = this.style.fontFamily;
-    const labelSize = ea.measureText(`${label}m`);
+    const labelSize = ea.measureText(`${label}`);
     ea.style.fillStyle = this.style.fillStyle;
     ea.style.roughness = this.style.roughness;
     ea.style.strokeSharpness = this.style.strokeShaprness;
