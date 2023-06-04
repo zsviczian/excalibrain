@@ -2,10 +2,11 @@
 
 ExcaliBrain is inspired by [TheBrain](https://www.thebrain.com) and [Breadcrumbs](https://github.com/SkepticMystic/breadcrumbs). It is an interactive, structured mind-map of your Obsidian Vault generated based on the folders and files in your Vault by interpreting the links, dataview fields, tags and YAML front matter in your markdown files.
 
-ExcaliBrain distinguishes 4 type of relationships between your notes:
+ExcaliBrain distinguishes 5 type of relationships between your notes:
 - Children
 - Parents
 - Friends
+- Other Friends (lateral relationships on the right side)
 - Siblings
 
 Relationships are derived based on the following logic

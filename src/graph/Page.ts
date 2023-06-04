@@ -11,7 +11,8 @@ const DEFAULT_RELATION:Relation = {
   target: null,
   isParent: false,
   isChild: false,
-  isFriend: false,
+  isLeftFriend: false,
+  isRightFriend: false,
   direction: null
 }
 
@@ -127,6 +128,7 @@ export class Page {
       this.addParent(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
       referencedPage.addChild(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
     });
+
     const childFields = this.plugin.hierarchyLowerCase.children;
     getDVFieldLinksForPage(this.plugin,dvPage,childFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
@@ -137,16 +139,50 @@ export class Page {
       this.addChild(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
       referencedPage.addParent(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
     });
-    const friendFields = this.plugin.hierarchyLowerCase.friends;
-    getDVFieldLinksForPage(this.plugin,dvPage,friendFields).forEach(item=>{
+
+    const leftFriendFields = this.plugin.hierarchyLowerCase.leftFriends;
+    getDVFieldLinksForPage(this.plugin,dvPage,leftFriendFields).forEach(item=>{
       const referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
       //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         return;
       }        
-      this.addFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
-      referencedPage.addFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
-    });     
+      this.addLeftFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
+      referencedPage.addLeftFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+    });
+
+    const rightFriendFields = this.plugin.hierarchyLowerCase.rightFriends;
+    getDVFieldLinksForPage(this.plugin,dvPage,rightFriendFields).forEach(item=>{
+      const referencedPage = this.pages.get(item.link);
+      if(!referencedPage) {
+      //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+        return;
+      }        
+      this.addRightFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
+      referencedPage.addRightFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+    });
+
+    const previousFields = this.plugin.hierarchyLowerCase.previous;
+    getDVFieldLinksForPage(this.plugin,dvPage,previousFields).forEach(item=>{
+      const referencedPage = this.pages.get(item.link);
+      if(!referencedPage) {
+      //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+        return;
+      }        
+      this.addLeftFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
+      referencedPage.addRightFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+    });
+
+    const nextFields = this.plugin.hierarchyLowerCase.next;
+    getDVFieldLinksForPage(this.plugin,dvPage,nextFields).forEach(item=>{
+      const referencedPage = this.pages.get(item.link);
+      if(!referencedPage) {
+      //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+        return;
+      }        
+      this.addRightFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
+      referencedPage.addLeftFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+    });    
   }
 
   public getTitle(): string {
@@ -187,15 +223,17 @@ export class Page {
     pd: boolean,
     ci: boolean,
     cd: boolean,
-    fd: boolean
+    lfd: boolean,//left friend defined
+    rfd: boolean //right friend defined
   } {
     return {
       pi: r.isParent && r.parentType === RelationType.INFERRED,
       pd: r.isParent && r.parentType === RelationType.DEFINED,
       ci: r.isChild && r.childType === RelationType.INFERRED,
       cd: r.isChild && r.childType === RelationType.DEFINED,
-      fd: (!this.plugin.settings.inferAllLinksAsFriends && r.isFriend) ||
-        (this.plugin.settings.inferAllLinksAsFriends && r.isFriend && !(r.parentType === RelationType.DEFINED || r.childType === RelationType.DEFINED))
+      lfd: (!this.plugin.settings.inferAllLinksAsFriends && r.isLeftFriend) ||
+        (this.plugin.settings.inferAllLinksAsFriends && r.isLeftFriend && !(r.parentType === RelationType.DEFINED || r.childType === RelationType.DEFINED)),
+      rfd: r.isRightFriend && r.nextFriendType === RelationType.DEFINED,
     }
   }
 
@@ -277,13 +315,13 @@ export class Page {
     });
   }
 
-  addFriend(page: Page, relationType:RelationType, direction: LinkDirection, definition?: string) {
+  addLeftFriend(page: Page, relationType:RelationType, direction: LinkDirection, definition?: string) {
     if(page.path === this.plugin.settings.excalibrainFilepath || page.path === this.path) {
       return;
     };
     const neighbour = this.neighbours.get(page.path);
     if(neighbour) {
-      neighbour.isFriend = true;
+      neighbour.isLeftFriend = true;
       neighbour.friendType = relationTypeToSet(neighbour.friendType,relationType);
       if(definition && !neighbour.friendTypeDefinition?.contains(definition)) {
         neighbour.friendTypeDefinition = concat(definition,neighbour.friendTypeDefinition);
@@ -294,9 +332,33 @@ export class Page {
     this.neighbours.set(page.path, {
       ...DEFAULT_RELATION,
       target: page,
-      isFriend: true,
+      isLeftFriend: true,
       friendType: relationType,
       friendTypeDefinition: definition,
+      direction
+    });
+  }
+
+  addRightFriend(page: Page, relationType:RelationType, direction: LinkDirection, definition?: string) {
+    if(page.path === this.plugin.settings.excalibrainFilepath || page.path === this.path) {
+      return;
+    };
+    const neighbour = this.neighbours.get(page.path);
+    if(neighbour) {
+      neighbour.isRightFriend = true;
+      neighbour.nextFriendType = relationTypeToSet(neighbour.nextFriendType,relationType);
+      if(definition && !neighbour.nextFriendTypeDefinition?.contains(definition)) {
+        neighbour.nextFriendTypeDefinition = concat(definition,neighbour.nextFriendTypeDefinition);
+      }
+      neighbour.direction = directionToSet(neighbour.direction, direction);
+      return;
+    }
+    this.neighbours.set(page.path, {
+      ...DEFAULT_RELATION,
+      target: page,
+      isRightFriend: true,
+      nextFriendType: relationType,
+      nextFriendTypeDefinition: definition,
       direction
     });
   }
@@ -309,10 +371,10 @@ export class Page {
   //see: getRelationLogic.excalidraw
   //-----------------------------------------------
   isChild = (relation: Relation):RelationType => {
-    const {pi,pd,ci,cd,fd} = this.getRelationVector(relation);
-    return (cd && !pd && !fd) 
+    const {pi,pd,ci,cd,lfd, rfd} = this.getRelationVector(relation);
+    return (cd && !pd && !lfd && !rfd) 
       ? RelationType.DEFINED 
-      : (!pi && !pd && ci && !cd && !fd)
+      : (!pi && !pd && ci && !cd && !lfd && !rfd)
         ? RelationType.INFERRED
         : null;
   };
@@ -349,10 +411,10 @@ export class Page {
   }
 
   isParent (relation: Relation):RelationType {
-    const {pi,pd,ci,cd,fd} = this.getRelationVector(relation);
-    return (!cd && pd && !fd) 
+    const {pi,pd,ci,cd,lfd, rfd} = this.getRelationVector(relation);
+    return (!cd && pd && !lfd && !rfd) 
       ? RelationType.DEFINED 
-      : (pi && !pd && !ci && !cd && !fd)
+      : (pi && !pd && !ci && !cd && !lfd && !rfd)
         ? RelationType.INFERRED
         : null;
   }
@@ -389,35 +451,38 @@ export class Page {
     });//.sort
   }
 
-  isFriend (relation: Relation):RelationType {
-    const {pi,pd,ci,cd,fd} = this.getRelationVector(relation);
-    return fd 
+  isLeftFriend (relation: Relation):RelationType {
+    const {pi,pd,ci,cd,lfd, rfd} = this.getRelationVector(relation);
+    let res = lfd
       ? RelationType.DEFINED 
-      : (pi && !pd && ci && !cd && !fd)
+      : (pi && !pd && ci && !cd && !lfd && !rfd)
         ? RelationType.INFERRED
         : null;
+    return res;
   }
 
-  friendCount():number {
-    return this.getNeighbours()
+  leftFriendCount():number {
+    const count = this.getNeighbours()
     .reduce((prev,x) => {
-      const rt = this.isFriend(x[1]);
+      const rt = this.isLeftFriend(x[1]);
       return prev + ((rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED) ? 1:0);
     },0);
+    return count;
   }
 
-  hasFriends():boolean {
-    return this.getNeighbours()
+  hasLeftFriends():boolean {
+    const hasLeftFriends = this.getNeighbours()
     .some(x => {
-      const rt = this.isFriend(x[1]);
+      const rt = this.isLeftFriend(x[1]);
       return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
     })
+    return hasLeftFriends;
   }
 
-  getFriends():Neighbour[] {
-    return this.getNeighbours()
+  getLeftFriends():Neighbour[] {
+    const neighbours = this.getNeighbours()
     .filter(x => {
-      const rt = this.isFriend(x[1]);
+      const rt = this.isLeftFriend(x[1]);
       return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
     })
     .map(x => {
@@ -433,11 +498,51 @@ export class Page {
         linkDirection: x[1].direction
       }
     });//.sort
+    return neighbours;
+  }
+
+  isRightFriend (relation: Relation):RelationType {
+    const {pi,pd,ci,cd,lfd, rfd} = this.getRelationVector(relation);
+    return rfd 
+      ? RelationType.DEFINED 
+      : null;
+  }
+
+  rightFriendCount():number {
+    return this.getNeighbours()
+    .reduce((prev,x) => {
+      const rt = this.isRightFriend(x[1]);
+      return prev + ((rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED) ? 1:0);
+    },0);
+  }
+
+  hasRightFriends():boolean {
+    return this.getNeighbours()
+    .some(x => {
+      const rt = this.isRightFriend(x[1]);
+      return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+    })
+  }
+
+  getRightFriends():Neighbour[] {
+    return this.getNeighbours()
+    .filter(x => {
+      const rt = this.isRightFriend(x[1]);
+      return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+    })
+    .map(x => {
+      return {
+        page: x[1].target,
+        relationType: RelationType.DEFINED,
+        typeDefinition: x[1].nextFriendTypeDefinition,
+        linkDirection: x[1].direction
+      }
+    });//.sort
   }
   
 
   getRelationToPage(otherPage:Page):null|{
-    type: "friend" | "parent" | "child",
+    type: "nextFriend" | "leftFriend" | "parent" | "child",
     relationType: RelationType;
     typeDefinition: string,
   } {
@@ -459,8 +564,15 @@ export class Page {
         typeDefinition: relation.parentTypeDefinition
       }
     }
-    else return {
-      type: "friend",
+    if(this.isRightFriend(relation)) {
+      return {
+        type: "nextFriend",
+        relationType: relation.nextFriendType,
+        typeDefinition: relation.nextFriendTypeDefinition
+      }
+    }
+    return {
+      type: "leftFriend",
       relationType: relation.friendType,
       typeDefinition: relation.friendTypeDefinition
     }

@@ -359,7 +359,14 @@ export class Scene {
         (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
       .slice(0,this.plugin.settings.maxItemCount);
     
-    const friends = centralPage.getFriends()
+    const friends = centralPage.getLeftFriends()
+      .filter(x => 
+        (x.page.path !== centralPage.path) &&
+        !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+        (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
+      .slice(0,this.plugin.settings.maxItemCount);
+
+    const nextFriends = centralPage.getRightFriends()
       .filter(x => 
         (x.page.path !== centralPage.path) &&
         !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
@@ -373,6 +380,7 @@ export class Scene {
         !(parents.some(p=>p.page.path === s.page.path)  ||
           children.some(c=>c.page.path === s.page.path) ||
           friends.some(f=>f.page.path === s.page.path)  ||
+          nextFriends.some(f=>f.page.path === s.page.path)  ||
           //or not exluded via folder path in settings
           this.plugin.settings.excludeFilepaths.some(p => s.page.path.startsWith(p))
         ) && 
@@ -394,6 +402,7 @@ export class Scene {
     this.links = new Links(this.plugin);
     this.layouts = [];
     const manyFriends = friends.length >= 10;
+    const manyNextFriends = nextFriends.length >= 10;
     const baseStyle = this.plugin.settings.baseNodeStyle;
     const siblingsCols = siblings.length >= 20
       ? 3
@@ -448,6 +457,17 @@ export class Scene {
       rowHeight: this.nodeHeight
     });
     this.layouts.push(lFriends);
+
+    const lNextFriends = new Layout({
+      origoX: (((manyNextFriends?1:0)+Math.max(childrenCols,parentCols)+1.9)/2.4) * this.nodeWidth, // (manyChildren ? -3 : -2)  * this.nodeWidth,
+      origoY: 0,
+      top: null,
+      bottom: null,
+      columns: 1,
+      columnWidth: this.nodeWidth,
+      rowHeight: this.nodeHeight
+    });
+    this.layouts.push(lNextFriends);
 
     const lParents = new Layout({
       origoX: 0,
@@ -516,6 +536,14 @@ export class Scene {
       friendGateOnLeft: false
     });
 
+    this.addNodes({
+      neighbours: nextFriends,
+      layout: lNextFriends,
+      isCentral: false,
+      isSibling: false,
+      friendGateOnLeft: true
+    });
+
     if(this.plugin.settings.renderSiblings) {
       this.addNodes({
         neighbours: siblings,
@@ -550,7 +578,8 @@ export class Scene {
     Array.from(this.nodesMap.values()).forEach(nodeA => {
       addLinks(nodeA, nodeA.page.getChildren(),Role.CHILD);
       addLinks(nodeA, nodeA.page.getParents(),Role.PARENT);
-      addLinks(nodeA, nodeA.page.getFriends(),Role.FRIEND);
+      addLinks(nodeA, nodeA.page.getLeftFriends(),Role.FRIEND);
+      addLinks(nodeA, nodeA.page.getRightFriends(),Role.NEXT);
     });
   
     //-------------------------------------------------------

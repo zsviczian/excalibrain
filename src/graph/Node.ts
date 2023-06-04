@@ -12,10 +12,12 @@ export class Node {
   private center: {x:number, y:number} = {x:0,y:0};
   public id: string;
   public friendGateId: string;
+  public nextFriendGateId: string; // for central nodes
   public parentGateId: string;
   public childGateId: string;
   private friendGateOnLeft: boolean;
   public title: string;
+  public isCentral: boolean = false;
 
   constructor(x:{
     ea: ExcalidrawAutomate,
@@ -25,6 +27,7 @@ export class Node {
     isSibling: boolean,
     friendGateOnLeft:boolean
   }) {
+    this.isCentral = x.isCentral;
     this.page = x.page;
     this.settings = x.page.plugin.settings;
     this.ea = x.ea;
@@ -104,8 +107,10 @@ export class Node {
     ea.style.strokeColor = this.style.gateStrokeColor;
     ea.style.strokeStyle = "solid";
 
-    const friendCount = this.page.friendCount()
-    ea.style.backgroundColor =  friendCount > 0 
+    const leftFriendCount = this.isCentral
+      ? this.page.leftFriendCount()
+      : this.page.leftFriendCount() + this.page.rightFriendCount();
+    ea.style.backgroundColor =  leftFriendCount > 0 
       ? this.style.gateBackgroundColor
       : "transparent";
     this.friendGateId = ea.addEllipse(
@@ -116,19 +121,52 @@ export class Node {
       gateDiameter,
       gateDiameter
     );
-    if(this.settings.showNeighborCount && friendCount>0) {
+
+    if(this.settings.showNeighborCount && leftFriendCount>0) {
       ea.style.fontSize = gateDiameter;
       ea.addText(
         this.friendGateOnLeft
-        ? friendCount>9
+        ? leftFriendCount>9
           ? this.center.x - 2*gateDiameter - this.style.padding - labelSize.width / 2
           : this.center.x - gateDiameter - this.style.padding - labelSize.width / 2
         : this.center.x + this.style.padding + labelSize.width / 2,
         this.friendGateOnLeft
         ? this.center.y - 2*gateDiameter
         : this.center.y - this.style.gateRadius + gateDiameter,
-        friendCount.toString()
+        leftFriendCount.toString()
       );
+    }
+
+    if(this.isCentral) {
+      const rightFriendCount = this.page.rightFriendCount();
+      ea.style.backgroundColor = rightFriendCount > 0 
+        ? this.style.gateBackgroundColor
+        : "transparent";
+      this.nextFriendGateId = ea.addEllipse(
+        !this.friendGateOnLeft
+          ? this.center.x - gateDiameter - this.style.padding - labelSize.width / 2
+          : this.center.x + this.style.padding + labelSize.width / 2,
+        this.center.y - this.style.gateRadius,
+        gateDiameter,
+        gateDiameter
+      );
+
+      if(this.settings.showNeighborCount && rightFriendCount>0) {
+        ea.style.fontSize = gateDiameter;
+        ea.addText(
+          !this.friendGateOnLeft
+          ? rightFriendCount>9
+            ? this.center.x - 2*gateDiameter - this.style.padding - labelSize.width / 2
+            : this.center.x - gateDiameter - this.style.padding - labelSize.width / 2
+          : this.center.x + this.style.padding + labelSize.width / 2,
+          !this.friendGateOnLeft
+          ? this.center.y - 2*gateDiameter
+          : this.center.y - this.style.gateRadius + gateDiameter,
+          rightFriendCount.toString()
+        );
+      } 
+    } else {
+      this.nextFriendGateId = this.friendGateId;
     }
 
     const parentCount = this.page.parentCount()

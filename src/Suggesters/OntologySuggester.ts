@@ -10,7 +10,7 @@ import type ExcalidrawPlugin from "../excalibrain-main";
 
 export class FieldSuggester extends EditorSuggest<string> {
   plugin: ExcalidrawPlugin;
-  suggestType: "all" | "parent" | "child" | "friend";
+  suggestType: "all" | "parent" | "child" | "leftFriend" | "rightFriend" | "previous" | "next";
   latestTriggerInfo: EditorSuggestTriggerInfo;
 
   constructor(plugin: ExcalidrawPlugin) {
@@ -31,7 +31,10 @@ export class FieldSuggester extends EditorSuggest<string> {
         `(^${settings.ontologySuggesterTrigger}|\\${settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterTrigger
         }|^${settings.ontologySuggesterParentTrigger}|\\${settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterParentTrigger
         }|^${settings.ontologySuggesterChildTrigger}|\\${settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterChildTrigger
-        }|^${settings.ontologySuggesterFriendTrigger}|\\${settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterFriendTrigger
+        }|^${settings.ontologySuggesterLeftFriendTrigger}|\\${settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterLeftFriendTrigger
+        }|^${settings.ontologySuggesterRightFriendTrigger}|\\${settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterRightFriendTrigger
+        }|^${settings.ontologySuggesterPreviousTrigger}|\\${settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterPreviousTrigger
+        }|^${settings.ontologySuggesterNextTrigger}|\\${settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterNextTrigger
         })([^\\s\\${settings.ontologySuggesterTrigger}]*)`,"g"
       );
 
@@ -56,8 +59,24 @@ export class FieldSuggester extends EditorSuggest<string> {
           case settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterChildTrigger:
             this.suggestType = "child";
             break;
+          case settings.ontologySuggesterRightFriendTrigger:
+          case settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterRightFriendTrigger:
+              this.suggestType = "rightFriend";
+              break;
+          case settings.ontologySuggesterPreviousTrigger:
+          case settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterPreviousTrigger:
+            this.suggestType = "previous";
+            break;
+          case settings.ontologySuggesterNextTrigger:
+          case settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterNextTrigger:
+            this.suggestType = "next";
+            break;
+          case settings.ontologySuggesterLeftFriendTrigger:
+          case settings.ontologySuggesterMidSentenceTrigger+settings.ontologySuggesterLeftFriendTrigger:
+            this.suggestType = "leftFriend";
+            break;
           default: 
-            this.suggestType = "friend";
+            this.suggestType = "all";
             break;
         }
         
@@ -79,12 +98,18 @@ export class FieldSuggester extends EditorSuggest<string> {
     const h = this.plugin.settings.hierarchy;
     const t = this.suggestType;
     return t === "all"
-      ? h.parents.concat(h.children).concat(h.friends).sort((a,b)=>a.toLowerCase()>b.toLowerCase()?1:-1)
+      ? [...h.parents,...h.children,...h.leftFriends,...h.rightFriends,...h.previous,...h.next].sort((a,b)=>a.toLowerCase()>b.toLowerCase()?1:-1)
       : t === "parent"
         ? h.parents
         : t === "child"
           ? h.children
-          : h.friends;
+          : t === "rightFriend"
+            ? h.rightFriends
+            : t === "leftFriend"
+              ? h.leftFriends
+              : t === "previous"
+                ? h.previous
+                : h.next;
   }
 
   getTrigger = ():string => {
@@ -96,7 +121,13 @@ export class FieldSuggester extends EditorSuggest<string> {
         ? s.ontologySuggesterParentTrigger
         : t === "child"
           ? s.ontologySuggesterChildTrigger
-          : s.ontologySuggesterFriendTrigger
+          : t === "rightFriend"
+            ? s.ontologySuggesterRightFriendTrigger
+            : t === "leftFriend"
+              ? s.ontologySuggesterLeftFriendTrigger
+              : t === "previous"
+                ? s.ontologySuggesterPreviousTrigger
+                : s.ontologySuggesterNextTrigger;
   }
 
   getSuggestions = (context: EditorSuggestContext) => {

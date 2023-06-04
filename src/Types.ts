@@ -10,7 +10,8 @@ export enum RelationType {
 export enum Role {
   PARENT,
   CHILD,
-  FRIEND
+  FRIEND,
+  NEXT,
 }
 
 export enum LinkDirection {
@@ -28,15 +29,21 @@ export type Relation = {
   isChild: boolean;
   childType?: RelationType;
   childTypeDefinition?: string;
-  isFriend: boolean;
+  isLeftFriend: boolean;
   friendType?: RelationType;
   friendTypeDefinition?: string;
+  isRightFriend: boolean;
+  nextFriendType?: RelationType;
+  nextFriendTypeDefinition?: string;
 }
 
 export type Hierarchy = {
   parents: string[],
   children: string[],
-  friends: string[],
+  leftFriends: string[],
+  rightFriends: string[],
+  previous: string[],
+  next: string[],
   exclusions: string[],
 }
 

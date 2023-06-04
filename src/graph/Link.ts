@@ -75,6 +75,10 @@ export class Link {
         gateAId = this.nodeA.parentGateId;
         gateBId = this.nodeB.childGateId;
         break;
+      case Role.NEXT:
+          gateAId = this.nodeA.nextFriendGateId;
+          gateBId = this.nodeB.nextFriendGateId;
+          break;
       default:
         gateAId = this.nodeA.friendGateId;
         gateBId = this.nodeB.friendGateId;

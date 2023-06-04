@@ -19,7 +19,7 @@ import { Node } from "./graph/Node";
 import { svgToBase64 } from "./utils/utils";
 import { Arrowhead } from "@zsviczian/excalidraw/types/element/types";
 import { Link } from "./graph/Link";
-import { DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, PREDEFINED_LINK_STYLES } from "./constants/constants";
+import { DEFAULT_HIERARCHY_DEFINITION, DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, PREDEFINED_LINK_STYLES } from "./constants/constants";
 
 export interface ExcaliBrainSettings {
   compactView: boolean;
@@ -61,7 +61,10 @@ export interface ExcaliBrainSettings {
   allowOntologySuggester: boolean;
   ontologySuggesterParentTrigger: string;
   ontologySuggesterChildTrigger: string;
-  ontologySuggesterFriendTrigger: string;
+  ontologySuggesterLeftFriendTrigger: string;
+  ontologySuggesterRightFriendTrigger: string;
+  ontologySuggesterPreviousTrigger: string;
+  ontologySuggesterNextTrigger: string;
   ontologySuggesterTrigger: string;
   ontologySuggesterMidSentenceTrigger: string;
   boldFields: boolean;
@@ -74,15 +77,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   compactView: false,
   excalibrainFilepath: "excalibrain.md",
   indexUpdateInterval: 5000,
-  hierarchy: {
-    exclusions: ["excalidraw-font","excalidraw-font-color","excalidraw-css","excalidraw-plugin",
-      "excalidraw-link-brackets","excalidraw-link-prefix","excalidraw-border-color","excalidraw-default-mode",
-      "excalidraw-export-dark","excalidraw-export-transparent","excalidraw-export-svgpadding","excalidraw-export-pngscale",
-      "excalidraw-url-prefix", "excalidraw-linkbutton-opacity", "excalidraw-onload-script", "kanban-plugin"],
-    parents: ["Parent", "Parents", "up", "u"],
-    children: ["Children", "Child", "down", "d"],
-    friends: ["Friends", "Friend", "Jump", "Jumps", "j"]
-  },
+  hierarchy: DEFAULT_HIERARCHY_DEFINITION,
   inferAllLinksAsFriends: false,
   inverseInfer: false,
   renderAlias: true,
@@ -149,13 +144,16 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   allowOntologySuggester: true,
   ontologySuggesterParentTrigger: "::p",
   ontologySuggesterChildTrigger: "::c",
-  ontologySuggesterFriendTrigger: "::f",
+  ontologySuggesterLeftFriendTrigger: "::l",
+  ontologySuggesterRightFriendTrigger: "::r",
+  ontologySuggesterPreviousTrigger: "::e",
+  ontologySuggesterNextTrigger: "::n",
   ontologySuggesterTrigger: ":::",
   ontologySuggesterMidSentenceTrigger: "(",
   boldFields: false,
   allowAutozoom: true,
   allowAutofocuOnSearch: true,
-  defaultAlwaysOnTop: false,
+  defaultAlwaysOnTop: false
 };
 
 const HIDE_DISABLED_STYLE = "excalibrain-hide-disabled";
@@ -203,7 +201,10 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     return PREDEFINED_LINK_STYLES
       .concat(Array.from(this.plugin.settings.hierarchy.parents))
       .concat(Array.from(this.plugin.settings.hierarchy.children))
-      .concat(Array.from(this.plugin.settings.hierarchy.friends));
+      .concat(Array.from(this.plugin.settings.hierarchy.leftFriends))
+      .concat(Array.from(this.plugin.settings.hierarchy.rightFriends))
+      .concat(Array.from(this.plugin.settings.hierarchy.previous))
+      .concat(Array.from(this.plugin.settings.hierarchy.next));
   };
 
   async updateNodeDemoImg() {
@@ -239,9 +240,12 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
 
     const hierarchy = this.plugin.settings.hierarchy;
 
-    if(hierarchy.friends.contains(this.demoLinkStyle.display)) {
-      page.addFriend(page2,RelationType.DEFINED,LinkDirection.FROM);
-      page2.addFriend(page,RelationType.DEFINED,LinkDirection.TO);        
+    if(hierarchy.leftFriends.contains(this.demoLinkStyle.display)) {
+      page.addLeftFriend(page2,RelationType.DEFINED,LinkDirection.FROM);
+      page2.addLeftFriend(page,RelationType.DEFINED,LinkDirection.TO);        
+    } else if(hierarchy.rightFriends.contains(this.demoLinkStyle.display)) {
+      page.addRightFriend(page2,RelationType.DEFINED,LinkDirection.FROM);
+      page2.addRightFriend(page,RelationType.DEFINED,LinkDirection.TO);        
     } else if(hierarchy.parents.contains(this.demoLinkStyle.display)) {
       page.addParent(page2,RelationType.DEFINED,LinkDirection.FROM);
       page2.addChild(page,RelationType.DEFINED,LinkDirection.TO);  
@@ -271,9 +275,12 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     })
     demoNode2.ea = this.ea;
     let role:Role = Role.CHILD;
-    if(hierarchy.friends.contains(this.demoLinkStyle.display)) {
+    if(hierarchy.leftFriends.contains(this.demoLinkStyle.display)) {
       demoNode2.setCenter({x:-300,y:0});
       role = Role.FRIEND;
+    } else if(hierarchy.rightFriends.contains(this.demoLinkStyle.display)) {
+      demoNode2.setCenter({x:300,y:0});
+      role = Role.NEXT;
     } else if(hierarchy.parents.contains(this.demoLinkStyle.display)) {
       demoNode2.setCenter({x:0,y:-150});
       role = Role.PARENT
@@ -327,8 +334,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     if(this.plugin.settings.ontologySuggesterChildTrigger === "") {
       this.plugin.settings.ontologySuggesterChildTrigger = "::c";
     }
-    if(this.plugin.settings.ontologySuggesterFriendTrigger === "") {
-      this.plugin.settings.ontologySuggesterFriendTrigger = "::c";
+    if(this.plugin.settings.ontologySuggesterLeftFriendTrigger === "") {
+      this.plugin.settings.ontologySuggesterLeftFriendTrigger = "::l";
+    }
+    if(this.plugin.settings.ontologySuggesterRightFriendTrigger === "") {
+      this.plugin.settings.ontologySuggesterRightFriendTrigger = "::r";
+    }
+    if(this.plugin.settings.ontologySuggesterPreviousTrigger === "") {
+      this.plugin.settings.ontologySuggesterPreviousTrigger = "::e";
+    }
+    if(this.plugin.settings.ontologySuggesterNextTrigger === "") {
+      this.plugin.settings.ontologySuggesterNextTrigger = "::n";
     }
     if(this.plugin.settings.ontologySuggesterTrigger === "") {
       this.plugin.settings.ontologySuggesterTrigger = ":::";
@@ -1220,7 +1236,10 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     const assigned = new Set();
     this.plugin.settings.hierarchy.parents.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
     this.plugin.settings.hierarchy.children.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
-    this.plugin.settings.hierarchy.friends.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
+    this.plugin.settings.hierarchy.leftFriends.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
+    this.plugin.settings.hierarchy.rightFriends.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
+    this.plugin.settings.hierarchy.previous.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
+    this.plugin.settings.hierarchy.next.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
     this.plugin.settings.hierarchy.exclusions.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
 
     Array.from(fieldNameMap.entries()).forEach(([k,v])=>{
@@ -1386,28 +1405,95 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     hierarchyChildSetting.descEl.addClass("excalibrain-setting-descEl");
     hierarchyChildSetting.controlEl.addClass("excalibrain-setting-controlEl");
   
-    const hierarchyFriendSetting = new Setting(containerEl)
-      .setName(t("FRIENDS_NAME"))
+    const hierarchyLeftFriendSetting = new Setting(containerEl)
+      .setName(t("LEFT_FRIENDS_NAME"))
       .addTextArea((text)=> {
         text.inputEl.style.height = "90px";
         text.inputEl.style.width = "100%";
         text
-          .setValue(this.plugin.settings.hierarchy.friends.join(", "))
+          .setValue(this.plugin.settings.hierarchy.leftFriends.join(", "))
           .onChange(value => {
-            this.plugin.settings.hierarchy.friends = value
+            this.plugin.settings.hierarchy.leftFriends = value
               .split(",")
               .map(s=>s.trim())
               .sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
-            this.plugin.hierarchyLowerCase.friends = [];
-            this.plugin.settings.hierarchy.friends.forEach(f=>this.plugin.hierarchyLowerCase.friends.push(f.toLowerCase().replaceAll(" ","-")))
+            this.plugin.hierarchyLowerCase.leftFriends = [];
+            this.plugin.settings.hierarchy.leftFriends.forEach(f=>this.plugin.hierarchyLowerCase.leftFriends.push(f.toLowerCase().replaceAll(" ","-")))
             onHierarchyChange();
             this.dirty = true;
           })
       })
-    hierarchyFriendSetting.nameEl.addClass("excalibrain-setting-nameEl");
-    hierarchyFriendSetting.descEl.addClass("excalibrain-setting-descEl");
-    hierarchyFriendSetting.controlEl.addClass("excalibrain-setting-controlEl");
+    hierarchyLeftFriendSetting.nameEl.addClass("excalibrain-setting-nameEl");
+    hierarchyLeftFriendSetting.descEl.addClass("excalibrain-setting-descEl");
+    hierarchyLeftFriendSetting.controlEl.addClass("excalibrain-setting-controlEl");
    
+
+    const hierarchyRightFriendSetting = new Setting(containerEl)
+      .setName(t("RIGHT_FRIENDS_NAME"))
+      .addTextArea((text)=> {
+        text.inputEl.style.height = "90px";
+        text.inputEl.style.width = "100%";
+        text
+          .setValue(this.plugin.settings.hierarchy.rightFriends.join(", "))
+          .onChange(value => {
+            this.plugin.settings.hierarchy.rightFriends = value
+              .split(",")
+              .map(s=>s.trim())
+              .sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
+            this.plugin.hierarchyLowerCase.rightFriends = [];
+            this.plugin.settings.hierarchy.rightFriends.forEach(f=>this.plugin.hierarchyLowerCase.rightFriends.push(f.toLowerCase().replaceAll(" ","-")))
+            onHierarchyChange();
+            this.dirty = true;
+          })
+      })
+    hierarchyRightFriendSetting.nameEl.addClass("excalibrain-setting-nameEl");
+    hierarchyRightFriendSetting.descEl.addClass("excalibrain-setting-descEl");
+    hierarchyRightFriendSetting.controlEl.addClass("excalibrain-setting-controlEl");
+
+    const hierarchyPreviousSetting = new Setting(containerEl)
+      .setName(t("PREVIOUS_NAME"))
+      .addTextArea((text)=> {
+        text.inputEl.style.height = "90px";
+        text.inputEl.style.width = "100%";
+        text
+          .setValue(this.plugin.settings.hierarchy.previous.join(", "))
+          .onChange(value => {
+            this.plugin.settings.hierarchy.previous = value
+              .split(",")
+              .map(s=>s.trim())
+              .sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
+            this.plugin.hierarchyLowerCase.previous = [];
+            this.plugin.settings.hierarchy.previous.forEach(f=>this.plugin.hierarchyLowerCase.previous.push(f.toLowerCase().replaceAll(" ","-")))
+            onHierarchyChange();
+            this.dirty = true;
+          })
+      })
+    hierarchyPreviousSetting.nameEl.addClass("excalibrain-setting-nameEl");
+    hierarchyPreviousSetting.descEl.addClass("excalibrain-setting-descEl");
+    hierarchyPreviousSetting.controlEl.addClass("excalibrain-setting-controlEl");
+
+    const hierarchyNextSetting = new Setting(containerEl)
+      .setName(t("NEXT_NAME"))
+      .addTextArea((text)=> {
+        text.inputEl.style.height = "90px";
+        text.inputEl.style.width = "100%";
+        text
+          .setValue(this.plugin.settings.hierarchy.next.join(", "))
+          .onChange(value => {
+            this.plugin.settings.hierarchy.next = value
+              .split(",")
+              .map(s=>s.trim())
+              .sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
+            this.plugin.hierarchyLowerCase.next = [];
+            this.plugin.settings.hierarchy.next.forEach(f=>this.plugin.hierarchyLowerCase.next.push(f.toLowerCase().replaceAll(" ","-")))
+            onHierarchyChange();
+            this.dirty = true;
+          })
+      })
+    hierarchyNextSetting.nameEl.addClass("excalibrain-setting-nameEl");
+    hierarchyNextSetting.descEl.addClass("excalibrain-setting-descEl");
+    hierarchyNextSetting.controlEl.addClass("excalibrain-setting-controlEl");
+
     const hierarchyExclusionSetting = new Setting(containerEl)
       .setName(t("EXCLUSIONS_NAME"))
       .setDesc(t("EXCLUSIONS_DESC"))
@@ -1527,17 +1613,53 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       )
 
     fSetting = new Setting(containerEl)
-      .setName(t("ONTOLOGY_SUGGESTER_FRIEND_NAME"))
+      .setName(t("ONTOLOGY_SUGGESTER_LEFT_FRIEND_NAME"))
       .setDisabled(!this.plugin.settings.allowOntologySuggester)
       .addText(text=>
         text
-          .setValue(this.plugin.settings.ontologySuggesterFriendTrigger)
+          .setValue(this.plugin.settings.ontologySuggesterLeftFriendTrigger)
           .onChange(value => {
-            this.plugin.settings.ontologySuggesterFriendTrigger = value;
+            this.plugin.settings.ontologySuggesterLeftFriendTrigger = value;
             this.dirty = true;
           })  
       )
-    
+
+    fSetting = new Setting(containerEl)
+      .setName(t("ONTOLOGY_SUGGESTER_RIGHT_FRIEND_NAME"))
+      .setDisabled(!this.plugin.settings.allowOntologySuggester)
+      .addText(text=>
+        text
+          .setValue(this.plugin.settings.ontologySuggesterRightFriendTrigger)
+          .onChange(value => {
+            this.plugin.settings.ontologySuggesterRightFriendTrigger = value;
+            this.dirty = true;
+          })  
+      )
+
+    fSetting = new Setting(containerEl)
+      .setName(fragWithHTML(t("ONTOLOGY_SUGGESTER_PREVIOUS_NAME")))
+      .setDisabled(!this.plugin.settings.allowOntologySuggester)
+      .addText(text=>
+        text
+          .setValue(this.plugin.settings.ontologySuggesterPreviousTrigger)
+          .onChange(value => {
+            this.plugin.settings.ontologySuggesterPreviousTrigger = value;
+            this.dirty = true;
+          })  
+      )
+
+    fSetting = new Setting(containerEl)
+      .setName(t("ONTOLOGY_SUGGESTER_NEXT_NAME"))
+      .setDisabled(!this.plugin.settings.allowOntologySuggester)
+      .addText(text=>
+        text
+          .setValue(this.plugin.settings.ontologySuggesterNextTrigger)
+          .onChange(value => {
+            this.plugin.settings.ontologySuggesterNextTrigger = value;
+            this.dirty = true;
+          })  
+      )
+
     mSetting = new Setting(containerEl)
       .setName(t("MID_SENTENCE_SUGGESTER_TRIGGER_NAME"))
       .setDesc(fragWithHTML(t("MID_SENTENCE_SUGGESTER_TRIGGER_DESC")))
@@ -1995,9 +2117,15 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
                 ? ("Parent > " + item[1].display)
                 : this.plugin.settings.hierarchy.children.includes(item[1].display)
                   ? ("Child > " + item[1].display)
-                  : this.plugin.settings.hierarchy.friends.includes(item[1].display)
-                    ? ("Friend > " + item[1].display)
-                    : item[1].display
+                  : this.plugin.settings.hierarchy.leftFriends.includes(item[1].display)
+                    ? ("Left Friend > " + item[1].display)
+                    : this.plugin.settings.hierarchy.rightFriends.includes(item[1].display)
+                      ? ("Right Friend > " + item[1].display)
+                      : this.plugin.settings.hierarchy.previous.includes(item[1].display)
+                        ? ("Previous > " + item[1].display)
+                        : this.plugin.settings.hierarchy.next.includes(item[1].display)
+                          ? ("Next > " + item[1].display)
+                          : item[1].display
           )
       })
       if(linkStyles[selectedItem]) {

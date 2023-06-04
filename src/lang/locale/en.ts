@@ -4,7 +4,7 @@ import { APPNAME, MINEXCALIDRAWVERSION } from "src/constants/constants";
 export default {
   //settings
   JSON_MALFORMED: `Malformed JSON`,
-  JSON_MISSING_KEYS: `JSON must have these 3 keys: "parents", "children", "friends"`,
+  JSON_MISSING_KEYS: `JSON must have these 4 keys: "parents", "children", "friends", "nextFriends"`,
   JSON_VALUES_NOT_STRING_ARRAYS: `Key values must be a non-empty array of strings. e.g. "parents": ["Parent", "Parents", "up"]`,
   EXCALIBRAIN_FILE_NAME: "Filepath of Excalibrain drawing",
   EXCALIBRAIN_FILE_DESC: "⚠ This file will be overwritten by the plugin. If you stop the script and make changes to the graph, you " +
@@ -19,7 +19,7 @@ export default {
   HIERARCHY_DESC: "Enter the Dataview field names separated by comma (,) that you will use to define link directions in your graph.<br>" +
     "You can also add fields to the ontology on the fly from the markdown editor by typing the new field at the beginning of a paragraph (e.g.: 'Consits of::') " +
     "and then calling one of the command palette actions to <code>Add dataview field to ontology as PARENT</code>, or <code>as CHILD</code>, " +
-    "or <code>as FRIEND</code>",
+    "<code>as FRIEND</code>, or <code>as RIGHT FRIEND</code>",
   INFER_NAME: "Infer all implicit relationships as Friend",
   INFER_DESC: "<b>Toggle On:</b> All implicit links in the document are interpreted as FRIENDS.<br>" + 
     "<b>Toggle Off:</b> The following logic is used:<ul>" +
@@ -30,7 +30,10 @@ export default {
   REVERSE_DESC: "<b>Toggle ON:</b> Treat backlinks as children and forward links as parents.<br><b>Toggle OFF:</b> Treat backlinks as parents and forward links as children</b>",
   PARENTS_NAME: "Parents",
   CHILDREN_NAME: "Children",
-  FRIENDS_NAME: "Friends",
+  LEFT_FRIENDS_NAME: "Left-Side Friends",
+  RIGHT_FRIENDS_NAME: "Right-Side Friends",
+  PREVIOUS_NAME: "Previous (Friends)",
+  NEXT_NAME: "Next (Friends)",
   EXCLUSIONS_NAME: "Excluded",
   EXCLUSIONS_DESC: "Dataview or YAML fields that are never used for ontology",
   UNASSIGNED_NAME: "Unassigned",
@@ -41,7 +44,10 @@ export default {
   ONTOLOGY_SUGGESTER_ALL_NAME: "Character sequence to trigger generic suggester. The Generic suggester will include all the ontology fields regardless of their direction.",
   ONTOLOGY_SUGGESTER_PARENT_NAME: "Character sequence to trigger parent suggester",
   ONTOLOGY_SUGGESTER_CHILD_NAME: "Character sequence to trigger child suggester",
-  ONTOLOGY_SUGGESTER_FRIEND_NAME: "Character sequence to trigger friend suggester",
+  ONTOLOGY_SUGGESTER_LEFT_FRIEND_NAME: "Character sequence to trigger left-side friend suggester",
+  ONTOLOGY_SUGGESTER_RIGHT_FRIEND_NAME: "Character sequence to trigger right-side friend suggester",
+  ONTOLOGY_SUGGESTER_PREVIOUS_NAME: "Character sequence to trigger pr<u>e</u>vious (friend) suggester",
+  ONTOLOGY_SUGGESTER_NEXT_NAME: "Character sequence to trigger next (friend) suggester",
   MID_SENTENCE_SUGGESTER_TRIGGER_NAME: "Mid-sentence dataview field suggester trigger",
   MID_SENTENCE_SUGGESTER_TRIGGER_DESC: "You may add fields mid-way in sentences following one of these two formats:<br>" +
     "<code>We met at [location:: [[XYZ restaurant]]] with [candidate:: [[John Doe]]]</code><br>" +
@@ -157,7 +163,10 @@ export default {
   EXCALIDRAW_MINAPP_VERSION: `ExcaliBrain requires Excalidraw ${MINEXCALIDRAWVERSION} or higher. Please upgrade Excalidraw then try restarting ${APPNAME}.`,
   COMMAND_ADD_PARENT_FIELD: "Add dataview field to ontology as PARENT",
   COMMAND_ADD_CHILD_FIELD: "Add dataview field to ontology as CHILD",
-  COMMAND_ADD_FRIEND_FIELD: "Add dataview field to ontology as FRIEND",
+  COMMAND_ADD_LEFT_FRIEND_FIELD: "Add dataview field to ontology as LEFT-SIDE FRIEND",
+  COMMAND_ADD_RIGHT_FRIEND_FIELD: "Add dataview field to ontology as RIGHT-SIDE FRIEND",
+  COMMAND_ADD_PREVIOUS_FIELD: "Add dataview field to ontology as PREVIOUS",
+  COMMAND_ADD_NEXT_FIELD: "Add dataview field to ontology as NEXT",
   COMMAND_START: "ExcaliBrain Normal",
   COMMAND_START_HOVER: "ExcaliBrain Hover-Editor",
   COMMAND_START_POPOUT: "ExcaliBrain Popout Window",

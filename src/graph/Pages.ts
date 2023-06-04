@@ -63,8 +63,8 @@ export class Pages {
           child = this.pages.get(this.plugin.lowercasePathMap.get(childPath.toLowerCase()));
         }
         if(this.plugin.settings.inferAllLinksAsFriends) {
-          child.addFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
-          parent.addFriend(child,RelationType.INFERRED, LinkDirection.TO);
+          child.addLeftFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
+          parent.addLeftFriend(child,RelationType.INFERRED, LinkDirection.TO);
         } else {
           if(this.plugin.settings.inverseInfer) { //https://github.com/zsviczian/excalibrain/issues/78
             child.addChild(parent,RelationType.INFERRED, LinkDirection.FROM);
@@ -103,8 +103,8 @@ export class Pages {
       Object.keys(unresolvedLinks[parentPath]).forEach(childPath=>{
         const newPage = this.get(childPath) ?? new Page(this,childPath,null,this.plugin);
         if(this.plugin.settings.inferAllLinksAsFriends) {
-          newPage.addFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
-          parent.addFriend(newPage,RelationType.INFERRED, LinkDirection.TO);
+          newPage.addLeftFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
+          parent.addLeftFriend(newPage,RelationType.INFERRED, LinkDirection.TO);
         } else {
           if(this.plugin.settings.inverseInfer) { //https://github.com/zsviczian/excalibrain/issues/78
             newPage.addChild(parent,RelationType.INFERRED, LinkDirection.FROM);

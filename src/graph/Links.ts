@@ -37,8 +37,8 @@ export class Links {
         ? nodeA
         : nodeB,
         linkDirection===LinkDirection.FROM
-          ? nodeBRole === Role.FRIEND 
-            ? Role.FRIEND
+          ? nodeBRole === Role.FRIEND || nodeBRole === Role.NEXT
+            ? nodeBRole === Role.FRIEND ? Role.FRIEND : Role.NEXT
             : nodeBRole === Role.CHILD
               ? Role.PARENT
               : Role.CHILD
