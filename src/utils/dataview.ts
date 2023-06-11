@@ -49,6 +49,13 @@ const readDVField = (app: App, field: any, file:TFile):string[] => {
         }
       });
 
+    values
+      .filter((l:any)=>Boolean(l?.values))
+      .forEach((l:any)=>{
+        const values = Array.from(l.values());
+        readDVField(app,values,file).forEach(p=>res.add(p))
+      });
+
     //string: e.g. list of virtual links
     const stringLinks:string[] = readLinksFromString(values
       .filter((l:any)=>typeof l === "string")

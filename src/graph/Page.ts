@@ -5,7 +5,7 @@ import { LinkDirection, Neighbour, Relation, RelationType } from "src/Types";
 import { getDVFieldLinksForPage, getPrimaryTag } from "src/utils/dataview";
 import { getFilenameFromPath } from "src/utils/fileUtils";
 import { errorlog, log } from "src/utils/utils";
-import { Pages } from "./Pages";
+import { Pages, addUnresolvedPage } from "./Pages";
 
 const DEFAULT_RELATION:Relation = {
   target: null,
@@ -120,10 +120,11 @@ export class Page {
 
     const parentFields = this.plugin.hierarchyLowerCase.parents;
     getDVFieldLinksForPage(this.plugin,dvPage,parentFields).forEach(item=>{
-      const referencedPage = this.pages.get(item.link);
+      let referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
+        referencedPage = addUnresolvedPage(item.link, this, this.plugin, this.plugin.pages)
         //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
-        return;
+        //return;
       }
       this.addParent(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
       referencedPage.addChild(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
@@ -131,10 +132,11 @@ export class Page {
 
     const childFields = this.plugin.hierarchyLowerCase.children;
     getDVFieldLinksForPage(this.plugin,dvPage,childFields).forEach(item=>{
-      const referencedPage = this.pages.get(item.link);
+      let referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
+        referencedPage = addUnresolvedPage(item.link, this, this.plugin, this.plugin.pages)
         //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
-        return;
+        //return;
       }        
       this.addChild(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
       referencedPage.addParent(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
@@ -142,10 +144,11 @@ export class Page {
 
     const leftFriendFields = this.plugin.hierarchyLowerCase.leftFriends;
     getDVFieldLinksForPage(this.plugin,dvPage,leftFriendFields).forEach(item=>{
-      const referencedPage = this.pages.get(item.link);
+      let referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
-      //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
-        return;
+        referencedPage = addUnresolvedPage(item.link, this, this.plugin, this.plugin.pages)
+        //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+        //return;
       }        
       this.addLeftFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
       referencedPage.addLeftFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
@@ -153,10 +156,11 @@ export class Page {
 
     const rightFriendFields = this.plugin.hierarchyLowerCase.rightFriends;
     getDVFieldLinksForPage(this.plugin,dvPage,rightFriendFields).forEach(item=>{
-      const referencedPage = this.pages.get(item.link);
+      let referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
-      //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
-        return;
+        referencedPage = addUnresolvedPage(item.link, this, this.plugin, this.plugin.pages)
+        //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+        //return;
       }        
       this.addRightFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
       referencedPage.addRightFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
@@ -164,10 +168,11 @@ export class Page {
 
     const previousFields = this.plugin.hierarchyLowerCase.previous;
     getDVFieldLinksForPage(this.plugin,dvPage,previousFields).forEach(item=>{
-      const referencedPage = this.pages.get(item.link);
+      let referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
-      //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
-        return;
+        referencedPage = addUnresolvedPage(item.link, this, this.plugin, this.plugin.pages)
+        //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+        //return;
       }        
       this.addLeftFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
       referencedPage.addRightFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
@@ -175,10 +180,11 @@ export class Page {
 
     const nextFields = this.plugin.hierarchyLowerCase.next;
     getDVFieldLinksForPage(this.plugin,dvPage,nextFields).forEach(item=>{
-      const referencedPage = this.pages.get(item.link);
+      let referencedPage = this.pages.get(item.link);
       if(!referencedPage) {
-      //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
-        return;
+        referencedPage = addUnresolvedPage(item.link, this, this.plugin, this.plugin.pages)
+        //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+        //return;
       }        
       this.addRightFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
       referencedPage.addLeftFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);

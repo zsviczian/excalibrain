@@ -100,22 +100,27 @@ export class Pages {
       if(parentPath === this.plugin.settings.excalibrainFilepath) {
         return;
       }
-      Object.keys(unresolvedLinks[parentPath]).forEach(childPath=>{
-        const newPage = this.get(childPath) ?? new Page(this,childPath,null,this.plugin);
-        if(this.plugin.settings.inferAllLinksAsFriends) {
-          newPage.addLeftFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
-          parent.addLeftFriend(newPage,RelationType.INFERRED, LinkDirection.TO);
-        } else {
-          if(this.plugin.settings.inverseInfer) { //https://github.com/zsviczian/excalibrain/issues/78
-            newPage.addChild(parent,RelationType.INFERRED, LinkDirection.FROM);
-            parent.addParent(newPage,RelationType.INFERRED, LinkDirection.TO);
-          } else {
-            newPage.addParent(parent,RelationType.INFERRED, LinkDirection.FROM);
-            parent.addChild(newPage,RelationType.INFERRED, LinkDirection.TO);
-          }
-        }
-        this.add(childPath,newPage);
-      })
+      Object.keys(unresolvedLinks[parentPath]).forEach(childPath=>
+        addUnresolvedPage(childPath, parent, this.plugin, this)        
+      );
     });
   }
+}
+
+export const addUnresolvedPage = (childPath: string, parent: Page, plugin: ExcaliBrain, pages: Pages):Page => {
+  const newPage = pages.get(childPath) ?? new Page(pages,childPath,null,plugin);
+  if(plugin.settings.inferAllLinksAsFriends) {
+    newPage.addLeftFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
+    parent.addLeftFriend(newPage,RelationType.INFERRED, LinkDirection.TO);
+  } else {
+    if(plugin.settings.inverseInfer) { //https://github.com/zsviczian/excalibrain/issues/78
+      newPage.addChild(parent,RelationType.INFERRED, LinkDirection.FROM);
+      parent.addParent(newPage,RelationType.INFERRED, LinkDirection.TO);
+    } else {
+      newPage.addParent(parent,RelationType.INFERRED, LinkDirection.FROM);
+      parent.addChild(newPage,RelationType.INFERRED, LinkDirection.TO);
+    }
+  }
+  pages.add(childPath,newPage);
+  return newPage;
 }
