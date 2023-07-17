@@ -45,6 +45,7 @@ export default class ExcaliBrain extends Plugin {
   public starred: Page[] = [];
   private focusSearchAfterInitiation:boolean = false;
   public customNodeLabel: (dvPage: Literal, defaultName:string) => string
+  public navigationHistory: string[] = [];
   
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
@@ -60,6 +61,7 @@ export default class ExcaliBrain extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+    this.navigationHistory = this.settings.navigationHistory;
 		this.addSettingTab(new ExcaliBrainSettingTab(this.app, this));
     this.registerEditorSuggest(new FieldSuggester(this));
     this.app.workspace.onLayoutReady(()=>{
@@ -289,9 +291,7 @@ export default class ExcaliBrain extends Plugin {
       }
 
       (async() => {
-        const nh = this.settings.navigationHistory;
         await this.loadSettings();
-        this.settings.navigationHistory = nh;
 
         if(this.settings.hierarchy.parents.includes(field[1])) {
           new Notice(`${field[1]} is already registered as a PARENT`);
@@ -570,7 +570,7 @@ export default class ExcaliBrain extends Plugin {
         if(this.scene?.pinLeaf && this.scene?.isCentralLeafStillThere()) {
           const f = app.vault.getAbstractFileByPath(path.split("#")[0]);
           if(f && f instanceof TFile) {
-            this.scene.centralLeaf.openFile(f);
+            if(!this.settings.embedCentralNode) this.scene.centralLeaf.openFile(f);
             this.scene.renderGraphForPath(path);
             return false;
           }
@@ -578,15 +578,20 @@ export default class ExcaliBrain extends Plugin {
         if(this.scene?.isCentralLeafStillThere()) {
           const f = app.vault.getAbstractFileByPath(path.split("#")[0]);
           if(f && f instanceof TFile) {
-            this.scene.centralLeaf.openFile(f);
+            if(!this.settings.embedCentralNode) this.scene.centralLeaf.openFile(f);
             this.scene.renderGraphForPath(path);
             return false;
           }
         }        
         //had to add this, because the leaf that opens the file does not get focus, thus the on leaf change
         //event handler does not run
-        this.scene?.renderGraphForPath(path,false);
-        return true;
+        if(!this.settings.embedCentralNode) {
+          this.scene?.renderGraphForPath(path,false);
+          return true; //true if file should be opened because central node is not embedded;
+        } else {
+          this.scene?.renderGraphForPath(path);
+          return false;
+        }
       }
       this.scene?.renderGraphForPath(path);
       return false;

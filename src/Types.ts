@@ -1,5 +1,5 @@
 import { Arrowhead, FillStyle } from "@zsviczian/excalidraw/types/element/types";
-import { StrokeSharpness, StrokeStyle } from "obsidian-excalidraw-plugin";
+import { StrokeRoundness, StrokeStyle } from "obsidian-excalidraw-plugin";
 import { Page } from "./graph/Page";
 
 export enum RelationType {
@@ -57,7 +57,7 @@ export type NodeStyle = {
   fontFamily?: number,
   maxLabelLength?: number,
   roughness?: number,
-  strokeShaprness?: StrokeSharpness,
+  strokeShaprness?: StrokeRoundness,
   strokeWidth?: number,
   strokeStyle?: StrokeStyle,
   padding?: number,
@@ -66,6 +66,8 @@ export type NodeStyle = {
   gateStrokeColor?: string,
   gateBackgroundColor?: string,
   gateFillStyle?: FillStyle,
+  embedWidth?: number,
+  embedHeight?: number,
 }
 
 export type NodeStyleData = {
@@ -121,3 +123,9 @@ export type LayoutSpecification = {
   rowHeight: number;
   columnWidth: number;
 }
+
+export type Dimensions = {width:number, height:number};
+
+export type Mutable<T> = {
+  -readonly [P in keyof T]: T[P];
+};

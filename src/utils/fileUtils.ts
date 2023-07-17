@@ -1,5 +1,6 @@
 import { App, normalizePath, TAbstractFile, TFile, TFolder, Vault } from "obsidian";
 import { errorlog } from "./utils";
+import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 
 export const getFilenameFromPath = (path:string):string => {
   const mdFile = path.endsWith(".md");
@@ -63,4 +64,11 @@ export function getTFilesFromFolder(
   });
 
   return files;
+}
+
+export function isEmbedFileType(file: TFile, ea:ExcalidrawAutomate): boolean {
+  if(!file) return false;
+  const embedFileTypes = ["pdf", "mp4", "mp3", "webm", "md"];
+  const fileExtension = getExtension(file.path);
+  return embedFileTypes.includes(fileExtension) && !ea.isExcalidrawFile(file);
 }

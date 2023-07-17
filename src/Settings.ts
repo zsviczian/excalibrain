@@ -8,7 +8,7 @@ import {
   TextComponent,
   ToggleComponent,
 } from "obsidian";
-import { FillStyle, getEA, StrokeSharpness, StrokeStyle } from "obsidian-excalidraw-plugin";
+import { FillStyle, getEA, StrokeRoundness, StrokeStyle } from "obsidian-excalidraw-plugin";
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 import { Page } from "./graph/Page";
 import { t } from "./lang/helpers";
@@ -71,6 +71,9 @@ export interface ExcaliBrainSettings {
   allowAutozoom: boolean;
   allowAutofocuOnSearch: boolean;
   defaultAlwaysOnTop: boolean;
+  embedCentralNode: boolean;
+  centerEmbedWidth: number;
+  centerEmbedHeight: number;
 }
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
@@ -153,7 +156,10 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   boldFields: false,
   allowAutozoom: true,
   allowAutofocuOnSearch: true,
-  defaultAlwaysOnTop: false
+  defaultAlwaysOnTop: false,
+  embedCentralNode: false,
+  centerEmbedWidth: 550,
+  centerEmbedHeight: 700,
 };
 
 const HIDE_DISABLED_STYLE = "excalibrain-hide-disabled";
@@ -873,7 +879,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       {"sharp":"Sharp","round":"Round"},
       () => setting.strokeShaprness,
       (val) => {
-        setting.strokeShaprness = val as StrokeSharpness;
+        setting.strokeShaprness = val as StrokeRoundness;
         this.updateNodeDemoImg();
       },
       ()=> {
@@ -1259,9 +1265,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
   }
 
   async display() {
-    const nh = this.plugin.settings.navigationHistory;
     await this.plugin.loadSettings(); //in case sync loaded changed settings in the background
-    this.plugin.settings.navigationHistory = nh;
 
     this.ea = getEA();
 

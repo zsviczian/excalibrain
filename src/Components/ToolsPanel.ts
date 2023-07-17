@@ -234,6 +234,23 @@ export class ToolsPanel {
      )
     )
 
+    //------------
+    // Central node as interactive frame
+    //------------
+    this.buttons.push(
+      new ToggleButton(
+        this.plugin,
+        ()=>this.plugin.settings.embedCentralNode,
+        (val:boolean)=>this.plugin.settings.embedCentralNode = val,
+        buttonsWrapperDiv,
+        {
+          display: "⏹️",
+          tooltip: t("SHOW_HIDE_EMBEDDEDCENTRAL")
+        },
+        false
+     )
+    )
+
     this.contentEl.appendChild(this.wrapperDiv);
 
   }

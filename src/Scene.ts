@@ -7,10 +7,12 @@ import { Node } from "./graph/Node";
 import ExcaliBrain from "./excalibrain-main";
 import { ExcaliBrainSettings } from "./Settings";
 import { ToolsPanel } from "./Components/ToolsPanel";
-import { Neighbour, RelationType, Role } from "./Types";
+import { Mutable, Neighbour, RelationType, Role } from "./Types";
 import { HistoryPanel } from "./Components/HistoryPanel";
 import { WarningPrompt } from "./utils/Prompts";
 import { debug } from "./utils/utils";
+import { ExcalidrawElement } from "obsidian-excalidraw-plugin";
+import { isEmbedFileType } from "./utils/fileUtils";
 
 export class Scene {
   ea: ExcalidrawAutomate;
@@ -40,6 +42,7 @@ export class Scene {
   public pinLeaf: boolean = false;
   public focusSearchAfterInitiation: boolean = true;
   private zoomToFitOnNextBrainLeafActivate: boolean = false; //this addresses the issue caused in Obsidian 0.16.0 when the brain graph is rendered while the leaf is hidden because tab is not active
+  private rootNode: Node;
 
   constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
     this.ea = plugin.EA;
@@ -122,11 +125,10 @@ export class Scene {
     }
   
     const centralPage = this.plugin.pages.get(this.centralPagePath)
+    const isSameFileAsCurrent = centralPage && centralPage.path === path && isFile
 
     if(
-      centralPage &&
-      centralPage.path === path &&
-      isFile &&
+      isSameFileAsCurrent &&
       page.file.stat.mtime === centralPage.mtime
     ) {
       //log("!!!")
@@ -134,7 +136,7 @@ export class Scene {
       return; //don't reload the file if it has not changed
     }
 
-    if(isFile && openFile) {
+    if(isFile && openFile && !this.plugin.settings.embedCentralNode) {
       //@ts-ignore
       if(!this.centralLeaf || !app.workspace.getLeafById(this.centralLeaf.id)) {
         this.centralLeaf = this.ea.openFileInNewOrAdjacentLeaf(page.file);
@@ -158,11 +160,11 @@ export class Scene {
 
     this.centralPagePath = path;
     //await this.plugin.createIndex();
-    await this.render();
+    await this.render(isSameFileAsCurrent);
   }
 
   async addToHistory(path: string) {
-    const nh = this.plugin.settings.navigationHistory;
+    const nh = this.plugin.navigationHistory;
     if(nh.last() === path) {
       return;
     }
@@ -284,17 +286,6 @@ export class Scene {
     frame1();
     frame2();
     frame3();
-    /**REACT 18 
-    ea.targetView.ownerWindow.requestAnimationFrame(()=>{
-      frame1();
-      ea.targetView.ownerWindow.requestAnimationFrame(()=>{
-        frame2();
-        ea.targetView.ownerWindow.requestAnimationFrame(()=>{
-          frame3();
-        });
-      });
-    });
-    */
   }
 
   addNodes(x:{
@@ -322,7 +313,7 @@ export class Scene {
   }
 
   
-  private async render() {
+  private async render(retainCentralNode:boolean = false) {
     if(this.historyPanel) {
       this.historyPanel.rerender()
     }
@@ -336,11 +327,19 @@ export class Scene {
     }
 
     const ea = this.ea;
+    retainCentralNode = retainCentralNode && Boolean(this.rootNode) && isEmbedFileType(centralPage.file,ea);
 
     this.zoomToFitOnNextBrainLeafActivate = !ea.targetView.containerEl.isShown();
 
     ea.clear();
-    ea.getExcalidrawAPI().updateScene({elements:[]});
+    const excalidrawAPI = ea.getExcalidrawAPI();
+    if(!retainCentralNode) {
+      excalidrawAPI.updateScene({elements:[]});
+    } else {
+      excalidrawAPI.updateScene({
+        elements:excalidrawAPI.getSceneElements().filter((el:ExcalidrawElement)=>this.rootNode.embeddedElementIds.includes(el.id))
+      });
+    }
     ea.style.verticalAlign = "middle";
     
     //List nodes for the graph
@@ -425,21 +424,39 @@ export class Scene {
         : 3);
 
 
+    const isCenterEmbedded = 
+      this.plugin.settings.embedCentralNode &&
+      !centralPage.isVirtual &&
+      !centralPage.isFolder &&
+      !centralPage.isTag;
+    const centerEmbedWidth = this.plugin.settings.centerEmbedWidth;
+    const centerEmbedHeight = this.plugin.settings.centerEmbedHeight;
+    
     const lCenter = new Layout({
       origoX: 0,
-      origoY: 0,
+      origoY: isCenterEmbedded
+        ? centerEmbedHeight - this.nodeHeight/2
+        : 0,
       top: null,
       bottom: null,
       columns: 1,
-      columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      columnWidth: isCenterEmbedded
+        ? centerEmbedWidth
+        : this.nodeWidth,
+      rowHeight: isCenterEmbedded
+        ? centerEmbedHeight
+        : this.nodeHeight,
     });
     this.layouts.push(lCenter);
 
     const lChildren = new Layout({
       origoX: 0,
-      origoY: 2.5 * this.nodeHeight,
-      top: 2 * this.nodeHeight,
+      origoY: isCenterEmbedded
+        ? centerEmbedHeight + 1.5 * this.nodeHeight
+        : 2.5 * this.nodeHeight,
+      top: isCenterEmbedded
+        ? centerEmbedHeight + this.nodeHeight
+        : 2 * this.nodeHeight,
       bottom: null,
       columns: childrenCols,
       columnWidth: this.nodeWidth,
@@ -447,9 +464,21 @@ export class Scene {
     });
     this.layouts.push(lChildren);
   
+    const isCompactView = this.plugin.settings.compactView;
+    const friendOrigoX = isCompactView && isCenterEmbedded
+      ? centerEmbedWidth/2  + 1.5 * this.nodeWidth
+      : Math.max(
+          (((manyNextFriends?1:0)+Math.max(childrenCols,parentCols)+1.9)/2.4) * this.nodeWidth, // (manyChildren ? -3 : -2)  * this.nodeWidth,
+          isCenterEmbedded
+            ? centerEmbedWidth/2 + 1.5 * this.nodeWidth
+            : 0
+        );
+
     const lFriends = new Layout({
-      origoX: -(((manyFriends?1:0)+Math.max(childrenCols,parentCols)+1.9)/2.4) * this.nodeWidth, // (manyChildren ? -3 : -2)  * this.nodeWidth,
-      origoY: 0,
+      origoX: -friendOrigoX,
+      origoY: isCenterEmbedded
+        ? centerEmbedHeight/2
+        : 0,
       top: null,
       bottom: null,
       columns: 1,
@@ -459,8 +488,10 @@ export class Scene {
     this.layouts.push(lFriends);
 
     const lNextFriends = new Layout({
-      origoX: (((manyNextFriends?1:0)+Math.max(childrenCols,parentCols)+1.9)/2.4) * this.nodeWidth, // (manyChildren ? -3 : -2)  * this.nodeWidth,
-      origoY: 0,
+      origoX: friendOrigoX,
+      origoY: isCenterEmbedded
+        ? centerEmbedHeight/2
+        : 0,
       top: null,
       bottom: null,
       columns: 1,
@@ -500,17 +531,19 @@ export class Scene {
     })
     this.layouts.push(lSiblings);
 
-    const rootNode = new Node({
+    this.rootNode = new Node({
       ea,
       page: centralPage,
       isInferred: false,
       isCentral: true,
       isSibling: false,
-      friendGateOnLeft: true
+      friendGateOnLeft: true,
+      isEmbeded: isCenterEmbedded,
+      embeddedElementIds: retainCentralNode ? this.rootNode?.embeddedElementIds : undefined,
     });
 
-    this.nodesMap.set(centralPage.path,rootNode);
-    lCenter.nodes.push(rootNode);
+    this.nodesMap.set(centralPage.path,this.rootNode);
+    lCenter.nodes.push(this.rootNode);
   
     this.addNodes({
       neighbours: parents,
@@ -585,15 +618,24 @@ export class Scene {
     //-------------------------------------------------------
     // Render
     ea.style.opacity = 100;
-    this.layouts.forEach(layout => layout.render());
+    await Promise.all(this.layouts.map(async (layout) => await layout.render()));
     const nodeElements = ea.getElements();
     this.links.render(Array.from(this.toolsPanel.linkTagFilter.selectedLinks));
     
     const linkElements = ea.getElements().filter(el=>!nodeElements.includes(el));
 
-    ea.getExcalidrawAPI().updateScene({
-      elements: linkElements.concat(nodeElements) //send link elements behind node elements
-    })
+
+    //hack to send link elements behind node elements
+    const newImagesDict = linkElements.concat(nodeElements) 
+      .reduce((dict:{[key:string]:any}, obj:ExcalidrawElement) => {
+        dict[obj.id] = obj;
+        return dict;
+      }, {});
+
+    ea.elementsDict = newImagesDict;
+
+    ea.addElementsToView(false,false);
+    ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
 
     ea.getExcalidrawAPI().updateScene({appState: {viewBackgroundColor: this.plugin.settings.backgroundColor}});
     if(this.plugin.settings.allowAutozoom) ea.getExcalidrawAPI().zoomToFit(null,5,0.15);
@@ -743,7 +785,7 @@ export class Scene {
             }
           }
         }
-        this.render();
+        this.render(true);
       }
     }
 
@@ -805,12 +847,14 @@ export class Scene {
         this.ea.deregisterThisAsViewEA();
       } catch {}
     }
-    (async()=>{
-      const tmpNavigationHistory = this.plugin.settings.navigationHistory.slice(); //copy by value
+    // timout is to make sure Obsidian is not being terminated when scene closes,
+    // becasue that can lead to crippled settings file
+    // if the plugin is still there after 400ms, it is safe to save the settings
+    setTimeout(async () => {
       await this.plugin.loadSettings(); //only overwrite the navigation history, save other synchronized settings
-      this.plugin.settings.navigationHistory = tmpNavigationHistory;
+      this.plugin.settings.navigationHistory = [...this.plugin.navigationHistory];
       await this.plugin.saveSettings();
-    })();
+    },400);
     this.toolsPanel?.terminate();
     this.toolsPanel = undefined;
     this.historyPanel?.terminate();

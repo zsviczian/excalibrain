@@ -54,7 +54,7 @@ export class Layout {
         : getRowLayout(itemCount % columns).map(idx => idx ? sortedNodes[i*columns+idx-1]:null));
   }
 
-  render() {
+  async render() {
     this.layout();
     const rows = this.renderedNodes.length;
     const height = rows * this.spec.rowHeight;
@@ -71,15 +71,16 @@ export class Layout {
       x: this.spec.origoX - (this.spec.columns === 1 ? 0 : (this.spec.columns-1)/2*this.spec.columnWidth),
       y: top
     };
-    this.renderedNodes.forEach((nodes,row) =>
-      nodes.forEach((node,idx) => {
-        if(!node) return;
-        node.setCenter({
-          x: center00.x + idx*this.spec.columnWidth,
-          y: center00.y + row*this.spec.rowHeight
-        });
-        node.render();
-      })
-    );
+    for (const [row, nodes] of this.renderedNodes.entries()) {
+      for (const [idx, node] of nodes.entries()) {
+        if(node) {
+          node.setCenter({
+            x: center00.x + idx*this.spec.columnWidth,
+            y: center00.y + row*this.spec.rowHeight
+          });
+          await node.render();
+        }
+      }
+    }
   }
 }
