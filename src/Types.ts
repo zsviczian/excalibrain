@@ -1,5 +1,6 @@
+import { FillStyle, StrokeRoundness, StrokeStyle } from "obsidian-excalidraw-plugin";
+import { Arrowhead as ExcalidrawArrowHead} from "@zsviczian/excalidraw/types/element/types";
 import { Page } from "./graph/Page";
-import { StrokeRoundness, StrokeStyle, Arrowhead, FillStyle } from "@zsviczian/excalidraw/types/element/types";
 
 export enum RelationType {
   DEFINED = 1,
@@ -18,6 +19,8 @@ export enum LinkDirection {
   FROM = 2,
   BOTH = 3,
 }
+
+export type Arrowhead = ExcalidrawArrowHead | "none";
 
 export type Relation = {
   target: Page;
@@ -86,8 +89,8 @@ export type LinkStyle = {
   strokeWidth?: number,
   strokeStyle?: StrokeStyle,
   roughness?: number,
-  startArrowHead?: Arrowhead|"none",
-  endArrowHead?: Arrowhead|"none",
+  startArrowHead?: Arrowhead,
+  endArrowHead?: Arrowhead,
   showLabel?: boolean,
   fontSize?: number,
   fontFamily?: number,

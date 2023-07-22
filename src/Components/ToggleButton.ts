@@ -1,4 +1,5 @@
 import ExcaliBrain from "src/excalibrain-main";
+import { keepOnTop } from "src/utils/utils";
 
 export class ToggleButton {
   private button: HTMLButtonElement;

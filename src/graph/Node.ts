@@ -4,7 +4,6 @@ import { Dimensions, Mutable, NodeStyle } from "src/types";
 import { getTagStyle } from "src/utils/dataview";
 import { Page } from "./Page";
 import { ExcalidrawImageElement } from "@zsviczian/excalidraw/types/element/types";
-import { Widget } from "obsidian-dataview";
 import { isEmbedFileType } from "src/utils/fileUtils";
 
 export class Node {

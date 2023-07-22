@@ -28,7 +28,7 @@ export default {
       exclude: "node_modules/**"
     }),
     commonjs(),
-    nodeResolve({ browser: true, preferBuiltins: true }),
+    nodeResolve({ browser: true, preferBuiltins: false }),
     typescript({inlineSources: !isProd}),
     ...isProd ? [
       terser({toplevel: true, compress: {passes: 2}})

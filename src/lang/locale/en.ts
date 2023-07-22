@@ -1,6 +1,6 @@
 import { APPNAME, MINEXCALIDRAWVERSION } from "src/constants/constants";
 
-//English
+//Magyar
 export default {
   //settings
   JSON_MALFORMED: `Malformed JSON`,
@@ -103,6 +103,8 @@ export default {
   ALLOW_AUTOFOCUS_ON_SEARCH_DESC: "<b>Toggle ON:</b> Allow autofocus on Search<br><b>Toggle OFF:</b> Disable autofocus",
   ALWAYS_ON_TOP_NAME: "Popout default 'always on top' behavior",
   ALWAYS_ON_TOP_DESC: "<b>Toggle ON:</b> When opening ExcaliBrain in a popout window, it will open with the new window in 'always on top' mode.<br><b>Toggle OFF:</b> The new window will not be in 'always on top' mode.",
+  EMBEDDED_FRAME_WIDTH_NAME: "Embedded frame width",
+  EMBEDDED_FRAME_HEIGHT_NAME: "Embedded frame height",
   TAGLIST_NAME: "Formatted tags",
   TAGLIST_DESC: "You can specify special formatting rules for Nodes based on tags. If multiple tags are present on the page the first matching a specification " +
     "will be used. <br>Tagnames should start with <mark>#</mark> and may be incomplete. i.e. <code>#book</code> will match #books, #book/fiction, etc.<br>" +

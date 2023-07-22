@@ -13,11 +13,10 @@ import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAut
 import { Page } from "./graph/Page";
 import { t } from "./lang/helpers";
 import ExcaliBrain from "./excalibrain-main";
-import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData, LinkDirection, Role } from "./types";
+import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData, LinkDirection, Role, Arrowhead } from "./types";
 import { WarningPrompt } from "./utils/Prompts";
 import { Node } from "./graph/Node";
 import { svgToBase64 } from "./utils/utils";
-import { Arrowhead } from "@zsviczian/excalidraw/types/element/types";
 import { Link } from "./graph/Link";
 import { DEFAULT_HIERARCHY_DEFINITION, DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, PREDEFINED_LINK_STYLES } from "./constants/constants";
 
@@ -1853,6 +1852,30 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
               this.plugin.settings.defaultAlwaysOnTop = value;
               this.dirty = true;
             }))
+
+      this.numberslider(
+        containerEl,
+        t("EMBEDDED_FRAME_WIDTH_NAME"),
+        undefined,
+        {min:400,max:1600, step:50},
+        ()=>this.plugin.settings.centerEmbedWidth,
+        (val)=>this.plugin.settings.centerEmbedWidth = val,
+        ()=>{},
+        false,
+        this.plugin.settings.centerEmbedWidth
+      )
+
+      this.numberslider(
+        containerEl,
+        t("EMBEDDED_FRAME_HEIGHT_NAME"),
+        undefined,
+        {min:400,max:1600, step:50},
+        ()=>this.plugin.settings.centerEmbedHeight,
+        (val)=>this.plugin.settings.centerEmbedHeight = val,
+        ()=>{},
+        false,
+        this.plugin.settings.centerEmbedHeight
+      )
 
     containerEl.createEl("h1", {
       cls: "excalibrain-settings-h1",

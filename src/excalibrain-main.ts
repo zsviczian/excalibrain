@@ -1,7 +1,7 @@
 import { App, MarkdownView, Notice, Plugin, PluginManifest, TextFileView, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { Page } from './graph/Page';
 import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './Settings';
-import { errorlog } from './utils/utils';
+import { errorlog, keepOnTop } from './utils/utils';
 import { getAPI } from "obsidian-dataview"
 import { t } from './lang/helpers';
 import { DEFAULT_HIERARCHY_DEFINITION, DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, MINEXCALIDRAWVERSION, PLUGIN_NAME, PREDEFINED_LINK_STYLES } from './constants/constants';
@@ -565,9 +565,11 @@ export default class ExcaliBrain extends Plugin {
       const ea = this.EA;
       
       //this should never happen, but if it does, I will let Excalidraw deal with the link
-      if(!page || !this.scene) {
+      if(!page || !this.scene || !ea) {
         return true;
       }
+
+      keepOnTop(ea);
 
       //handle click on virtual page
       if (page.isVirtual) {
@@ -609,14 +611,14 @@ export default class ExcaliBrain extends Plugin {
           const f = app.vault.getAbstractFileByPath(path.split("#")[0]);
           if(f && f instanceof TFile) {
             centralLeaf.openFile(f);
-            this.scene.renderGraphForPath(path);
+            this.scene.renderGraphForPath(path, false);
             return false;
           }
         }
     
         //if the centralLeaf is no longer available, lets render the graph, but
         //let Excalidraw deal with opening a new leaf
-        this.scene.renderGraphForPath(path,false);
+        this.scene.renderGraphForPath(path,true);
         return true; //true if file should be opened because central node is not embedded;
       }
 
@@ -898,6 +900,7 @@ export default class ExcaliBrain extends Plugin {
       await Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,this.getBrainLeaf());
       return;
     }
+    
     this.scene = new Scene(this,true,leaf)
     this.scene.initialize(this.focusSearchAfterInitiation);
     this.focusSearchAfterInitiation = false;

@@ -3,10 +3,33 @@
 import { moment } from "obsidian";
 import { errorlog } from "src/utils/utils";
 import en from "./locale/en";
+import ar from "./locale/ar";
+import cz from "./locale/cz";
+import da from "./locale/da";
+import de from "./locale/de";
+import es from "./locale/es";
+import fr from "./locale/fr";
+import hi from "./locale/hi";
+import id from "./locale/id";
+import ja from "./locale/ja";
+import ko from "./locale/ko";
+import nl from "./locale/nl";
+import no from "./locale/no";
+import pl from "./locale/pl";
+import pt from "./locale/pt";
+import ro from "./locale/ro";
+import ru from "./locale/ru";
+import tr from "./locale/tr";
+import zhCN from "./locale/zh-cn";
+import zhTW from "./locale/zh-tw";
+import ptBR from "./locale/pt-br";
+import enGB from "./locale/en-gb";
+import it from "./locale/it";
+import hu from "./locale/hu";
 
 const localeMap: { [k: string]: Partial<typeof en> } = {
   en,
-/*  ar,
+  ar,
   cs: cz,
   da,
   de,
@@ -27,7 +50,8 @@ const localeMap: { [k: string]: Partial<typeof en> } = {
   ru,
   tr,
   "zh-cn": zhCN,
-  "zh-tw": zhTW,*/
+  "zh-tw": zhTW,
+  hu,
 };
 
 const locale = localeMap[moment.locale()];

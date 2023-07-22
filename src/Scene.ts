@@ -10,7 +10,7 @@ import { ToolsPanel } from "./Components/ToolsPanel";
 import { Mutable, Neighbour, RelationType, Role } from "./types";
 import { HistoryPanel } from "./Components/HistoryPanel";
 import { WarningPrompt } from "./utils/Prompts";
-import { debug } from "./utils/utils";
+import { debug, keepOnTop } from "./utils/utils";
 import { ExcalidrawElement } from "obsidian-excalidraw-plugin";
 import { isEmbedFileType } from "./utils/fileUtils";
 
@@ -85,12 +85,31 @@ export class Scene {
     if(!this.isActive()) {
       return;
     }
-    if(!this.centralLeaf || !this.centralPagePath) {
+
+    if(!this.centralPagePath) {
       return;
     }
+
     if(updateIndex) {
       this.vaultFileChanged = false;
       await this.plugin.createIndex(); //temporary
+    }
+
+    keepOnTop(this.ea);
+    const centralPage = this.plugin.pages.get(this.centralPagePath);
+    if(
+      centralPage?.file &&
+      !(centralPage.isFolder || centralPage.isTag || centralPage.isVirtual)
+    ) {
+      if(!this.centralLeaf) {
+        this.ea.openFileInNewOrAdjacentLeaf(centralPage.file);
+      } else if (
+        //@ts-ignore
+        this.centralLeaf.view?.file?.path !== centralPage.file.path
+      ) {
+        this.centralLeaf.openFile(centralPage.file, {active: true});
+        app.workspace.revealLeaf(this.centralLeaf);
+      }
     }
     await this.render();
     //this.toolsPanel.rerender(); //this is also there at the end of render. Seems duplicate.
@@ -133,6 +152,8 @@ export class Scene {
       return; 
     }
   
+    keepOnTop(this.plugin.EA);
+
     const centralPage = this.plugin.pages.get(this.centralPagePath)
     const isSameFileAsCurrent = centralPage && centralPage.path === path && isFile
 
@@ -219,8 +240,12 @@ export class Scene {
       });
       return;
     }
-    leaf = leaf ?? app.workspace.getLeaf(true);
-    await leaf.openFile(file as TFile);
+    if(!leaf) {
+      leaf = app.workspace.getLeaf(false);
+      if(leaf.getViewState().type !== "empty") {
+        leaf = ea.getLeaf(leaf, "new-pane");
+      }
+    }
     if(settings.defaultAlwaysOnTop && leaf && ea.DEVICE.isDesktop) {
       //@ts-ignore
       const ownerWindow = leaf.view?.ownerWindow;
@@ -228,6 +253,7 @@ export class Scene {
         ownerWindow.electronWindow.setAlwaysOnTop(true);
       }
     }
+    await leaf.openFile(file as TFile);
   }
 
   public async initializeScene() {
@@ -281,12 +307,13 @@ export class Scene {
         "✨ For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
         "under 'Links and Transclusion'.\n\n⚠ ExcaliBrain may need to wait for " +
         "DataView to initialize its index.\nThis can take up to a few minutes after starting Obsidian.", {textAlign:"center"});
-      ea.addElementsToView();
+      ea.addElementsToView(false,false);
+      ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
     }
-    const frame3 = () => {
+    const frame3 = async () => {
       if(this.plugin.settings.allowAutozoom) api.zoomToFit(null, 5, 0.15);
       ea.targetView.linksAlwaysOpenInANewPane = true;
-      this.addEventHandler();
+      await this.addEventHandler();
       this.historyPanel = new HistoryPanel((this.leaf.view as TextFileView).contentEl,this.plugin);
       new Notice("ExcaliBrain On");
     }
@@ -652,15 +679,6 @@ export class Scene {
 
     ea.getExcalidrawAPI().updateScene({appState: {viewBackgroundColor: this.plugin.settings.backgroundColor}});
     if(this.plugin.settings.allowAutozoom) ea.getExcalidrawAPI().zoomToFit(null,5,0.15);
-
-    /**REACT 18
-    ea.targetView.ownerWindow.requestAnimationFrame(()=>{
-      ea.getExcalidrawAPI().updateScene({appState: {viewBackgroundColor: this.plugin.settings.backgroundColor}});
-      ea.targetView.ownerWindow.requestAnimationFrame(()=>{
-        if(this.plugin.settings.allowAutozoom) ea.getExcalidrawAPI().zoomToFit(null,5,0.15);
-      });
-    });
-    */
   
     this.toolsPanel.rerender();
     if(this.focusSearchAfterInitiation && this.plugin.settings.allowAutofocuOnSearch) {
@@ -673,16 +691,28 @@ export class Scene {
 
   public isCentralLeafStillThere():boolean {
     //@ts-ignore
-    return app.workspace.getLeafById(this.centralLeaf.id) !== null;
+    const noCentralLeaf = app.workspace.getLeafById(this.centralLeaf.id) === null ;
+    if(noCentralLeaf) {
+      return false;
+    }
+    //@ts-ignore
+    if (this.centralLeaf.view?.file?.path === this.plugin.settings.excalibrainFilepath) {
+      return false;
+    }
+    return true;
   }
 
   private async addEventHandler() {
     const self = this;
     
-    const brainEventHandler = async (leaf:WorkspaceLeaf) => {
+    const brainEventHandler = async (leaf:WorkspaceLeaf, startup:boolean = false) => {
       if(this.disregardLeafChange) {
         return;
       }
+      if(!startup && self.plugin.settings.embedCentralNode) {
+        return;
+      }
+
       self.blockUpdateTimer = true;
       //await self.plugin.createIndex();
       await sleep(100);
@@ -777,7 +807,13 @@ export class Scene {
           leafToOpen = leaf[0];
         }
       }
-      brainEventHandler(leafToOpen);
+      keepOnTop(this.plugin.EA);  
+      brainEventHandler(leafToOpen, true);
+    } else {
+      if(this.plugin.navigationHistory.length>0) {
+        const lastFilePath = this.plugin.navigationHistory.last();
+        setTimeout(()=>this.renderGraphForPath(lastFilePath,true),100);
+      }
     }
   }
 
