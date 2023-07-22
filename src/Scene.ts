@@ -7,7 +7,7 @@ import { Node } from "./graph/Node";
 import ExcaliBrain from "./excalibrain-main";
 import { ExcaliBrainSettings } from "./Settings";
 import { ToolsPanel } from "./Components/ToolsPanel";
-import { Mutable, Neighbour, RelationType, Role } from "./Types";
+import { Mutable, Neighbour, RelationType, Role } from "./types";
 import { HistoryPanel } from "./Components/HistoryPanel";
 import { WarningPrompt } from "./utils/Prompts";
 import { debug } from "./utils/utils";
@@ -19,8 +19,8 @@ export class Scene {
   plugin: ExcaliBrain;
   app: App;
   leaf: WorkspaceLeaf;
-  centralPagePath: string;
-  centralLeaf: WorkspaceLeaf;
+  centralPagePath: string; //path of the page in the center of the graph
+  private centralLeaf: WorkspaceLeaf; //workspace leaf containing the central page
   textSize: {width:number, height:number};
   nodeWidth: number;
   nodeHeight: number;
@@ -51,6 +51,13 @@ export class Scene {
     this.leaf = leaf ?? app.workspace.getLeaf(newLeaf);
     this.terminated = false;
     this.links = new Links(plugin);
+  }
+
+  public getCentralLeaf(): WorkspaceLeaf {
+    if(this.plugin.settings.embedCentralNode) {
+      return null;
+    }
+    return this.centralLeaf;
   }
 
   public async initialize(focusSearchAfterInitiation: boolean) {
@@ -94,7 +101,7 @@ export class Scene {
    * @param path 
    * @returns 
    */
-  public async renderGraphForPath(path: string, openFile:boolean = true) {
+  public async renderGraphForPath(path: string, shouldOpenFile:boolean = true) {
     if(!this.isActive()) {
       return;
     }
@@ -114,11 +121,13 @@ export class Scene {
       return;
     }
 
+    //abort excalibrain if the file in the Obsidian view has changed
     if(!this.ea.targetView?.file || this.ea.targetView.file.path !== this.plugin.settings.excalibrainFilepath) {
       this.unloadScene();
       return;
     }
     
+    //don't render if the user is trying to render the excaliBrain file itself
     if (isFile && (page.file.path === this.ea.targetView.file.path)) { //brainview drawing is the active leaf
       this.blockUpdateTimer = false;
       return; 
@@ -127,21 +136,19 @@ export class Scene {
     const centralPage = this.plugin.pages.get(this.centralPagePath)
     const isSameFileAsCurrent = centralPage && centralPage.path === path && isFile
 
-    if(
-      isSameFileAsCurrent &&
-      page.file.stat.mtime === centralPage.mtime
-    ) {
-      //log("!!!")
+    // if the file hasn't changed don't update the graph
+    if(isSameFileAsCurrent && page.file.stat.mtime === centralPage.mtime) {
       this.blockUpdateTimer = false;
       return; //don't reload the file if it has not changed
     }
 
-    if(isFile && openFile && !this.plugin.settings.embedCentralNode) {
+    if(isFile && shouldOpenFile && !this.plugin.settings.embedCentralNode) {
+      const centralLeaf = this.getCentralLeaf();
       //@ts-ignore
-      if(!this.centralLeaf || !app.workspace.getLeafById(this.centralLeaf.id)) {
+      if(!centralLeaf || !app.workspace.getLeafById(centralLeaf.id)) {
         this.centralLeaf = this.ea.openFileInNewOrAdjacentLeaf(page.file);
       } else {
-        this.centralLeaf.openFile(page.file, {active: false});
+        centralLeaf.openFile(page.file, {active: false});
       }
       this.addToHistory(page.file.path);
     } else {
@@ -212,11 +219,12 @@ export class Scene {
       });
       return;
     }
-    await (leaf ?? app.workspace.getLeaf(true)).openFile(file as TFile);
-    if(settings.defaultAlwaysOnTop && leaf) {
+    leaf = leaf ?? app.workspace.getLeaf(true);
+    await leaf.openFile(file as TFile);
+    if(settings.defaultAlwaysOnTop && leaf && ea.DEVICE.isDesktop) {
       //@ts-ignore
       const ownerWindow = leaf.view?.ownerWindow;
-      if(ownerWindow && (ownerWindow !== window) && !ownerWindow.electronWindow.isMaximized()) {
+      if(ownerWindow && (ownerWindow !== window) && !ownerWindow.electronWindow?.isMaximized()) {
         ownerWindow.electronWindow.setAlwaysOnTop(true);
       }
     }
@@ -312,7 +320,12 @@ export class Scene {
     });
   }
 
-  
+  /**
+   * if retainCentralNode is true, the central node is not removed from the scene when the scene is rendered
+   * this will ensure that the embedded frame in the center is not reloaded
+   * @param retainCentralNode 
+   * @returns 
+   */
   private async render(retainCentralNode:boolean = false) {
     if(this.historyPanel) {
       this.historyPanel.rerender()

@@ -10,10 +10,11 @@ import { Pages } from './graph/Pages';
 import { getEA } from "obsidian-excalidraw-plugin";
 import { ExcalidrawAutomate, search } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
 import { Scene } from './Scene';
-import { LinkStyles, NodeStyles, LinkStyle, RelationType, LinkDirection } from './Types';
+import { LinkStyles, NodeStyles, LinkStyle, RelationType, LinkDirection } from './types';
 import { WarningPrompt } from './utils/Prompts';
 import { FieldSuggester } from './Suggesters/OntologySuggester';
 import { Literal } from 'obsidian-dataview/lib/data-model/value';
+import { isEmbedFileType } from './utils/fileUtils';
 
 declare module "obsidian" {
   interface App {
@@ -425,16 +426,15 @@ export default class ExcaliBrain extends Plugin {
         Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,leaf);
       },
     });
-
     
     this.addCommand({
       id: "excalibrain-start-popout",
       name: t("COMMAND_START_POPOUT"),
       checkCallback: (checking:boolean) => {
         if(checking) {
-          return !app.isMobile && this.excalidrawAvailable();
+          return !this.EA.DEVICE.isMobile && this.excalidrawAvailable();
         }
-        if(!this.excalidrawAvailable() || app.isMobile) return; //still need this in case user sets a hotkey
+        if(!this.excalidrawAvailable() || this.EA.DEVICE.isMobile) return; //still need this in case user sets a hotkey
         
         if(this.scene && !this.scene.terminated) {
           this.revealBrainLeaf();
@@ -556,44 +556,66 @@ export default class ExcaliBrain extends Plugin {
     this.EA.onLinkClickHook = (element,linkText,event) => {
       const path = linkText.match(/\[\[([^\]]*)/)[1];
       const page =  this.pages.get(path);
-      //shift click will offer to create the page for the unresolved link
-      if(!event.shiftKey && page && page.isVirtual) {
-        this.scene?.renderGraphForPath(path);
+      const ea = this.EA;
+      
+      //this should never happen, but if it does, I will let Excalidraw deal with the link
+      if(!page || !this.scene) {
+        return true;
+      }
+
+      //handle click on virtual page
+      if (page.isVirtual) {
+        if(!event.shiftKey) {
+          this.scene?.renderGraphForPath(path);
+        } else {
+          //shift click will offer to create the page for the unresolved link
+          (async()=>{
+            const source = page.getParents()[0] ?? page.getLeftFriends()[0] ?? page.getRightFriends()[0] ?? page.getChildren()[0];
+            const f = await ea.newFilePrompt(page.path, false, undefined, source?.page.file);
+            page.file = f;
+            if(isEmbedFileType(f,ea)) {
+              this.scene.renderGraphForPath(path);
+            } else {
+              this.scene.renderGraphForPath(path,false);
+              return true;
+            }
+          })();
+        }
         return false;
       }
-      if(!linkText.startsWith("[[folder:") && !linkText.startsWith("[[tag:")) {
-        //@ts-ignore
-        if(this.scene?.centralLeaf?.view?.file?.path === path) {
-          this.scene?.renderGraphForPath(path);
-          return false;
-        }
-        if(this.scene?.pinLeaf && this.scene?.isCentralLeafStillThere()) {
-          const f = app.vault.getAbstractFileByPath(path.split("#")[0]);
-          if(f && f instanceof TFile) {
-            if(!this.settings.embedCentralNode) this.scene.centralLeaf.openFile(f);
-            this.scene.renderGraphForPath(path);
-            return false;
-          }
-        }
-        if(this.scene?.isCentralLeafStillThere()) {
-          const f = app.vault.getAbstractFileByPath(path.split("#")[0]);
-          if(f && f instanceof TFile) {
-            if(!this.settings.embedCentralNode) this.scene.centralLeaf.openFile(f);
-            this.scene.renderGraphForPath(path);
-            return false;
-          }
-        }        
-        //had to add this, because the leaf that opens the file does not get focus, thus the on leaf change
-        //event handler does not run
-        if(!this.settings.embedCentralNode) {
-          this.scene?.renderGraphForPath(path,false);
-          return true; //true if file should be opened because central node is not embedded;
-        } else {
-          this.scene?.renderGraphForPath(path);
-          return false;
-        }
+
+      //if centralPage is in embeddedFrame, simply render the scene
+      if(this.settings.embedCentralNode) {
+        this.scene.renderGraphForPath(path);
+        return false;
       }
-      this.scene?.renderGraphForPath(path);
+
+      const centralLeaf = this.scene.getCentralLeaf();
+      //handle click on link to existing file
+      if(!page.isFolder && !page.isTag) {
+        //if the leaf attached to ExcaliBrain already has the new file open, render the associated graph
+        if((centralLeaf?.view as TextFileView)?.file?.path === path) {
+          this.scene.renderGraphForPath(path);
+          return false;
+        }
+
+        if(this.scene.isCentralLeafStillThere()) {
+          const f = app.vault.getAbstractFileByPath(path.split("#")[0]);
+          if(f && f instanceof TFile) {
+            centralLeaf.openFile(f);
+            this.scene.renderGraphForPath(path);
+            return false;
+          }
+        }
+    
+        //if the centralLeaf is no longer available, lets render the graph, but
+        //let Excalidraw deal with opening a new leaf
+        this.scene.renderGraphForPath(path,false);
+        return true; //true if file should be opened because central node is not embedded;
+      }
+
+      //the page is a folder or a tag
+      this.scene.renderGraphForPath(path);
       return false;
     }
 

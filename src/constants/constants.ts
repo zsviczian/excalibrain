@@ -1,4 +1,4 @@
-import { NodeStyle, LinkStyle } from "../Types";
+import { NodeStyle, LinkStyle } from "../types";
 
 export const APPNAME = "ExcaliBrain";
 export const PLUGIN_NAME = "excalibrain"

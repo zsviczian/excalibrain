@@ -12,7 +12,7 @@ const getExtension = (path:string):string => {
   if(!path) {
     return;
   }
-  const extension = path.match(/\.([^/]*)$/);
+  const extension = path.match(/\.([^\s\/\.]*)$/);
   if(!extension) return "md";
   return extension[1];
 }
@@ -69,6 +69,5 @@ export function getTFilesFromFolder(
 export function isEmbedFileType(file: TFile, ea:ExcalidrawAutomate): boolean {
   if(!file) return false;
   const embedFileTypes = ["pdf", "mp4", "mp3", "webm", "md"];
-  const fileExtension = getExtension(file.path);
-  return embedFileTypes.includes(fileExtension) && !ea.isExcalidrawFile(file);
+  return embedFileTypes.includes(file.extension) && !ea.isExcalidrawFile(file);
 }

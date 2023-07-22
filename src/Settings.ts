@@ -13,7 +13,7 @@ import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAut
 import { Page } from "./graph/Page";
 import { t } from "./lang/helpers";
 import ExcaliBrain from "./excalibrain-main";
-import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData, LinkDirection, Role } from "./Types";
+import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData, LinkDirection, Role } from "./types";
 import { WarningPrompt } from "./utils/Prompts";
 import { Node } from "./graph/Node";
 import { svgToBase64 } from "./utils/utils";
