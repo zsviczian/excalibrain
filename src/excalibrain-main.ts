@@ -24,6 +24,12 @@ declare module "obsidian" {
   }
 }
 
+declare global {
+  interface Window {
+    ExcalidrawAutomate: ExcalidrawAutomate;
+  }
+}
+
 export default class ExcaliBrain extends Plugin {
   public settings:ExcaliBrainSettings;
   public nodeStyles: NodeStyles;
