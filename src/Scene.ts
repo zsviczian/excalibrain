@@ -374,7 +374,12 @@ export class Scene {
     ea.clear();
     const excalidrawAPI = ea.getExcalidrawAPI();
     if(!retainCentralNode) {
-      excalidrawAPI.updateScene({elements:[]});
+      ea.copyViewElementsToEAforEditing(ea.getViewElements());
+      ea.getElements().forEach((el: Mutable<ExcalidrawElement>)=>el.isDeleted=true);
+      excalidrawAPI.updateScene({
+        elements: ea.getElements(),
+      });
+      ea.clear();
     } else {
       excalidrawAPI.updateScene({
         elements:excalidrawAPI.getSceneElements().filter((el:ExcalidrawElement)=>this.rootNode.embeddedElementIds.includes(el.id))
