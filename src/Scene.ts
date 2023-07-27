@@ -20,7 +20,7 @@ export class Scene {
   app: App;
   leaf: WorkspaceLeaf;
   centralPagePath: string; //path of the page in the center of the graph
-  private centralLeaf: WorkspaceLeaf; //workspace leaf containing the central page
+  public centralLeaf: WorkspaceLeaf; //workspace leaf containing the central page
   textSize: {width:number, height:number};
   nodeWidth: number;
   nodeHeight: number;
@@ -107,8 +107,8 @@ export class Scene {
         //@ts-ignore
         this.centralLeaf.view?.file?.path !== centralPage.file.path
       ) {
-        this.centralLeaf.openFile(centralPage.file, {active: true});
-        app.workspace.revealLeaf(this.centralLeaf);
+        this.centralLeaf.openFile(centralPage.file, {active: false});
+        //app.workspace.revealLeaf(this.centralLeaf);
       }
     }
     await this.render();
@@ -848,7 +848,7 @@ export class Scene {
   }
 
 
-  public unloadScene() {
+  public unloadScene(saveSettings:boolean = true, silent: boolean = false) {
     if(this.removeEH) {
       this.removeEH();
       this.removeEH = undefined;
@@ -899,11 +899,13 @@ export class Scene {
     // timout is to make sure Obsidian is not being terminated when scene closes,
     // becasue that can lead to crippled settings file
     // if the plugin is still there after 400ms, it is safe to save the settings
-    setTimeout(async () => {
-      await this.plugin.loadSettings(); //only overwrite the navigation history, save other synchronized settings
-      this.plugin.settings.navigationHistory = [...this.plugin.navigationHistory];
-      await this.plugin.saveSettings();
-    },400);
+    if(saveSettings) {
+      setTimeout(async () => {
+        await this.plugin.loadSettings(); //only overwrite the navigation history, save other synchronized settings
+        this.plugin.settings.navigationHistory = [...this.plugin.navigationHistory];
+        await this.plugin.saveSettings();
+      },400);
+    }
     this.toolsPanel?.terminate();
     this.toolsPanel = undefined;
     this.historyPanel?.terminate();
@@ -914,9 +916,18 @@ export class Scene {
     this.centralPagePath = undefined;
     this.terminated = true;
     //@ts-ignore
-    if(!app.plugins.plugins["obsidian-excalidraw-plugin"]) {
+    if(!this.app.plugins.plugins["obsidian-excalidraw-plugin"]) {
       this.plugin.EA = null;
     }
-    new Notice("Brain Graph Off");
+    if(!silent) {
+      new Notice("Brain Graph Off");
+    }
+    const mostRecentLeaf = this.app.workspace.getMostRecentLeaf();
+    if(mostRecentLeaf) {
+      this.app.workspace.setActiveLeaf(
+        mostRecentLeaf,
+        { focus: true },
+      )
+    }
   }
 }

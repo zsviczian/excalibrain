@@ -22,6 +22,9 @@ declare module "obsidian" {
       disablePlugin(plugin: string):Promise<any>;
     };
   }
+  interface WorkspaceLeaf {
+    id: string;
+  }
 }
 
 declare global {
@@ -418,8 +421,11 @@ export default class ExcaliBrain extends Plugin {
         if(!this.excalidrawAvailable()) return; //still need this in case user sets a hotkey
         
         if(this.scene && !this.scene.terminated) {
-          this.revealBrainLeaf();
-          return;
+          if(this.app.workspace.getLeafById(this.scene.leaf?.id)) {
+            this.revealBrainLeaf();
+            return;
+          }
+          this.scene.unloadScene(false, true); 
         }
         const leaf = this.getBrainLeaf();
         if(leaf) {
@@ -443,8 +449,11 @@ export default class ExcaliBrain extends Plugin {
         if(!this.excalidrawAvailable() || this.EA.DEVICE.isMobile) return; //still need this in case user sets a hotkey
         
         if(this.scene && !this.scene.terminated) {
-          this.revealBrainLeaf();
-          return;
+          if(this.app.workspace.getLeafById(this.scene.leaf?.id)) {
+            this.revealBrainLeaf();
+            return;
+          }
+          this.scene.unloadScene(false, true); 
         }
         const leaf = this.getBrainLeaf();
         if(leaf) {
@@ -464,15 +473,18 @@ export default class ExcaliBrain extends Plugin {
       name: t("COMMAND_START_HOVER"),
       checkCallback: (checking: boolean) => {
         //@ts-ignore
-        const hoverEditor = app.plugins.getPlugin("obsidian-hover-editor");
+        const hoverEditor = this.app.plugins.getPlugin("obsidian-hover-editor");
         if(checking) {
           return hoverEditor && this.excalidrawAvailable();
         }
         if(!this.excalidrawAvailable() || !hoverEditor) return;        
 
         if(this.scene && !this.scene.terminated) {
-          this.revealBrainLeaf();
-          return;
+          if(this.app.workspace.getLeafById(this.scene.leaf?.id)) {
+            this.revealBrainLeaf();
+            return;
+          }
+          this.scene.unloadScene(false, true); 
         }
         try {
           //getBrainLeaf will only return one leaf. If there are multiple leaves open, some in hover editors other docked, the
@@ -512,7 +524,7 @@ export default class ExcaliBrain extends Plugin {
 
   getBrainLeaf():WorkspaceLeaf {
     let brainLeaf: WorkspaceLeaf;
-    app.workspace.iterateAllLeaves(leaf=>{
+    this.app.workspace.iterateAllLeaves(leaf=>{
       if(
         leaf.view &&
         this.EA.isExcalidrawView(leaf.view) && 
@@ -560,7 +572,8 @@ export default class ExcaliBrain extends Plugin {
     }
 
     this.EA.onLinkClickHook = (element,linkText,event) => {
-      const path = linkText.match(/\[\[([^\]]*)/)[1];
+      const path = linkText.match(/\[\[([^\]]*)/)?.[1];
+      if(!path) return true;
       const page =  this.pages.get(path);
       const ea = this.EA;
       
@@ -594,6 +607,15 @@ export default class ExcaliBrain extends Plugin {
 
       //if centralPage is in embeddedFrame, simply render the scene
       if(this.settings.embedCentralNode) {
+        if(this.scene.centralPagePath === page.path) {
+          if(this.scene.isCentralLeafStillThere()) {
+            this.scene.centralLeaf.openFile(page.file,{active:true});
+            return false;
+          }
+          ea.targetView.linksAlwaysOpenInANewPane = false;
+          setTimeout(()=>ea.targetView.linksAlwaysOpenInANewPane = true,300);
+          return true;
+        }
         this.scene.renderGraphForPath(path);
         return false;
       }
@@ -610,7 +632,7 @@ export default class ExcaliBrain extends Plugin {
         if(this.scene.isCentralLeafStillThere()) {
           const f = app.vault.getAbstractFileByPath(path.split("#")[0]);
           if(f && f instanceof TFile) {
-            centralLeaf.openFile(f);
+            centralLeaf.openFile(f,{active:false});
             this.scene.renderGraphForPath(path, false);
             return false;
           }
