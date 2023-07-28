@@ -10,7 +10,8 @@ export class ToggleButton {
     setVal: (val:boolean)=>void,
     wrapper: HTMLElement,
     options: {
-      display: string,
+      display?: string,
+      icon?: string,
       tooltip: string
     },
     private updateIndex: boolean = true
@@ -18,7 +19,11 @@ export class ToggleButton {
     this.button = wrapper.createEl("button", {
       cls: "excalibrain-button",
     });
-    this.button.createSpan({text: options.display})
+    if(options.icon) {
+      this.button.innerHTML = options.icon;
+    } else {
+      this.button.createSpan({text: options.display??""})
+    }
     this.button.ariaLabel = options.tooltip;
 
     this.setColor();

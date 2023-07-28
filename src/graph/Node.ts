@@ -179,6 +179,7 @@ export class Node {
 
   async render() {
     const ea = this.ea;
+    const settings = this.settings;
     
     const gateDiameter = this.style.gateRadius*2;
     ea.style.fontSize = this.style.fontSize;
@@ -202,9 +203,14 @@ export class Node {
     ea.style.strokeColor = this.style.gateStrokeColor;
     ea.style.strokeStyle = "solid";
 
-    const leftFriendCount = this.isCentral
-      ? this.page.leftFriendCount()
-      : this.page.leftFriendCount() + this.page.rightFriendCount();
+    const previousFriendCount = this.friendGateOnLeft
+      ? this.page.previousFriendCount()
+      : this.page.nextFriendCount();
+    const nextFriendCount = this.friendGateOnLeft
+      ? this.page.nextFriendCount()
+      : this.page.previousFriendCount();
+    
+    const leftFriendCount = this.page.leftFriendCount() + previousFriendCount;
     ea.style.backgroundColor =  leftFriendCount > 0 
       ? this.style.gateBackgroundColor
       : "transparent";
@@ -218,7 +224,7 @@ export class Node {
     );
 
     const neighborCountLabelIds = [];
-    if(this.settings.showNeighborCount && leftFriendCount>0) {
+    if(settings.showNeighborCount && leftFriendCount>0) {
       ea.style.fontSize = gateDiameter;
       neighborCountLabelIds.push(ea.addText(
         this.friendGateOnLeft
@@ -233,35 +239,35 @@ export class Node {
       ));
     }
 
-    if(this.isCentral) {
-      const rightFriendCount = this.page.rightFriendCount();
-      ea.style.backgroundColor = rightFriendCount > 0 
-        ? this.style.gateBackgroundColor
-        : "transparent";
-      this.nextFriendGateId = ea.addEllipse(
-        !this.friendGateOnLeft
-          ? this.center.x - gateDiameter - this.style.padding - labelSize.width / 2
-          : this.center.x + this.style.padding + labelSize.width / 2,
-        this.center.y - this.style.gateRadius,
-        gateDiameter,
-        gateDiameter
-      );
+    const rightFriendCount = this.page.rightFriendCount() + nextFriendCount;
+    ea.style.backgroundColor = rightFriendCount > 0 
+      ? this.style.gateBackgroundColor
+      : "transparent";
+    this.nextFriendGateId = ea.addEllipse(
+      !this.friendGateOnLeft
+        ? this.center.x - gateDiameter - this.style.padding - labelSize.width / 2
+        : this.center.x + this.style.padding + labelSize.width / 2,
+      this.center.y - this.style.gateRadius,
+      gateDiameter,
+      gateDiameter
+    );
 
-      if(this.settings.showNeighborCount && rightFriendCount>0) {
-        ea.style.fontSize = gateDiameter;
-        neighborCountLabelIds.push(ea.addText(
-          !this.friendGateOnLeft
-          ? rightFriendCount>9
-            ? this.center.x - 2*gateDiameter - this.style.padding - labelSize.width / 2
-            : this.center.x - gateDiameter - this.style.padding - labelSize.width / 2
-          : this.center.x + this.style.padding + labelSize.width / 2,
-          !this.friendGateOnLeft
-          ? this.center.y - 2*gateDiameter
-          : this.center.y - this.style.gateRadius + gateDiameter,
-          rightFriendCount.toString()
-        ));
-      } 
-    } else {
+    if(settings.showNeighborCount && rightFriendCount>0) {
+      ea.style.fontSize = gateDiameter;
+      neighborCountLabelIds.push(ea.addText(
+        !this.friendGateOnLeft
+        ? rightFriendCount>9
+          ? this.center.x - 2*gateDiameter - this.style.padding - labelSize.width / 2
+          : this.center.x - gateDiameter - this.style.padding - labelSize.width / 2
+        : this.center.x + this.style.padding + labelSize.width / 2,
+        !this.friendGateOnLeft
+        ? this.center.y - 2*gateDiameter
+        : this.center.y - this.style.gateRadius + gateDiameter,
+        rightFriendCount.toString()
+      ));
+    }
+
+    if(!this.isCentral) {
       this.nextFriendGateId = this.friendGateId;
     }
 
@@ -275,7 +281,7 @@ export class Node {
       gateDiameter,
       gateDiameter
     );
-    if(this.settings.showNeighborCount && parentCount>0) {
+    if(settings.showNeighborCount && parentCount>0) {
       ea.style.fontSize = gateDiameter;
       neighborCountLabelIds.push(ea.addText(
         this.center.x + gateDiameter - this.style.gateOffset,
@@ -294,7 +300,7 @@ export class Node {
       gateDiameter,
       gateDiameter
     );
-    if(this.settings.showNeighborCount && childrenCount>0) {
+    if(settings.showNeighborCount && childrenCount>0) {
       ea.style.fontSize = gateDiameter;
       neighborCountLabelIds.push(ea.addText(
         this.center.x + gateDiameter + this.style.gateOffset,

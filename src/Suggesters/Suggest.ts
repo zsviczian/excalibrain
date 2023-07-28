@@ -124,6 +124,7 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
         this.scope = new Scope();
 
         this.suggestEl = containerEl.createDiv("suggestion-container");
+        this.suggestEl.style.left = "-1000px";
         const suggestion = this.suggestEl.createDiv("suggestion");
         this.suggest = new Suggest(this, suggestion, this.scope);
 

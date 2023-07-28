@@ -184,6 +184,7 @@ export default {
   SHOW_HIDE_ALIAS: "Show/Hide document alias",
   SHOW_HIDE_SIBLINGS: "Show/Hide siblings",
   SHOW_HIDE_EMBEDDEDCENTRAL: "Display central node as embedded frame",
+  SHOW_HIDE_URLS: "Show/Hide URLs in central notes as graph nodes",
   SHOW_HIDE_FOLDER: "Show/Hide folder nodes",
   SHOW_HIDE_TAG: "Show/Hide tag nodes",
   SHOW_HIDE_PAGES: "Show/Hide page nodes (incl. defined, inferred, virtual and attachments)",

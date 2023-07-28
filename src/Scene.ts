@@ -10,9 +10,11 @@ import { ToolsPanel } from "./Components/ToolsPanel";
 import { Mutable, Neighbour, RelationType, Role } from "./types";
 import { HistoryPanel } from "./Components/HistoryPanel";
 import { WarningPrompt } from "./utils/Prompts";
-import { debug, keepOnTop } from "./utils/utils";
+import { keepOnTop } from "./utils/utils";
 import { ExcalidrawElement } from "obsidian-excalidraw-plugin";
 import { isEmbedFileType } from "./utils/fileUtils";
+import { Page } from "./graph/Page";
+import { ExcalidrawImperativeAPI } from "@zsviczian/excalidraw/types/types"
 
 export class Scene {
   ea: ExcalidrawAutomate;
@@ -20,6 +22,7 @@ export class Scene {
   app: App;
   leaf: WorkspaceLeaf;
   centralPagePath: string; //path of the page in the center of the graph
+  centralPageFile: TFile;
   public centralLeaf: WorkspaceLeaf; //workspace leaf containing the central page
   textSize: {width:number, height:number};
   nodeWidth: number;
@@ -64,7 +67,7 @@ export class Scene {
     this.focusSearchAfterInitiation = focusSearchAfterInitiation;
     await this.plugin.loadSettings();
     if(!this.leaf?.view) return;
-    this.toolsPanel = new ToolsPanel((this.leaf.view as TextFileView).contentEl,this.plugin);
+    this.toolsPanel = new ToolsPanel((this.leaf.view as TextFileView).contentEl.querySelector(".excalidraw"),this.plugin);
     this.initializeScene();
   }
 
@@ -108,11 +111,21 @@ export class Scene {
         this.centralLeaf.view?.file?.path !== centralPage.file.path
       ) {
         this.centralLeaf.openFile(centralPage.file, {active: false});
-        //app.workspace.revealLeaf(this.centralLeaf);
       }
     }
     await this.render();
-    //this.toolsPanel.rerender(); //this is also there at the end of render. Seems duplicate.
+  }
+
+  private getCentralPage():Page {
+    //centralPagePath might no longer be valid in case the user changed the filename of the central page
+    //this is relevant only when the central page is embedded, since if the file is in another leaf the leaf.view.file will
+    //have the right new path
+    let centralPage = this.plugin.pages.get(this.centralPagePath)
+    if(!centralPage && this.centralPageFile) {
+      this.centralPagePath = this.centralPageFile.path;
+      centralPage = this.plugin.pages.get(this.centralPageFile.path);
+    }
+    return centralPage;
   }
 
   /**
@@ -126,7 +139,7 @@ export class Scene {
     }
 
     this.blockUpdateTimer = true; //blocks the updateTimer
-
+    const settings = this.plugin.settings;
     const page = this.plugin.pages.get(path);
     if(!page) {
       this.blockUpdateTimer = false;
@@ -141,7 +154,7 @@ export class Scene {
     }
 
     //abort excalibrain if the file in the Obsidian view has changed
-    if(!this.ea.targetView?.file || this.ea.targetView.file.path !== this.plugin.settings.excalibrainFilepath) {
+    if(!this.ea.targetView?.file || this.ea.targetView.file.path !== settings.excalibrainFilepath) {
       this.unloadScene();
       return;
     }
@@ -154,8 +167,8 @@ export class Scene {
   
     keepOnTop(this.plugin.EA);
 
-    const centralPage = this.plugin.pages.get(this.centralPagePath)
-    const isSameFileAsCurrent = centralPage && centralPage.path === path && isFile
+    const centralPage = this.getCentralPage();
+    const isSameFileAsCurrent = centralPage && isFile &&  centralPage.file === page.file
 
     // if the file hasn't changed don't update the graph
     if(isSameFileAsCurrent && page.file.stat.mtime === centralPage.mtime) {
@@ -163,7 +176,7 @@ export class Scene {
       return; //don't reload the file if it has not changed
     }
 
-    if(isFile && shouldOpenFile && !this.plugin.settings.embedCentralNode) {
+    if(isFile && shouldOpenFile && !settings.embedCentralNode) {
       const centralLeaf = this.getCentralLeaf();
       //@ts-ignore
       if(!centralLeaf || !app.workspace.getLeafById(centralLeaf.id)) {
@@ -176,18 +189,18 @@ export class Scene {
       this.addToHistory(page.path);
     }
 
-    if(page.isFolder && !this.plugin.settings.showFolderNodes) {
-      this.plugin.settings.showFolderNodes = true;
+    if(page.isFolder && !settings.showFolderNodes) {
+      settings.showFolderNodes = true;
       this.toolsPanel.rerender();
     }
 
-    if(page.isTag && !this.plugin.settings.showTagNodes) {
-      this.plugin.settings.showTagNodes = true;
+    if(page.isTag && !settings.showTagNodes) {
+      settings.showTagNodes = true;
       this.toolsPanel.rerender();
     }
 
     this.centralPagePath = path;
-    //await this.plugin.createIndex();
+    this.centralPageFile = page.file;
     await this.render(isSameFileAsCurrent);
   }
 
@@ -259,10 +272,19 @@ export class Scene {
   public async initializeScene() {
     this.disregardLeafChange = false;
     const ea = this.ea;
-    const style = this.plugin.settings.baseNodeStyle;
+    const settings = this.plugin.settings;
+    const style = {
+      ...settings.baseNodeStyle,
+      ...settings.centralNodeStyle,
+    };
+    
     let counter = 0;
     ea.clear();    
-    ea.setView(this.leaf.view as any)   
+    ea.setView(this.leaf.view as any);
+    //delete existing elements from view. The actual delete will happen when addElementsToView is called
+    //I delete them this way to avoid the splash screen flashing up when the scene is cleared
+    ea.copyViewElementsToEAforEditing(ea.getViewElements());
+    ea.getElements().forEach((el: Mutable<ExcalidrawElement>)=>el.isDeleted=true); 
 
     while(!ea.targetView.excalidrawAPI && counter++<10) {
       await sleep(50);
@@ -278,8 +300,8 @@ export class Scene {
     api.setMobileModeAllowed(false); //disable mobile view https://github.com/zsviczian/excalibrain/issues/9
     ea.style.fontFamily = style.fontFamily;
     ea.style.fontSize = style.fontSize;
-    this.textSize = ea.measureText("m".repeat(style.maxLabelLength+3));
-    this.nodeWidth = this.textSize.width + 3 * style.padding;
+    this.textSize = ea.measureText("m".repeat(style.maxLabelLength));
+    this.nodeWidth = this.textSize.width + 2 * style.padding;
     if(this.plugin.settings.compactView) {
       this.nodeWidth = this.nodeWidth * 0.6;
     }
@@ -296,8 +318,7 @@ export class Scene {
           },
           theme: "light",
         viewBackgroundColor: this.plugin.settings.backgroundColor
-        },
-        elements: []
+        }
       });
     }
     const frame2 = () => {
@@ -311,13 +332,14 @@ export class Scene {
       ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
     }
     const frame3 = async () => {
-      if(this.plugin.settings.allowAutozoom) api.zoomToFit(null, 5, 0.15);
+      if(this.plugin.settings.allowAutozoom) {
+        api.zoomToFit(null, 5, 0.15);
+      }
       ea.targetView.linksAlwaysOpenInANewPane = true;
       await this.addEventHandler();
-      this.historyPanel = new HistoryPanel((this.leaf.view as TextFileView).contentEl,this.plugin);
+      this.historyPanel = new HistoryPanel((this.leaf.view as TextFileView).contentEl.querySelector(".excalidraw"),this.plugin);
       new Notice("ExcaliBrain On");
     }
-
     frame1();
     frame2();
     frame3();
@@ -358,64 +380,66 @@ export class Scene {
       this.historyPanel.rerender()
     }
     if(!this.centralPagePath) return;
+    const settings = this.plugin.settings;
+    const isCompactView = settings.compactView;
     let centralPage = this.plugin.pages.get(this.centralPagePath);
     if(!centralPage) {
       //path case sensitivity issue
       this.centralPagePath = this.plugin.lowercasePathMap.get(this.centralPagePath.toLowerCase());
       centralPage = this.plugin.pages.get(this.centralPagePath);
       if(!centralPage) return;
+      this.centralPageFile = centralPage.file;
     }
 
     const ea = this.ea;
-    retainCentralNode = retainCentralNode && Boolean(this.rootNode) && isEmbedFileType(centralPage.file,ea);
+    retainCentralNode = 
+      retainCentralNode && Boolean(this.rootNode) &&
+      settings.embedCentralNode && isEmbedFileType(centralPage.file,ea);
 
     this.zoomToFitOnNextBrainLeafActivate = !ea.targetView.containerEl.isShown();
 
     ea.clear();
-    const excalidrawAPI = ea.getExcalidrawAPI();
-    if(!retainCentralNode) {
-      ea.copyViewElementsToEAforEditing(ea.getViewElements());
-      ea.getElements().forEach((el: Mutable<ExcalidrawElement>)=>el.isDeleted=true);
-      excalidrawAPI.updateScene({
-        elements: ea.getElements(),
-      });
-      ea.clear();
-    } else {
-      excalidrawAPI.updateScene({
-        elements:excalidrawAPI.getSceneElements().filter((el:ExcalidrawElement)=>this.rootNode.embeddedElementIds.includes(el.id))
-      });
-    }
+    const excalidrawAPI = ea.getExcalidrawAPI() as ExcalidrawImperativeAPI;
+    ea.copyViewElementsToEAforEditing(ea.getViewElements());
+    //delete existing elements from view. The actual delete will happen when addElementsToView is called
+    //I delete them this way to avoid the splash screen flashing up when the scene is cleared
+    //https://github.com/zsviczian/obsidian-excalidraw-plugin/issues/1248#event-9940972555
+    ea.getElements()
+      .filter((el: ExcalidrawElement)=>!retainCentralNode || !this.rootNode.embeddedElementIds.includes(el.id))
+      .forEach((el: Mutable<ExcalidrawElement>)=>el.isDeleted=true);
     ea.style.verticalAlign = "middle";
     
+    //Extract URLs as child nodes 
+
     //List nodes for the graph
     const parents = centralPage.getParents()
       .filter(x => 
         (x.page.path !== centralPage.path) &&
-        !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+        !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
         (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
-      .slice(0,this.plugin.settings.maxItemCount);
+      .slice(0,settings.maxItemCount);
     const parentPaths = parents.map(x=>x.page.path);
 
     const children =centralPage.getChildren()
       .filter(x => 
         (x.page.path !== centralPage.path) &&
-        !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+        !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
         (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
-      .slice(0,this.plugin.settings.maxItemCount);
+      .slice(0,settings.maxItemCount);
     
-    const friends = centralPage.getLeftFriends()
+    const friends = centralPage.getLeftFriends().concat(centralPage.getPreviousFriends())
       .filter(x => 
         (x.page.path !== centralPage.path) &&
-        !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+        !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
         (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
-      .slice(0,this.plugin.settings.maxItemCount);
+      .slice(0,settings.maxItemCount);
 
-    const nextFriends = centralPage.getRightFriends()
+    const nextFriends = centralPage.getRightFriends().concat(centralPage.getNextFriends())
       .filter(x => 
         (x.page.path !== centralPage.path) &&
-        !this.plugin.settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+        !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
         (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
-      .slice(0,this.plugin.settings.maxItemCount);
+      .slice(0,settings.maxItemCount);
 
     const rawSiblings = centralPage
       .getSiblings()
@@ -426,7 +450,7 @@ export class Scene {
           friends.some(f=>f.page.path === s.page.path)  ||
           nextFriends.some(f=>f.page.path === s.page.path)  ||
           //or not exluded via folder path in settings
-          this.plugin.settings.excludeFilepaths.some(p => s.page.path.startsWith(p))
+          settings.excludeFilepaths.some(p => s.page.path.startsWith(p))
         ) && 
         //it is not the current central page
         (s.page.path !== centralPage.path));
@@ -438,7 +462,7 @@ export class Scene {
         s.page.getParents().map(x=>x.page.path).some(y=>parentPaths.includes(y)) &&
         //filter based on primary tag
         (!s.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(s.page.primaryStyleTag)))
-      .slice(0,this.plugin.settings.maxItemCount);
+      .slice(0,settings.maxItemCount);
 
     //-------------------------------------------------------
     // Generate layout and nodes
@@ -447,20 +471,20 @@ export class Scene {
     this.layouts = [];
     const manyFriends = friends.length >= 10;
     const manyNextFriends = nextFriends.length >= 10;
-    const baseStyle = this.plugin.settings.baseNodeStyle;
+    const baseStyle = settings.baseNodeStyle;
     const siblingsCols = siblings.length >= 20
       ? 3
       : siblings.length >= 10
         ? 2
         : 1;
-    const childrenCols = this.plugin.settings.compactView
+    const childrenCols = isCompactView
       ? (children.length <= 12 
         ? [1, 1, 2, 3, 3, 3, 3, 2, 2, 3, 3, 2, 2][children.length]
         : 3)
       : (children.length <= 12 
         ? [1, 1, 2, 3, 3, 3, 3, 4, 4, 5, 5, 4, 4][children.length]
         : 5);
-    const parentCols = this.plugin.settings.compactView
+    const parentCols = isCompactView
       ? (parents.length < 2
         ? 1
         : 2)
@@ -470,12 +494,12 @@ export class Scene {
 
 
     const isCenterEmbedded = 
-      this.plugin.settings.embedCentralNode &&
+      settings.embedCentralNode &&
       !centralPage.isVirtual &&
       !centralPage.isFolder &&
       !centralPage.isTag;
-    const centerEmbedWidth = this.plugin.settings.centerEmbedWidth;
-    const centerEmbedHeight = this.plugin.settings.centerEmbedHeight;
+    const centerEmbedWidth = settings.centerEmbedWidth;
+    const centerEmbedHeight = settings.centerEmbedHeight;
     
     const lCenter = new Layout({
       origoX: 0,
@@ -509,7 +533,6 @@ export class Scene {
     });
     this.layouts.push(lChildren);
   
-    const isCompactView = this.plugin.settings.compactView;
     const friendOrigoX = isCompactView && isCenterEmbedded
       ? centerEmbedWidth/2  + 1.5 * this.nodeWidth
       : Math.max(
@@ -556,7 +579,7 @@ export class Scene {
     });
     this.layouts.push(lParents);
     
-    const siblingsStyle = this.plugin.settings.siblingNodeStyle;
+    const siblingsStyle = settings.siblingNodeStyle;
     const siblingsPadding = siblingsStyle.padding??baseStyle.padding;
     const siblingsLabelLength = siblingsStyle.maxLabelLength??baseStyle.maxLabelLength;
     ea.style.fontFamily = siblingsStyle.fontFamily;
@@ -622,7 +645,7 @@ export class Scene {
       friendGateOnLeft: true
     });
 
-    if(this.plugin.settings.renderSiblings) {
+    if(settings.renderSiblings) {
       this.addNodes({
         neighbours: siblings,
         layout: lSiblings,
@@ -648,7 +671,7 @@ export class Scene {
           neighbour.typeDefinition,
           neighbour.linkDirection,
           ea,
-          this.plugin.settings
+          settings
         )
       })
     }
@@ -656,8 +679,10 @@ export class Scene {
     Array.from(this.nodesMap.values()).forEach(nodeA => {
       addLinks(nodeA, nodeA.page.getChildren(),Role.CHILD);
       addLinks(nodeA, nodeA.page.getParents(),Role.PARENT);
-      addLinks(nodeA, nodeA.page.getLeftFriends(),Role.FRIEND);
-      addLinks(nodeA, nodeA.page.getRightFriends(),Role.NEXT);
+      addLinks(nodeA, nodeA.page.getLeftFriends(),Role.LEFT);
+      addLinks(nodeA, nodeA.page.getPreviousFriends(),Role.LEFT);
+      addLinks(nodeA, nodeA.page.getRightFriends(),Role.RIGHT);
+      addLinks(nodeA, nodeA.page.getNextFriends(),Role.RIGHT);
     });
   
     //-------------------------------------------------------
@@ -682,11 +707,13 @@ export class Scene {
     ea.addElementsToView(false,false);
     ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
 
-    ea.getExcalidrawAPI().updateScene({appState: {viewBackgroundColor: this.plugin.settings.backgroundColor}});
-    if(this.plugin.settings.allowAutozoom) ea.getExcalidrawAPI().zoomToFit(null,5,0.15);
+    excalidrawAPI.updateScene({appState: {viewBackgroundColor: settings.backgroundColor}});
+    if(settings.allowAutozoom) {
+      setTimeout(()=>excalidrawAPI.zoomToFit(ea.getViewElements(),5,0.15));
+    }
   
     this.toolsPanel.rerender();
-    if(this.focusSearchAfterInitiation && this.plugin.settings.allowAutofocuOnSearch) {
+    if(this.focusSearchAfterInitiation && settings.allowAutofocuOnSearch) {
       this.toolsPanel.searchElement.focus();
       this.focusSearchAfterInitiation = false;
     }
@@ -695,103 +722,105 @@ export class Scene {
   }
 
   public isCentralLeafStillThere():boolean {
+    const settings = this.plugin.settings;
     //@ts-ignore
     const noCentralLeaf = app.workspace.getLeafById(this.centralLeaf.id) === null ;
     if(noCentralLeaf) {
       return false;
     }
     //@ts-ignore
-    if (this.centralLeaf.view?.file?.path === this.plugin.settings.excalibrainFilepath) {
+    if (this.centralLeaf.view?.file?.path === settings.excalibrainFilepath) {
       return false;
     }
     return true;
   }
 
-  private async addEventHandler() {
-    const self = this;
-    
-    const brainEventHandler = async (leaf:WorkspaceLeaf, startup:boolean = false) => {
-      if(this.disregardLeafChange) {
-        return;
-      }
-      if(!startup && self.plugin.settings.embedCentralNode) {
-        return;
-      }
-
-      self.blockUpdateTimer = true;
-      //await self.plugin.createIndex();
-      await sleep(100);
-
-      //-------------------------------------------------------
-      //terminate event handler if view no longer exists or file has changed
-
-      if(this.pinLeaf && !this.isCentralLeafStillThere()) {
-        this.pinLeaf = false;
-        this.toolsPanel.rerender();
-      }
-
-      if(this.pinLeaf && leaf !== this.centralLeaf) return;
-
-      if(!self.ea.targetView?.file || self.ea.targetView.file.path !== self.plugin.settings.excalibrainFilepath) {
-        self.unloadScene();
-        return;
-      }
-      
-      if(!(leaf?.view && (leaf.view instanceof FileView) && leaf.view.file)) {
-        self.blockUpdateTimer = false;
-        return;
-      }
-  
-      const rootFile = leaf.view.file;
-      
-      if (rootFile.path === self.ea.targetView.file.path) { //brainview drawing is the active leaf
-        if(this.vaultFileChanged) {
-          this.zoomToFitOnNextBrainLeafActivate = false;
-          await this.reRender(true);
-        }
-        if(this.zoomToFitOnNextBrainLeafActivate) {
-          this.zoomToFitOnNextBrainLeafActivate = false;
-          if(self.plugin.settings.allowAutozoom) self.ea.getExcalidrawAPI().zoomToFit(null, 5, 0.15);
-        }
-        self.blockUpdateTimer = false;
-        return; 
-      }
-    
-      const centralPage = self.plugin.pages.get(self.centralPagePath);
-      if(
-        centralPage &&
-        centralPage.path === rootFile.path &&
-        rootFile.stat.mtime === centralPage.mtime
-      ) {
-        self.blockUpdateTimer = false;
-        return; //don't reload the file if it has not changed
-      }
-
-      if(!self.plugin.pages.get(rootFile.path)) {
-        await self.plugin.createIndex();
-      }
-  
-      this.addToHistory(rootFile.path);
-      self.centralPagePath = rootFile.path;
-      self.centralLeaf = leaf;
-
-      self.render();
+  private async brainEventHandler (leaf:WorkspaceLeaf, startup:boolean = false) {
+    if(this.disregardLeafChange) {
+      return;
+    }
+    const settings = this.plugin.settings;
+    if(!startup && settings.embedCentralNode) {
+      return;
     }
 
+    this.blockUpdateTimer = true;
+    await sleep(100);
+
+    //-------------------------------------------------------
+    //terminate event handler if view no longer exists or file has changed
+
+    if(this.pinLeaf && !this.isCentralLeafStillThere()) {
+      this.pinLeaf = false;
+      this.toolsPanel.rerender();
+    }
+
+    if(this.pinLeaf && leaf !== this.centralLeaf) return;
+
+    if(!this.ea.targetView?.file || this.ea.targetView.file.path !== settings.excalibrainFilepath) {
+      this.unloadScene();
+      return;
+    }
+    
+    if(!(leaf?.view && (leaf.view instanceof FileView) && leaf.view.file)) {
+      this.blockUpdateTimer = false;
+      return;
+    }
+
+    const rootFile = leaf.view.file;
+    
+    if (rootFile.path === this.ea.targetView.file.path) { //brainview drawing is the active leaf
+      if(this.vaultFileChanged) {
+        this.zoomToFitOnNextBrainLeafActivate = false;
+        await this.reRender(true);
+      }
+      if(this.zoomToFitOnNextBrainLeafActivate) {
+        this.zoomToFitOnNextBrainLeafActivate = false;
+        if(settings.allowAutozoom) {
+          this.ea.getExcalidrawAPI().zoomToFit(null, 5, 0.15);
+        }
+      }
+      this.blockUpdateTimer = false;
+      return; 
+    }
+  
+    const centralPage = this.getCentralPage();
+    if(
+      centralPage &&
+      centralPage.path === rootFile.path &&
+      rootFile.stat.mtime === centralPage.mtime
+    ) {
+      this.blockUpdateTimer = false;
+      return; //don't reload the file if it has not changed
+    }
+
+    if(!this.plugin.pages.get(rootFile.path)) {
+      await this.plugin.createIndex();
+    }
+
+    this.addToHistory(rootFile.path);
+    this.centralPagePath = rootFile.path;
+    this.centralPageFile = rootFile;
+    this.centralLeaf = leaf;
+    this.render();
+  }
+
+  private async addEventHandler() {
     const fileChangeHandler = () => {
       this.vaultFileChanged = true;
     }
 
-    app.workspace.on("active-leaf-change", brainEventHandler);
-    this.removeEH = () => app.workspace.off("active-leaf-change",brainEventHandler);
+    const beh = (leaf:WorkspaceLeaf)=>this.brainEventHandler(leaf);
+    this.app.workspace.on("active-leaf-change", beh);
+    this.removeEH = () => app.workspace.off("active-leaf-change",beh);
     this.setTimer();
-    app.vault.on("rename",fileChangeHandler);
+    this.app.vault.on("rename",fileChangeHandler);
     this.removeOnRename = () => app.vault.off("rename",fileChangeHandler)
-    app.vault.on("modify",fileChangeHandler);
+    this.app.vault.on("modify",fileChangeHandler);
     this.removeOnModify = () => app.vault.off("modify",fileChangeHandler)
-    app.vault.on("create",fileChangeHandler);
+    this.app.vault.on("create",fileChangeHandler);
     this.removeOnCreate = () => app.vault.off("create",fileChangeHandler)
-    app.vault.on("delete",fileChangeHandler);
+    this.app.vault.on("delete",fileChangeHandler);
     this.removeOnDelete = () => app.vault.off("delete",fileChangeHandler)
 
     const leaves: WorkspaceLeaf[] = [];
@@ -813,7 +842,7 @@ export class Scene {
         }
       }
       keepOnTop(this.plugin.EA);  
-      brainEventHandler(leafToOpen, true);
+      this.brainEventHandler(leafToOpen, true);
     } else {
       if(this.plugin.navigationHistory.length>0) {
         const lastFilePath = this.plugin.navigationHistory.last();
@@ -831,11 +860,13 @@ export class Scene {
         this.vaultFileChanged = false;
         await this.plugin.createIndex();
         if(this.centralPagePath) {
-          if(!this.plugin.pages.get(this.centralPagePath)) {
+          const centralPage = this.getCentralPage();
+          if(!centralPage) {
             //@ts-ignore
             if(this.centralLeaf && this.centralLeaf.view && this.centralLeaf.view.file) {
               //@ts-ignore
-              this.centralPagePath = this.centralLeaf.view.file.path;
+              this.centralPageFile = this.centralLeaf.view.file;
+              this.centralPagePath = this.centralPageFile.path;
             }
           }
         }
@@ -919,6 +950,7 @@ export class Scene {
     this.leaf = undefined;
     this.centralLeaf = undefined;
     this.centralPagePath = undefined;
+    this.centralPageFile = undefined;
     this.terminated = true;
     //@ts-ignore
     if(!this.app.plugins.plugins["obsidian-excalidraw-plugin"]) {

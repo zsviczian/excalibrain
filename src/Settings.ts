@@ -33,6 +33,7 @@ export interface ExcaliBrainSettings {
   excludeFilepaths: string[];
   showInferredNodes: boolean;
   showAttachments: boolean;
+  showURLs: boolean;
   showVirtualNodes: boolean;
   showFolderNodes: boolean;
   showTagNodes: boolean;
@@ -88,6 +89,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   excludeFilepaths: [],
   showInferredNodes: true,
   showAttachments: true,
+  showURLs: true,
   showVirtualNodes: true,
   showFolderNodes: false,
   showTagNodes: false,
@@ -282,10 +284,10 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     let role:Role = Role.CHILD;
     if(hierarchy.leftFriends.contains(this.demoLinkStyle.display)) {
       demoNode2.setCenter({x:-300,y:0});
-      role = Role.FRIEND;
+      role = Role.LEFT;
     } else if(hierarchy.rightFriends.contains(this.demoLinkStyle.display)) {
       demoNode2.setCenter({x:300,y:0});
-      role = Role.NEXT;
+      role = Role.RIGHT;
     } else if(hierarchy.parents.contains(this.demoLinkStyle.display)) {
       demoNode2.setCenter({x:0,y:-150});
       role = Role.PARENT

@@ -1,5 +1,5 @@
 import { FillStyle, StrokeRoundness, StrokeStyle } from "obsidian-excalidraw-plugin";
-import { Arrowhead as ExcalidrawArrowHead} from "@zsviczian/excalidraw/types/element/types";
+import { Arrowhead as ExcalidrawArrowHead } from "@zsviczian/excalidraw/types/element/types";
 import { Page } from "./graph/Page";
 
 export enum RelationType {
@@ -10,8 +10,8 @@ export enum RelationType {
 export enum Role {
   PARENT,
   CHILD,
-  FRIEND,
-  NEXT,
+  LEFT,
+  RIGHT,
 }
 
 export enum LinkDirection {
@@ -32,11 +32,17 @@ export type Relation = {
   childType?: RelationType;
   childTypeDefinition?: string;
   isLeftFriend: boolean;
-  friendType?: RelationType;
-  friendTypeDefinition?: string;
+  leftFriendType?: RelationType;
+  leftFriendTypeDefinition?: string;
   isRightFriend: boolean;
+  rightFriendType?: RelationType;
+  rightFriendTypeDefinition?: string;
+  isNextFriend: boolean;
   nextFriendType?: RelationType;
   nextFriendTypeDefinition?: string;
+  isPreviousFriend: boolean;
+  previousFriendType?: RelationType;
+  previousFriendTypeDefinition?: string;
 }
 
 export type Hierarchy = {

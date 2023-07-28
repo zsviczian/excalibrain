@@ -13,6 +13,8 @@ const DEFAULT_RELATION:Relation = {
   isChild: false,
   isLeftFriend: false,
   isRightFriend: false,
+  isNextFriend: false,
+  isPreviousFriend: false,
   direction: null
 }
 
@@ -174,8 +176,8 @@ export class Page {
         //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         //return;
       }        
-      this.addLeftFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
-      referencedPage.addRightFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+      this.addPreviousFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
+      referencedPage.addNextFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
     });
 
     const nextFields = this.plugin.hierarchyLowerCase.next;
@@ -186,8 +188,8 @@ export class Page {
         //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         //return;
       }        
-      this.addRightFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
-      referencedPage.addLeftFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+      this.addNextFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
+      referencedPage.addPreviousFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
     });    
   }
 
@@ -231,6 +233,8 @@ export class Page {
     cd: boolean,
     lfd: boolean,//left friend defined
     rfd: boolean //right friend defined
+    pfd: boolean //previous defined
+    nfd: boolean //next defined
   } {
     return {
       pi: r.isParent && r.parentType === RelationType.INFERRED,
@@ -239,7 +243,9 @@ export class Page {
       cd: r.isChild && r.childType === RelationType.DEFINED,
       lfd: (!this.plugin.settings.inferAllLinksAsFriends && r.isLeftFriend) ||
         (this.plugin.settings.inferAllLinksAsFriends && r.isLeftFriend && !(r.parentType === RelationType.DEFINED || r.childType === RelationType.DEFINED)),
-      rfd: r.isRightFriend && r.nextFriendType === RelationType.DEFINED,
+      rfd: r.isRightFriend && (r.rightFriendType === RelationType.DEFINED),
+      pfd: r.isPreviousFriend && (r.previousFriendType === RelationType.DEFINED),
+      nfd: r.isNextFriend && (r.nextFriendType === RelationType.DEFINED),
     }
   }
 
@@ -328,9 +334,9 @@ export class Page {
     const neighbour = this.neighbours.get(page.path);
     if(neighbour) {
       neighbour.isLeftFriend = true;
-      neighbour.friendType = relationTypeToSet(neighbour.friendType,relationType);
-      if(definition && !neighbour.friendTypeDefinition?.contains(definition)) {
-        neighbour.friendTypeDefinition = concat(definition,neighbour.friendTypeDefinition);
+      neighbour.leftFriendType = relationTypeToSet(neighbour.leftFriendType,relationType);
+      if(definition && !neighbour.leftFriendTypeDefinition?.contains(definition)) {
+        neighbour.leftFriendTypeDefinition = concat(definition,neighbour.leftFriendTypeDefinition);
       }
       neighbour.direction = directionToSet(neighbour.direction, direction);
       return;
@@ -339,8 +345,8 @@ export class Page {
       ...DEFAULT_RELATION,
       target: page,
       isLeftFriend: true,
-      friendType: relationType,
-      friendTypeDefinition: definition,
+      leftFriendType: relationType,
+      leftFriendTypeDefinition: definition,
       direction
     });
   }
@@ -352,6 +358,30 @@ export class Page {
     const neighbour = this.neighbours.get(page.path);
     if(neighbour) {
       neighbour.isRightFriend = true;
+      neighbour.rightFriendType = relationTypeToSet(neighbour.rightFriendType,relationType);
+      if(definition && !neighbour.rightFriendTypeDefinition?.contains(definition)) {
+        neighbour.rightFriendTypeDefinition = concat(definition,neighbour.rightFriendTypeDefinition);
+      }
+      neighbour.direction = directionToSet(neighbour.direction, direction);
+      return;
+    }
+    this.neighbours.set(page.path, {
+      ...DEFAULT_RELATION,
+      target: page,
+      isRightFriend: true,
+      rightFriendType: relationType,
+      rightFriendTypeDefinition: definition,
+      direction
+    });
+  }
+
+  addNextFriend(page: Page, relationType:RelationType, direction: LinkDirection, definition?: string) {
+    if(page.path === this.plugin.settings.excalibrainFilepath || page.path === this.path) {
+      return;
+    };
+    const neighbour = this.neighbours.get(page.path);
+    if(neighbour) {
+      neighbour.isNextFriend = true;
       neighbour.nextFriendType = relationTypeToSet(neighbour.nextFriendType,relationType);
       if(definition && !neighbour.nextFriendTypeDefinition?.contains(definition)) {
         neighbour.nextFriendTypeDefinition = concat(definition,neighbour.nextFriendTypeDefinition);
@@ -362,9 +392,33 @@ export class Page {
     this.neighbours.set(page.path, {
       ...DEFAULT_RELATION,
       target: page,
-      isRightFriend: true,
+      isNextFriend: true,
       nextFriendType: relationType,
       nextFriendTypeDefinition: definition,
+      direction
+    });
+  }
+
+  addPreviousFriend(page: Page, relationType:RelationType, direction: LinkDirection, definition?: string) {
+    if(page.path === this.plugin.settings.excalibrainFilepath || page.path === this.path) {
+      return;
+    };
+    const neighbour = this.neighbours.get(page.path);
+    if(neighbour) {
+      neighbour.isPreviousFriend = true;
+      neighbour.previousFriendType = relationTypeToSet(neighbour.previousFriendType,relationType);
+      if(definition && !neighbour.previousFriendTypeDefinition?.contains(definition)) {
+        neighbour.previousFriendTypeDefinition = concat(definition,neighbour.previousFriendTypeDefinition);
+      }
+      neighbour.direction = directionToSet(neighbour.direction, direction);
+      return;
+    }
+    this.neighbours.set(page.path, {
+      ...DEFAULT_RELATION,
+      target: page,
+      isPreviousFriend: true,
+      previousFriendType: relationType,
+      previousFriendTypeDefinition: definition,
       direction
     });
   }
@@ -376,11 +430,11 @@ export class Page {
   //-----------------------------------------------
   //see: getRelationLogic.excalidraw
   //-----------------------------------------------
-  isChild = (relation: Relation):RelationType => {
-    const {pi,pd,ci,cd,lfd, rfd} = this.getRelationVector(relation);
-    return (cd && !pd && !lfd && !rfd) 
+  isChild (relation: Relation):RelationType {
+    const { pi,pd,ci,cd,lfd, rfd, nfd, pfd } = this.getRelationVector(relation);
+    return (cd && !pd && !lfd && !rfd && !nfd && !pfd)
       ? RelationType.DEFINED 
-      : (!pi && !pd && ci && !cd && !lfd && !rfd)
+      : (!pi && !pd && ci && !cd && !lfd && !rfd && !nfd && !pfd)
         ? RelationType.INFERRED
         : null;
   };
@@ -417,10 +471,10 @@ export class Page {
   }
 
   isParent (relation: Relation):RelationType {
-    const {pi,pd,ci,cd,lfd, rfd} = this.getRelationVector(relation);
-    return (!cd && pd && !lfd && !rfd) 
+    const { pi,pd,ci,cd,lfd, rfd, nfd, pfd } = this.getRelationVector(relation);
+    return (!cd && pd && !lfd && !rfd && !nfd && !pfd)
       ? RelationType.DEFINED 
-      : (pi && !pd && !ci && !cd && !lfd && !rfd)
+      : (pi && !pd && !ci && !cd && !lfd && !rfd && !nfd && !pfd)
         ? RelationType.INFERRED
         : null;
   }
@@ -458,10 +512,11 @@ export class Page {
   }
 
   isLeftFriend (relation: Relation):RelationType {
-    const {pi,pd,ci,cd,lfd, rfd} = this.getRelationVector(relation);
+    const { pi,pd,ci,cd,lfd, rfd, nfd, pfd } = this.getRelationVector(relation);
     let res = lfd
       ? RelationType.DEFINED 
-      : (pi && !pd && ci && !cd && !lfd && !rfd)
+      : (pi && !pd && ci && !cd && !lfd && !rfd && !nfd && !pfd) ||
+        [pd, cd, lfd, rfd, nfd, pfd].filter(Boolean).length >= 2
         ? RelationType.INFERRED
         : null;
     return res;
@@ -494,13 +549,13 @@ export class Page {
     .map(x => {
       return {
         page: x[1].target,
-        relationType: x[1].friendType ??
+        relationType: x[1].leftFriendType ??
           ((x[1].parentType === RelationType.DEFINED && x[1].childType === RelationType.DEFINED)
           //case H
           ? RelationType.DEFINED
           //case I
           : RelationType.INFERRED),
-        typeDefinition: x[1].friendTypeDefinition,
+        typeDefinition: x[1].leftFriendTypeDefinition,
         linkDirection: x[1].direction
       }
     });//.sort
@@ -508,8 +563,8 @@ export class Page {
   }
 
   isRightFriend (relation: Relation):RelationType {
-    const {pi,pd,ci,cd,lfd, rfd} = this.getRelationVector(relation);
-    return rfd 
+    const { pd,cd,lfd, rfd, nfd, pfd } = this.getRelationVector(relation);
+    return !pd && !cd && !lfd && rfd && !nfd && !pfd 
       ? RelationType.DEFINED 
       : null;
   }
@@ -540,48 +595,94 @@ export class Page {
       return {
         page: x[1].target,
         relationType: RelationType.DEFINED,
-        typeDefinition: x[1].nextFriendTypeDefinition,
+        typeDefinition: x[1].rightFriendTypeDefinition,
         linkDirection: x[1].direction
       }
     });//.sort
   }
-  
 
-  getRelationToPage(otherPage:Page):null|{
-    type: "nextFriend" | "leftFriend" | "parent" | "child",
-    relationType: RelationType;
-    typeDefinition: string,
-  } {
-    const relation = this.neighbours.get(otherPage.path)
-    if(!relation) {
-      return null;
-    }
-    if(this.isChild(relation)) {
+  isPreviousFriend (relation: Relation):RelationType {
+    const { pd,cd,lfd, rfd, nfd, pfd } = this.getRelationVector(relation);
+    let res = !pd && !cd && !lfd && !rfd && pfd && !nfd
+      ? RelationType.DEFINED 
+      : null;
+    return res;
+  }
+
+  previousFriendCount():number {
+    const count = this.getNeighbours()
+    .reduce((prev,x) => {
+      const rt = this.isPreviousFriend(x[1]);
+      return prev + ((rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED) ? 1:0);
+    },0);
+    return count;
+  }
+
+  hasPreviousFriends():boolean {
+    const hasPreviousFriends = this.getNeighbours()
+    .some(x => {
+      const rt = this.isPreviousFriend(x[1]);
+      return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+    })
+    return hasPreviousFriends;
+  }
+
+  getPreviousFriends():Neighbour[] {
+    return this.getNeighbours()
+    .filter(x => {
+      const rt = this.isPreviousFriend(x[1]);
+      return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+    })
+    .map(x => {
       return {
-        type: "child",
-        relationType: relation.childType,
-        typeDefinition: relation.childTypeDefinition
+        page: x[1].target,
+        relationType: RelationType.DEFINED,
+        typeDefinition: x[1].previousFriendTypeDefinition,
+        linkDirection: x[1].direction
       }
-    }
-    if(this.isParent(relation)) {
+    });//.sort
+  }
+
+  isNextFriend (relation: Relation):RelationType {
+    const { pd,cd,lfd, rfd, nfd, pfd } = this.getRelationVector(relation);
+    let res = !pd && !cd && !lfd && !rfd && !pfd && nfd
+      ? RelationType.DEFINED 
+      : null;
+    return res;
+  }
+
+  nextFriendCount():number {
+    const count = this.getNeighbours()
+    .reduce((prev,x) => {
+      const rt = this.isNextFriend(x[1]);
+      return prev + ((rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED) ? 1:0);
+    },0);
+    return count;
+  }
+
+  hasNextFriends():boolean {
+    const hasPreviousFriends = this.getNeighbours()
+    .some(x => {
+      const rt = this.isNextFriend(x[1]);
+      return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+    })
+    return hasPreviousFriends;
+  }
+
+  getNextFriends():Neighbour[] {
+    return this.getNeighbours()
+    .filter(x => {
+      const rt = this.isNextFriend(x[1]);
+      return (rt && this.plugin.settings.showInferredNodes) || (rt === RelationType.DEFINED);
+    })
+    .map(x => {
       return {
-        type: "parent",
-        relationType: relation.parentType,
-        typeDefinition: relation.parentTypeDefinition
+        page: x[1].target,
+        relationType: RelationType.DEFINED,
+        typeDefinition: x[1].nextFriendTypeDefinition,
+        linkDirection: x[1].direction
       }
-    }
-    if(this.isRightFriend(relation)) {
-      return {
-        type: "nextFriend",
-        relationType: relation.nextFriendType,
-        typeDefinition: relation.nextFriendTypeDefinition
-      }
-    }
-    return {
-      type: "leftFriend",
-      relationType: relation.friendType,
-      typeDefinition: relation.friendTypeDefinition
-    }
+    });//.sort
   }
 
   getSiblings():Neighbour[] {

@@ -86,11 +86,11 @@
 }
 
 .excalibrain-button.off {
-  background-color: var(--interactive-normal);
+  background-color: var(--island-bg-color);
 }
 
 .excalibrain-button.on {
-  background-color: var(--interactive-accent);
+  background-color: var(--color-primary-darker);
 }
 
 .excalibrain-searchinput {
@@ -181,7 +181,7 @@
   position:relative;
   width:100%;
   height:30px;
-  background:var(--background-modifier-form-field);
+  background: var(--island-bg-color); /*var(--background-modifier-form-field);*/
   border:1px solid var(--background-modifier-border);
   display:flex;
   align-items:center;

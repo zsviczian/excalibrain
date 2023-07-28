@@ -6,6 +6,7 @@ import { splitFolderAndFilename } from "src/utils/fileUtils";
 import { PageSuggest } from "../Suggesters/PageSuggester";
 import { LinkTagFilter } from "./LinkTagFilter";
 import { keepOnTop } from "src/utils/utils";
+import { getIcon } from "obsidian";
 
 export class ToolsPanel {
   private wrapperDiv: HTMLDivElement;
@@ -64,24 +65,48 @@ export class ToolsPanel {
     //------------
     //Edit drawing
     //------------
-    const saveAsDrawingButton = buttonsWrapperDiv.createEl("button", {
-      cls: "excalibrain-button",
-      text: "✏"
-    });
-    saveAsDrawingButton.ariaLabel = t("OPEN_DRAWING");
-    saveAsDrawingButton.onclick = () => {
-      const elements = this.plugin.EA.getExcalidrawAPI().getSceneElements() as ExcalidrawElement[];
-      const appState = this.plugin.EA.getExcalidrawAPI().getAppState();
-      const ea = this.plugin.EA; //window.ExcalidrawAutomate;
-      ea.reset();
-      ea.canvas.viewBackgroundColor = appState.viewBackgroundColor;
-      ea.canvas.theme = "light";
-      elements.forEach(el=>ea.elementsDict[el.id] = el);
-      ea.create({
-        filename: `ExcaliBrain Snapshot - ${splitFolderAndFilename(this.plugin.scene.centralPagePath).basename}`,
-        onNewPane: true
-      });
-    }
+    this.buttons.push(
+      new ToggleButton(
+        this.plugin,
+        ()=>false,
+        (val:boolean)=>{
+          const elements = this.plugin.EA.getExcalidrawAPI().getSceneElements() as ExcalidrawElement[];
+          const appState = this.plugin.EA.getExcalidrawAPI().getAppState();
+          const ea = this.plugin.EA; //window.ExcalidrawAutomate;
+          ea.reset();
+          ea.canvas.viewBackgroundColor = appState.viewBackgroundColor;
+          ea.canvas.theme = "light";
+          elements.forEach(el=>ea.elementsDict[el.id] = el);
+          ea.create({
+            filename: `ExcaliBrain Snapshot - ${splitFolderAndFilename(this.plugin.scene.centralPagePath).basename}`,
+            onNewPane: true
+          });
+        },
+        buttonsWrapperDiv,
+        {
+          display: "✏",
+          icon: getIcon("lucide-pencil").outerHTML,
+          tooltip: t("OPEN_DRAWING"),
+        },
+    ));
+
+    //------------
+    //Pin Leaf
+    //------------
+    this.buttons.push(
+      new ToggleButton(
+        this.plugin,
+        ()=>this.plugin.scene.pinLeaf,
+        (val:boolean)=>this.plugin.scene.pinLeaf = val,
+        buttonsWrapperDiv,
+        {
+          display: "📌",
+          icon: getIcon("lucide-pin").outerHTML,
+          tooltip: t("PIN_LEAF")
+        },
+        false
+     )
+    )
 
     //------------
     //Attachments
@@ -94,6 +119,7 @@ export class ToolsPanel {
         buttonsWrapperDiv,
         {
           display: "📎",
+          icon: getIcon("lucide-paperclip").outerHTML,
           tooltip: t("SHOW_HIDE_ATTACHMENTS")
         }
      )
@@ -110,6 +136,7 @@ export class ToolsPanel {
         buttonsWrapperDiv,
         {
           display: "∅",
+          icon: getIcon("lucide-minus-circle").outerHTML,
           tooltip: t("SHOW_HIDE_VIRTUAL")
         },
         false
@@ -127,6 +154,7 @@ export class ToolsPanel {
         buttonsWrapperDiv,
         {
           display: "🤔",
+          icon: getIcon("lucide-git-pull-request-draft").outerHTML,
           tooltip: t("SHOW_HIDE_INFERRED")
         }
      )
@@ -143,8 +171,27 @@ export class ToolsPanel {
         buttonsWrapperDiv,
         {
           display: "📄",
+          icon: getIcon("lucide-file-text").outerHTML,
           tooltip: t("SHOW_HIDE_PAGES")
         }
+     )
+    )
+
+    //------------
+    //Alias
+    //------------
+    this.buttons.push(
+      new ToggleButton(
+        this.plugin,
+        ()=>this.plugin.settings.renderAlias,
+        (val:boolean)=>this.plugin.settings.renderAlias = val,
+        buttonsWrapperDiv,
+        {
+          display: "🧥",
+          icon: getIcon("lucide-venetian-mask").outerHTML,
+          tooltip: t("SHOW_HIDE_ALIAS")
+        },
+        false
      )
     )
 
@@ -159,6 +206,7 @@ export class ToolsPanel {
         buttonsWrapperDiv,
         {
           display: "📂",
+          icon: getIcon("lucide-folder").outerHTML,
           tooltip: t("SHOW_HIDE_FOLDER")
         },
         true
@@ -176,46 +224,30 @@ export class ToolsPanel {
         buttonsWrapperDiv,
         {
           display: "#",
+          icon: getIcon("lucide-tag").outerHTML,
           tooltip: t("SHOW_HIDE_TAG")
         },
         false
      )
     )
 
-
     //------------
-    //Alias
+    // Render weblinks in page
     //------------
-    this.buttons.push(
+    /*this.buttons.push(
       new ToggleButton(
         this.plugin,
-        ()=>this.plugin.settings.renderAlias,
-        (val:boolean)=>this.plugin.settings.renderAlias = val,
+        ()=>this.plugin.settings.showURLs,
+        (val:boolean)=>this.plugin.settings.showURLs = val,
         buttonsWrapperDiv,
         {
-          display: "🧥",
-          tooltip: t("SHOW_HIDE_ALIAS")
+          display: "🌐",
+          icon: getIcon("lucide-globe").outerHTML,
+          tooltip: t("SHOW_HIDE_URLS")
         },
         false
      )
-    )
-
-    //------------
-    //Pin Leaf
-    //------------
-    this.buttons.push(
-      new ToggleButton(
-        this.plugin,
-        ()=>this.plugin.scene.pinLeaf,
-        (val:boolean)=>this.plugin.scene.pinLeaf = val,
-        buttonsWrapperDiv,
-        {
-          display: "📌",
-          tooltip: t("PIN_LEAF")
-        },
-        false
-     )
-    )
+    )*/
     
     //------------
     //Display siblings
@@ -228,6 +260,7 @@ export class ToolsPanel {
         buttonsWrapperDiv,
         {
           display: "👨‍👩‍👧‍👦",
+          icon: getIcon("lucide-grip").outerHTML,
           tooltip: t("SHOW_HIDE_SIBLINGS")
         },
         false
@@ -245,6 +278,7 @@ export class ToolsPanel {
         buttonsWrapperDiv,
         {
           display: "⏹️",
+          icon: getIcon("lucide-code").outerHTML,
           tooltip: t("SHOW_HIDE_EMBEDDEDCENTRAL")
         },
         false
