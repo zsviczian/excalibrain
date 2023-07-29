@@ -33,7 +33,7 @@ export interface ExcaliBrainSettings {
   excludeFilepaths: string[];
   showInferredNodes: boolean;
   showAttachments: boolean;
-  showURLs: boolean;
+  showURLNodes: boolean;
   showVirtualNodes: boolean;
   showFolderNodes: boolean;
   showTagNodes: boolean;
@@ -45,6 +45,7 @@ export interface ExcaliBrainSettings {
   baseNodeStyle: NodeStyle;
   centralNodeStyle: NodeStyle;
   inferredNodeStyle: NodeStyle;
+  urlNodeStyle: NodeStyle;
   virtualNodeStyle: NodeStyle;
   siblingNodeStyle: NodeStyle;
   attachmentNodeStyle: NodeStyle;
@@ -69,6 +70,7 @@ export interface ExcaliBrainSettings {
   ontologySuggesterMidSentenceTrigger: string;
   boldFields: boolean;
   allowAutozoom: boolean;
+  maxZoom: number;
   allowAutofocuOnSearch: boolean;
   defaultAlwaysOnTop: boolean;
   embedCentralNode: boolean;
@@ -89,7 +91,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   excludeFilepaths: [],
   showInferredNodes: true,
   showAttachments: true,
-  showURLs: true,
+  showURLNodes: true,
   showVirtualNodes: true,
   showFolderNodes: false,
   showTagNodes: false,
@@ -107,6 +109,9 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   inferredNodeStyle: {
     backgroundColor: "#000005b3",
     textColor: "#95c7f3ff",
+  },
+  urlNodeStyle: {
+    prefix: "🌐 "
   },
   virtualNodeStyle: {
     backgroundColor: "#ff000066",
@@ -156,6 +161,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   ontologySuggesterMidSentenceTrigger: "(",
   boldFields: false,
   allowAutozoom: true,
+  maxZoom: 1,
   allowAutofocuOnSearch: true,
   defaultAlwaysOnTop: false,
   embedCentralNode: false,
@@ -1833,16 +1839,28 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
           }))
 
-      new Setting(containerEl)
-        .setName(t("ALLOW_AUTOFOCUS_ON_SEARCH_NAME"))
-        .setDesc(fragWithHTML(t("ALLOW_AUTOFOCUS_ON_SEARCH_DESC")))
-        .addToggle(toggle => 
-          toggle
-            .setValue(this.plugin.settings.allowAutofocuOnSearch)
-            .onChange(value => {
-              this.plugin.settings.allowAutofocuOnSearch = value;
-              this.dirty = true;
-            }))
+    this.numberslider(
+      containerEl,
+      t("MAX_AUTOZOOM_NAME"),
+      t("MAX_AUTOZOOM_DESC"),
+      {min:10,max:1000, step:10},
+      ()=>this.plugin.settings.maxZoom*100,
+      (val)=>this.plugin.settings.maxZoom = val/100,
+      ()=>{},
+      false,
+      100
+    )
+
+    new Setting(containerEl)
+      .setName(t("ALLOW_AUTOFOCUS_ON_SEARCH_NAME"))
+      .setDesc(fragWithHTML(t("ALLOW_AUTOFOCUS_ON_SEARCH_DESC")))
+      .addToggle(toggle => 
+        toggle
+          .setValue(this.plugin.settings.allowAutofocuOnSearch)
+          .onChange(value => {
+            this.plugin.settings.allowAutofocuOnSearch = value;
+            this.dirty = true;
+          }))
 
       new Setting(containerEl)
         .setName(t("ALWAYS_ON_TOP_NAME"))

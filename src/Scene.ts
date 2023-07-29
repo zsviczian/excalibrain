@@ -146,7 +146,7 @@ export class Scene {
       return;
     }
 
-    const isFile = !(page.isFolder || page.isTag || page.isVirtual);
+    const isFile = !(page.isFolder || page.isTag || page.isVirtual || page.isURL);
 
     if(isFile && !page.file) {
       this.blockUpdateTimer = false;
@@ -168,10 +168,12 @@ export class Scene {
     keepOnTop(this.plugin.EA);
 
     const centralPage = this.getCentralPage();
-    const isSameFileAsCurrent = centralPage && isFile &&  centralPage.file === page.file
+    const isSameFileAsCurrent = centralPage && 
+      ((isFile &&  centralPage.file === page.file) ||
+       (page.isURL && centralPage.isURL && centralPage.url === page.url))
 
     // if the file hasn't changed don't update the graph
-    if(isSameFileAsCurrent && page.file.stat.mtime === centralPage.mtime) {
+    if(isSameFileAsCurrent && (page.isURL || (page.file.stat.mtime === centralPage.mtime))) {
       this.blockUpdateTimer = false;
       return; //don't reload the file if it has not changed
     }
@@ -179,7 +181,7 @@ export class Scene {
     if(isFile && shouldOpenFile && !settings.embedCentralNode) {
       const centralLeaf = this.getCentralLeaf();
       //@ts-ignore
-      if(!centralLeaf || !app.workspace.getLeafById(centralLeaf.id)) {
+      if(!centralLeaf || !this.app.workspace.getLeafById(centralLeaf.id)) {
         this.centralLeaf = this.ea.openFileInNewOrAdjacentLeaf(page.file);
       } else {
         centralLeaf.openFile(page.file, {active: false});
@@ -191,6 +193,11 @@ export class Scene {
 
     if(page.isFolder && !settings.showFolderNodes) {
       settings.showFolderNodes = true;
+      this.toolsPanel.rerender();
+    }
+
+    if(page.isURL && !settings.showURLNodes) {
+      settings.showURLNodes = true;
       this.toolsPanel.rerender();
     }
 
@@ -333,7 +340,7 @@ export class Scene {
     }
     const frame3 = async () => {
       if(this.plugin.settings.allowAutozoom) {
-        api.zoomToFit(null, 5, 0.15);
+        setTimeout(()=>api.zoomToFit(null, this.plugin.settings.maxZoom, 0.15),100);
       }
       ea.targetView.linksAlwaysOpenInANewPane = true;
       await this.addEventHandler();
@@ -394,7 +401,7 @@ export class Scene {
     const ea = this.ea;
     retainCentralNode = 
       retainCentralNode && Boolean(this.rootNode) &&
-      settings.embedCentralNode && isEmbedFileType(centralPage.file,ea);
+      settings.embedCentralNode && ((centralPage.file && isEmbedFileType(centralPage.file,ea)) || centralPage.isURL);
 
     this.zoomToFitOnNextBrainLeafActivate = !ea.targetView.containerEl.isShown();
 
@@ -709,7 +716,7 @@ export class Scene {
 
     excalidrawAPI.updateScene({appState: {viewBackgroundColor: settings.backgroundColor}});
     if(settings.allowAutozoom) {
-      setTimeout(()=>excalidrawAPI.zoomToFit(ea.getViewElements(),5,0.15));
+      setTimeout(()=>excalidrawAPI.zoomToFit(ea.getViewElements(),settings.maxZoom,0.15),100);
     }
   
     this.toolsPanel.rerender();
@@ -777,7 +784,7 @@ export class Scene {
       if(this.zoomToFitOnNextBrainLeafActivate) {
         this.zoomToFitOnNextBrainLeafActivate = false;
         if(settings.allowAutozoom) {
-          this.ea.getExcalidrawAPI().zoomToFit(null, 5, 0.15);
+          this.ea.getExcalidrawAPI().zoomToFit(null, settings.maxZoom, 0.15);
         }
       }
       this.blockUpdateTimer = false;
