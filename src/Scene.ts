@@ -617,7 +617,7 @@ private getNodeSize(nodeLabelLength: number,
       : (parents.length < 5
         ? [1, 1, 2, 3, 2][parents.length]
         : 3);
-console.log(parentCols, maxCols-1, Math.ceil(Math.sqrt(parents.length)))
+
     const parentsLabelLength = isCompactView
       ? Math.min(
           this.longestTitle(parents) + lengthPadding, 
