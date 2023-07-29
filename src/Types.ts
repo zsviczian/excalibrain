@@ -124,6 +124,7 @@ export type LayoutSpecification = {
   bottom: number;
   rowHeight: number;
   columnWidth: number;
+  maxLabelLength: number;
 }
 
 export type Dimensions = {width:number, height:number};

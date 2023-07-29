@@ -1,4 +1,4 @@
-import { App, FileView, Notice, TextFileView, TFile, WorkspaceLeaf } from "obsidian";
+import { App, FileView, Notice, Setting, TextFileView, TFile, WorkspaceLeaf } from "obsidian";
 import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 import { EMPTYBRAIN } from "./constants/emptyBrainFile";
 import { Layout } from "./graph/Layout";
@@ -7,12 +7,13 @@ import { Node } from "./graph/Node";
 import ExcaliBrain from "./excalibrain-main";
 import { ExcaliBrainSettings } from "./Settings";
 import { ToolsPanel } from "./Components/ToolsPanel";
-import { Mutable, Neighbour, RelationType, Role } from "./types";
+import { Mutable, Neighbour, NodeStyle, RelationType, Role } from "./types";
 import { HistoryPanel } from "./Components/HistoryPanel";
 import { WarningPrompt } from "./utils/Prompts";
 import { debug, keepOnTop } from "./utils/utils";
 import { ExcalidrawElement } from "obsidian-excalidraw-plugin";
 import { isEmbedFileType } from "./utils/fileUtils";
+import { DEFAULT_NODE_STYLE } from "./constants/constants";
 
 export class Scene {
   ea: ExcalidrawAutomate;
@@ -256,6 +257,40 @@ export class Scene {
     await leaf.openFile(file as TFile);
   }
 
+  /** iterates through a neighbour stack and returns the longest title length found.
+     * @description: Possibly time consuming - consider its use? 
+    */ 
+  private longestTitle(neighbours: Neighbour[], checkMax:number=10): number {
+    const lengths:number[] = [0];
+    for (let index = 0; (index<neighbours.length) && (index<=checkMax); index++) {
+      const item = neighbours[index];
+      lengths.push(item.page.getTitle().length);
+    }
+    return Math.max(...lengths);
+  }
+
+/** get node height and width for requested nodestyle
+ * according to: "NODESTYLE_FONTFAMILY" 
+ * {1:"Hand-drawn",2:"Normal",3:"Code",4:"Fourth (custom) Font"};
+ * heightfactor: In compactview by this design huge padded nodes are allowed to lie on top of other
+ * members of that neighbour - a compromise.
+ */
+private getNodeSize(nodeLabelLength: number,
+                    nodeStyle: NodeStyle = this.plugin.settings.baseNodeStyle,
+                    heightFactor: number,
+                    heightPaddingFactor: number = 2,
+                    widthPaddingFactor: number = 3,
+                    testString: string = "mi3l") : {width:number, height:number} {
+  this.ea.style.fontFamily = nodeStyle.fontFamily??this.plugin.settings.baseNodeStyle.fontFamily;
+  this.ea.style.fontSize = nodeStyle.fontSize??this.plugin.settings.baseNodeStyle.fontSize;
+  const padding = nodeStyle.padding??this.plugin.settings.baseNodeStyle.padding;
+  const testlabel = this.ea.measureText(testString.repeat(1));
+  const testLabelLength = [...new Intl.Segmenter().segment(testString)].length
+  const width = testlabel.width*(1/testString.length) * nodeLabelLength + widthPaddingFactor*padding;
+  const height = testlabel.height * heightFactor + heightPaddingFactor*padding;
+  return {width:width, height:height}
+}
+
   public async initializeScene() {
     this.disregardLeafChange = false;
     const ea = this.ea;
@@ -276,15 +311,7 @@ export class Scene {
     this.ea.registerThisAsViewEA();
     this.ea.targetView.semaphores.saving = true; //disable saving by setting this Excalidraw flag (not published API)
     api.setMobileModeAllowed(false); //disable mobile view https://github.com/zsviczian/excalibrain/issues/9
-    ea.style.fontFamily = style.fontFamily;
-    ea.style.fontSize = style.fontSize;
-    this.textSize = ea.measureText("m".repeat(style.maxLabelLength+3));
-    this.nodeWidth = this.textSize.width + 3 * style.padding;
-    if(this.plugin.settings.compactView) {
-      this.nodeWidth = this.nodeWidth * 0.6;
-    }
-    this.nodeHeight = 2 * (this.textSize.height + 2 * style.padding);
-
+    
     const frame1 = () => {
       api.updateScene({
         appState: {
@@ -334,6 +361,9 @@ export class Scene {
       if(n.page.path === this.ea.targetView.file.path) {
         return; 
       }
+      
+      n.page.maxLabelLength = x.layout.spec.maxLabelLength;
+      
       const node = new Node({
         ea: this.ea,
         page: n.page,
@@ -436,33 +466,46 @@ export class Scene {
       .slice(0,this.plugin.settings.maxItemCount);
 
     //-------------------------------------------------------
-    // Generate layout and nodes
     this.nodesMap = new Map<string,Node>();
     this.links = new Links(this.plugin);
     this.layouts = [];
-    const manyFriends = friends.length >= 10;
-    const manyNextFriends = nextFriends.length >= 10;
-    const baseStyle = this.plugin.settings.baseNodeStyle;
-    const siblingsCols = siblings.length >= 20
-      ? 3
-      : siblings.length >= 10
-        ? 2
-        : 1;
-    const childrenCols = this.plugin.settings.compactView
-      ? (children.length <= 12 
-        ? [1, 1, 2, 3, 3, 3, 3, 2, 2, 3, 3, 2, 2][children.length]
-        : 3)
-      : (children.length <= 12 
-        ? [1, 1, 2, 3, 3, 3, 3, 4, 4, 5, 5, 4, 4][children.length]
-        : 5);
-    const parentCols = this.plugin.settings.compactView
-      ? (parents.length < 2
-        ? 1
-        : 2)
-      : (parents.length < 5
-        ? [1, 1, 2, 3, 2][parents.length]
-        : 3);
+    const settings = this.plugin.settings; 
+    
+    /** 'compact view' : Boolean. 
+     * User setting. Activates column optmisation.
+    */ 
+    const isCompactView:boolean = settings.compactView;
+    
+    /** basestyle font */
+    const baseStyle = settings.baseNodeStyle;
+    const baseChar = this.getNodeSize(1, baseStyle,1,0,0);
 
+    /** container */
+    const container = this.leaf.view.containerEl;
+    const h = container.innerHeight-150;
+    const w = container.innerWidth;
+    const containerHeightRatio = h/w;
+    const rf = 1/(h/w);
+    
+    /** the minimum accepted label length (readability) */
+    const maxLabelLength = settings.baseNodeStyle.maxLabelLength ?? DEFAULT_NODE_STYLE.maxLabelLength;
+    const siblingsMaxLabelLength = settings.siblingNodeStyle.maxLabelLength ?? baseStyle.maxLabelLength;
+    const centralMaxLabelLength = settings.centralNodeStyle.maxLabelLength ?? baseStyle.maxLabelLength; 
+    const minLabelLength = 7;
+    const rfCorr = Math.min(rf,1);
+    const correctedMaxLabelLength = Math.round(maxLabelLength*rfCorr);
+    const correctedMinLabelLength = Math.max(minLabelLength, correctedMaxLabelLength); 
+    const padding = 6 * baseStyle.padding;
+    const manyFriends = friends.length >= 8;
+    const manyNextFriends = nextFriends.length >= 5;
+    //const manyFriends = friends.length >= 10;
+    //const manyNextFriends = nextFriends.length >= 10;
+    
+    /** calculate single node space variations */
+    const LengthPadding = 1; // +1 for possible front icon (utf-8 length is taken care of in node.ts)
+    const baseHeight = baseChar.height + 3*baseStyle.padding
+    const smallestNodeWidth = baseChar.width * (correctedMinLabelLength + LengthPadding) + padding;
+    const maxNodeWidth = baseChar.width * (baseStyle.maxLabelLength + LengthPadding) + padding;
 
     const isCenterEmbedded = 
       this.plugin.settings.embedCentralNode &&
@@ -471,7 +514,200 @@ export class Scene {
       !centralPage.isTag;
     const centerEmbedWidth = this.plugin.settings.centerEmbedWidth;
     const centerEmbedHeight = this.plugin.settings.centerEmbedHeight;
+    const minRowsInCenter = isCenterEmbedded
+      ? Math.round(centerEmbedHeight/baseHeight)
+      : 3;
+
+    /** Calculate the total node space needed in this container ratio */
+    const friendCols = isCompactView && isCenterEmbedded
+      ? Math.ceil((friends.length*baseHeight)/centerEmbedHeight)
+      : isCompactView && !isCenterEmbedded
+        ? Math.min(Math.ceil(Math.sqrt(friends.length*0.5)*rfCorr),3)
+        : 1
     
+    const nextFriendCols = isCompactView && isCenterEmbedded
+      ? Math.ceil((nextFriends.length*baseHeight)/centerEmbedHeight)
+      : isCompactView && !isCenterEmbedded
+        ? Math.min(Math.ceil(Math.sqrt(nextFriends.length*0.5)*rfCorr),3)
+        : 1
+    console.log("nfc", Math.ceil((nextFriends.length*baseHeight)/centerEmbedHeight),nextFriends.length, baseHeight,centerEmbedHeight)
+    
+    const centerCols = 1 + friendCols + nextFriendCols;
+    console.log("friend", friendCols, nextFriendCols)
+    const centerRows = Math.max(
+      friends.length>0 ? friends.length/friendCols : 0, 
+      nextFriends.length>0 ? nextFriends.length/nextFriendCols : 0, 
+      minRowsInCenter);
+    
+    const totalNeed = parents.length + children.length + centerCols*centerRows + (settings.renderSiblings?siblings.length:0);
+    console.log(totalNeed, baseHeight, centerCols, centerRows)
+    /** min/max rows/cols needed */
+    const rfNode = 1/((smallestNodeWidth/rf)/baseHeight);
+    const rows = Math.sqrt(totalNeed/rfNode);
+    const cols = Math.sqrt(totalNeed/(1/rfNode)); 
+    
+    const rfMaxNode = 1/((maxNodeWidth/rf)/baseHeight);
+    const rows2 = Math.sqrt(totalNeed/rfMaxNode);
+    const cols2 = Math.sqrt(totalNeed/(1/rfMaxNode)); 
+
+    console.log("rfNode:" + rfNode + "rfMaxNode:" + rfMaxNode)
+    console.log("container/char høyde:" + container.innerHeight/baseChar.height)
+    console.log("ross2:" + rows2)
+    console.log("rows:" + rows)
+    
+    const maxCols = isCompactView ? Math.ceil(cols) : 5;
+    const a= [rows,cols, rows2,cols2]
+    console.log(a)
+    
+    // siblings
+    const siblingsCols = settings.renderSiblings && siblings.length>0
+      ? isCompactView
+        ? Math.round(cols*(siblings.length/totalNeed))
+        : siblings.length > 20
+          ? 3
+          : siblings.length > 10
+            ? 2
+            : 1
+      : 0;
+
+    const siblingsLabelLength = settings.renderSiblings
+      ? isCompactView
+        ? Math.min(this.longestTitle(siblings,20) + LengthPadding, minLabelLength, siblingsMaxLabelLength)
+        : siblingsMaxLabelLength
+      : 0;
+
+    // center
+    const mainCols = maxCols-siblingsCols;
+    const mainAreaTextLength = Math.max(centerCols,mainCols) * correctedMinLabelLength;
+
+    // root
+    const actualRootLength = [...new Intl.Segmenter().segment(centralPage.getTitle())].length;
+    const rootNodeLength = isCompactView
+      ? Math.min(actualRootLength + LengthPadding, Math.ceil(mainAreaTextLength/centerCols), centralMaxLabelLength)
+      : maxLabelLength;
+    
+    // friends
+    const friendsLabelLength = isCompactView
+      ? Math.min(this.longestTitle(friends) + LengthPadding,correctedMinLabelLength)
+      : maxLabelLength;
+    
+    // nextfriends
+    const nextFriendsLabelLength = isCompactView
+      ? Math.min(this.longestTitle(nextFriends) + LengthPadding, correctedMinLabelLength)
+      : maxLabelLength;
+
+    // parents
+    const parentCols = isCompactView
+      ? Math.min(Math.ceil(Math.sqrt(parents.length)),maxCols-siblingsCols)
+      : (parents.length < 5
+        ? [1, 1, 2, 3, 2][parents.length]
+        : 3);
+
+    const parentsLabelLength = isCompactView
+    ? Math.min(
+        this.longestTitle(parents) + LengthPadding, 
+        Math.max(Math.floor(mainAreaTextLength/parentCols), correctedMinLabelLength), 
+        baseStyle.maxLabelLength
+      )
+    : maxLabelLength;
+
+    // children
+    const childrenCols = isCompactView
+      ? Math.min(Math.ceil(Math.sqrt(children.length)), maxCols-siblingsCols)
+      : (children.length <= 12 
+        ? [1, 1, 2, 3, 3, 3, 3, 4, 4, 5, 5, 4, 4][children.length]
+        : 5);
+
+    const childrenLabelLength = isCompactView
+    ? Math.min(
+        this.longestTitle(children,20) + LengthPadding, 
+        Math.max(Math.floor(mainAreaTextLength/childrenCols), correctedMinLabelLength), 
+        baseStyle.maxLabelLength
+      )
+    : maxLabelLength;
+    
+  // max node size
+  const parentWidth = isCompactView
+    ?(parentsLabelLength + LengthPadding) * baseChar.width + padding
+    : this.nodeWidth;
+
+  const childWidth = isCompactView
+    ? (childrenLabelLength + LengthPadding) * baseChar.width + padding
+    : this.nodeWidth;
+
+  const friendWidth = isCompactView
+    ? (friendsLabelLength + LengthPadding) * baseChar.width + padding
+    : this.nodeWidth;
+
+  const nextFriendWidth = isCompactView
+    ? (nextFriendsLabelLength + LengthPadding) * baseChar.width + padding
+    : this.nodeWidth;
+  
+    const siblingsFont = this.getNodeSize(siblingsLabelLength, settings.siblingNodeStyle, (isCompactView?1.2:2));
+    const centralNodeFont = this.getNodeSize(rootNodeLength, settings.centralNodeStyle,(isCompactView?1.2:2));
+
+    // layout areas
+    const friendsArea = {
+      width:  friends.length>0? friendCols*friendWidth:0, 
+      height: friends.length>0? Math.ceil(friends.length/friendCols)*baseHeight:0
+    }
+    const nextFriendsArea = {
+      width:  nextFriends.length>0? nextFriendCols*nextFriendWidth:0, 
+      height: nextFriends.length>0? Math.ceil(nextFriends.length/nextFriendCols)*baseHeight:0
+    }
+    const parentsArea = {
+      width:  parents.length>0? parentCols*parentWidth:0, 
+      height: parents.length>0? Math.ceil(parents.length/parentCols)*baseHeight:0
+    }
+    const childrenArea = {
+      width:  children.length>0? childrenCols*childrenLabelLength*baseChar.width:0, 
+      height: children.length>0? Math.ceil(children.length/childrenCols)*baseHeight:0
+    }
+    const siblingsArea = {
+      width:  siblings.length>0? siblingsFont.width*siblingsCols:0, 
+      height: siblings.length>0? Math.ceil(siblings.length/siblingsCols)*siblingsFont.height:0
+    }
+    const rootWidth = isCompactView ? centralNodeFont.width : this.nodeWidth;
+ 
+    const heightInCenter = isCenterEmbedded
+      ? centerEmbedHeight
+      : (isCompactView?minRowsInCenter:5)*baseHeight;
+    
+    const parentsOrigoY = isCompactView
+      ? (parentsArea.height + Math.max(friendsArea.height,nextFriendsArea.height,heightInCenter))*0.5 + padding
+      : (parentsArea.height + heightInCenter)*0.5;
+
+    const childrenOrigoY = isCompactView
+    ? (childrenArea.height + Math.max(friendsArea.height,nextFriendsArea.height,heightInCenter))*0.5 + padding
+    : (childrenArea.height + heightInCenter)*0.5;
+
+    const friendOrigoX = (isCompactView && rf < 1 
+      ? Math.max(
+          isCenterEmbedded?centerEmbedWidth:rootWidth + friendsArea.width, 
+          childrenArea.width-friendsArea.width + childWidth*0.5, 
+          parentsArea.width-friendsArea.width + parentWidth*0.5
+        )
+      : centerEmbedWidth + friendsArea.width
+      )/2 + friendCols * 3 * baseStyle.padding;
+        
+    const nextFriendOrigoX = (isCompactView && rf < 1 
+      ? Math.max(
+          isCenterEmbedded?centerEmbedWidth:rootWidth + nextFriendsArea.width, 
+          childrenArea.width-nextFriendsArea.width + childWidth*0.5, 
+          parentsArea.width-nextFriendsArea.width + parentWidth*0.5
+        )
+      : centerEmbedWidth + nextFriendsArea.width
+      )/2 + friendCols * 3 * baseStyle.padding;
+    
+    const siblingsPadding = settings.siblingNodeStyle.padding ?? baseStyle.padding;
+    const siblingsOrigoX = 
+      Math.max(
+        parentsArea.width*0.5, 
+        childrenArea.width*0.5,
+        nextFriendOrigoX + nextFriendsArea.width*0.5
+      ) + siblingsArea.width*0.5 + 3*siblingsPadding*(1 + siblingsCols);
+
+    // layout    
     const lCenter = new Layout({
       origoX: 0,
       origoY: isCenterEmbedded
@@ -482,95 +718,83 @@ export class Scene {
       columns: 1,
       columnWidth: isCenterEmbedded
         ? centerEmbedWidth
-        : this.nodeWidth,
+        : rootWidth,
       rowHeight: isCenterEmbedded
         ? centerEmbedHeight
-        : this.nodeHeight,
+        : centralNodeFont.height,
+        maxLabelLength: rootNodeLength
     });
     this.layouts.push(lCenter);
 
     const lChildren = new Layout({
-      origoX: 0,
-      origoY: isCenterEmbedded
-        ? centerEmbedHeight + 1.5 * this.nodeHeight
-        : 2.5 * this.nodeHeight,
-      top: isCenterEmbedded
-        ? centerEmbedHeight + this.nodeHeight
-        : 2 * this.nodeHeight,
+      // orig origoX: 0, 
+      origoX: !isCompactView || (containerHeightRatio<1) || (centerCols>=3) || (centerCols==1) || (childrenCols>3)
+        ? 0
+        : rootWidth*((friends.length>0)?-0.1:0.1),
+      origoY: childrenOrigoY,
+      top: 0, //isCenterEmbedded ? centerEmbedHeight + this.nodeHeight: 2 * this.nodeHeight,
       bottom: null,
       columns: childrenCols,
-      columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      columnWidth: childWidth,
+      rowHeight: baseHeight,
+      maxLabelLength: childrenLabelLength
     });
     this.layouts.push(lChildren);
-  
-    const isCompactView = this.plugin.settings.compactView;
-    const friendOrigoX = isCompactView && isCenterEmbedded
-      ? centerEmbedWidth/2  + 1.5 * this.nodeWidth
-      : Math.max(
-          (((manyNextFriends?1:0)+Math.max(childrenCols,parentCols)+1.9)/2.4) * this.nodeWidth, // (manyChildren ? -3 : -2)  * this.nodeWidth,
-          isCenterEmbedded
-            ? centerEmbedWidth/2 + 1.5 * this.nodeWidth
-            : 0
-        );
-
+    
     const lFriends = new Layout({
       origoX: -friendOrigoX,
-      origoY: isCenterEmbedded
-        ? centerEmbedHeight/2
-        : 0,
+      origoY: 0,
       top: null,
       bottom: null,
-      columns: 1,
-      columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      columns: friendCols,
+      columnWidth: friendWidth,
+      rowHeight: baseHeight,
+      maxLabelLength: friendsLabelLength
     });
     this.layouts.push(lFriends);
 
     const lNextFriends = new Layout({
-      origoX: friendOrigoX,
+      origoX: nextFriendOrigoX,
       origoY: isCenterEmbedded
         ? centerEmbedHeight/2
         : 0,
       top: null,
       bottom: null,
-      columns: 1,
-      columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      columns: nextFriendCols,
+      columnWidth: nextFriendWidth,
+      rowHeight: baseHeight,
+      maxLabelLength: nextFriendsLabelLength
     });
     this.layouts.push(lNextFriends);
-
+    
     const lParents = new Layout({
-      origoX: 0,
-      origoY: -2.5 * this.nodeHeight,
+      origoX: !isCompactView || (containerHeightRatio<1) || (centerCols>=3) || (centerCols==1) || (parentCols>3)
+        ? 0
+        : rootWidth*((friends.length>0)?-0.1:0.1),
+      origoY: - parentsOrigoY,
       top: null,
-      bottom: -2 * this.nodeHeight,
+      bottom: -2 * baseHeight,
       columns: parentCols, // 3,
-      columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      columnWidth: parentWidth,
+      rowHeight: baseHeight,
+      maxLabelLength: parentsLabelLength
     });
     this.layouts.push(lParents);
-    
-    const siblingsStyle = this.plugin.settings.siblingNodeStyle;
-    const siblingsPadding = siblingsStyle.padding??baseStyle.padding;
-    const siblingsLabelLength = siblingsStyle.maxLabelLength??baseStyle.maxLabelLength;
-    ea.style.fontFamily = siblingsStyle.fontFamily;
-    ea.style.fontSize = siblingsStyle.fontSize;
-    const siblingsTextSize = ea.measureText("m".repeat(siblingsLabelLength+3));
-    const siblingsNodeWidth = siblingsTextSize.width + 3 * siblingsPadding;
-    const siblingsNodeHeight = 2 * (siblingsTextSize.height + 2 * siblingsPadding);
 
     const lSiblings = new Layout({
-      origoX: this.nodeWidth * ((parentCols-1)/2 + (siblingsCols+1.5)/3),
-      origoY: -2.5 * this.nodeHeight,
+      //origoX: this.nodeWidth * ((parentCols-1)/2 + (siblingsCols+1.5)/3), //orig
+      origoX: siblingsOrigoX,
+      origoY: parentsOrigoY + siblingsArea.height*0.1,
       top: null,
-      bottom: - this.nodeHeight/2, 
+      bottom: null,
       columns: siblingsCols, 
-      columnWidth: siblingsNodeWidth,
-      rowHeight: siblingsNodeHeight,
+      columnWidth: siblingsFont.width + 3*siblingsPadding,
+      rowHeight: siblingsFont.height,
+      maxLabelLength: siblingsLabelLength
     })
     this.layouts.push(lSiblings);
-
+    
+    centralPage.maxLabelLength = rootNodeLength; 
     this.rootNode = new Node({
       ea,
       page: centralPage,

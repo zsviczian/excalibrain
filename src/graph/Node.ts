@@ -75,8 +75,10 @@ export class Node {
 
   private displayText(): string {
     const label = (this.style.prefix??"") + this.title;
-    return label.length > this.style.maxLabelLength
-      ? label.substring(0,this.style.maxLabelLength-1) + "..."
+    const segmentedLength = [...new Intl.Segmenter().segment(label)].length; //'Unicode-proof' https://stackoverflow.com/questions/54369513/how-to-count-the-correct-length-of-a-string-with-emojis-in-javascript
+    const lengthCorrection = label.length-segmentedLength;
+    return segmentedLength > this.page.maxLabelLength 
+      ? label.substring(0,this.page.maxLabelLength+lengthCorrection-3) + "..."
       : label;
   }
 
@@ -163,7 +165,7 @@ export class Node {
       this.center.y - labelSize.height / 2,
       label,
       {
-        wrapAt: this.style.maxLabelLength+5,
+        wrapAt: this.page.maxLabelLength+10,
         textAlign: "center",
         box: true,
         boxPadding: this.style.padding,
