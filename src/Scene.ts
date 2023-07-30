@@ -717,7 +717,7 @@ export class Scene {
     ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
 
     excalidrawAPI.updateScene({appState: {viewBackgroundColor: settings.backgroundColor}});
-    if(settings.allowAutozoom) {
+    if(settings.allowAutozoom && !retainCentralNode) {
       setTimeout(()=>excalidrawAPI.zoomToFit(ea.getViewElements(),settings.maxZoom,0.15),100);
     }
   
