@@ -696,7 +696,7 @@ export class Scene {
     //-------------------------------------------------------
     // Render
     ea.style.opacity = 100;
-    await Promise.all(this.layouts.map(async (layout) => await layout.render()));
+    await Promise.all(this.layouts.map(async (layout) => await layout.render(isCompactView)));
     const nodeElements = ea.getElements();
     this.links.render(Array.from(this.toolsPanel.linkTagFilter.selectedLinks));
     
