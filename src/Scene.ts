@@ -284,6 +284,7 @@ export class Scene {
       ...settings.baseNodeStyle,
       ...settings.centralNodeStyle,
     };
+    style.textColor = settings.baseNodeStyle.textColor;
     
     let counter = 0;
     ea.clear();    

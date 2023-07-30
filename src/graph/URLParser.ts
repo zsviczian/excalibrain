@@ -97,17 +97,38 @@ export class URLParser {
   }
 
   private registerFileEvents(): void {
-    const modifyEventHandler = async (file: TFile) => {
-      await this.parseFileURLs(file);
+    const modifyEventHandler = (file: TFile) => {
+      deleteEventHandler(file);
+      this.parseFileURLs(file);
     };
+
+    const deleteEventHandler = (file: TFile) => {
+      const urls = this.fileToUrlMap.get(file);
+      this.fileToUrlMap.delete(file);
+      if(urls) {
+        urls.forEach((url) => {
+          const data = this.fileUrlInverseMap.get(url.url);
+          if (data) {
+            data.files = data.files.filter((f) => f !== file);
+            if (data.files.length === 0) {
+              this.fileUrlInverseMap.delete(url.url);
+              this.hosts = this.hosts.filter((h) => h !== data.origin);
+              return;
+            }
+            this.fileUrlInverseMap.set(url.url, data);
+          }
+        });
+      }
+      
+    }
 
     this.plugin.registerEvent(this.app.vault.on('create', modifyEventHandler));
     this.plugin.registerEvent(this.app.vault.on('modify', modifyEventHandler));
-    this.plugin.registerEvent(this.app.vault.on('delete', (file:TFile) => this.fileToUrlMap.delete(file)));
-    this.plugin.registerEvent(this.app.vault.on('rename', async (file:TFile) => {
+    this.plugin.registerEvent(this.app.vault.on('delete', deleteEventHandler));
+    /*this.plugin.registerEvent(this.app.vault.on('rename', async (file:TFile) => {
       this.fileToUrlMap.delete(file);
       await this.parseFileURLs(file);
-    }));
+    }));*/
   }
 
 }

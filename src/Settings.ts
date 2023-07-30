@@ -103,7 +103,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   baseNodeStyle: DEFAULT_NODE_STYLE,
   centralNodeStyle: {
     fontSize: 30,
-    backgroundColor: "#C49A13FF",
+    backgroundColor: "#B5B5B5",
     textColor: "#000000ff",
   },
   inferredNodeStyle: {
