@@ -542,11 +542,11 @@ export class Scene {
     this.layouts.push(lChildren);
   
     const friendOrigoX = isCompactView && isCenterEmbedded
-      ? centerEmbedWidth/2  + 1.5 * this.nodeWidth
+      ? centerEmbedWidth/2  +  this.nodeWidth
       : Math.max(
           (((manyNextFriends?1:0)+Math.max(childrenCols,parentCols)+1.9)/2.4) * this.nodeWidth, // (manyChildren ? -3 : -2)  * this.nodeWidth,
           isCenterEmbedded
-            ? centerEmbedWidth/2 + 1.5 * this.nodeWidth
+            ? centerEmbedWidth/2 + this.nodeWidth
             : 0
         );
 

@@ -172,6 +172,7 @@ export default {
   COMMAND_ADD_RIGHT_FRIEND_FIELD: "Add dataview field to ontology as RIGHT-SIDE FRIEND",
   COMMAND_ADD_PREVIOUS_FIELD: "Add dataview field to ontology as PREVIOUS",
   COMMAND_ADD_NEXT_FIELD: "Add dataview field to ontology as NEXT",
+  COMMAND_ADD_ONTOLOGY_MODAL: "Add dataview field to ontology: Open Ontology Modal",
   COMMAND_START: "ExcaliBrain Normal",
   COMMAND_START_HOVER: "ExcaliBrain Hover-Editor",
   COMMAND_START_POPOUT: "ExcaliBrain Popout Window",
@@ -191,5 +192,8 @@ export default {
   SHOW_HIDE_FOLDER: "Show/Hide folder nodes",
   SHOW_HIDE_TAG: "Show/Hide tag nodes",
   SHOW_HIDE_PAGES: "Show/Hide page nodes (incl. defined, inferred, virtual and attachments)",
-  PIN_LEAF: "Link ExcaliBrain to most recent active leaf"
+  PIN_LEAF: "Link ExcaliBrain to most recent active leaf",
+
+  //AddToOntologyModal
+  ADD_TO_ONTOLOGY_MODAL_DESC: "Select the direction of the ontology. If one of the buttons is highlighted, then the field is already part of the ontology in that direction.",
 }

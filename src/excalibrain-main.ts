@@ -1,4 +1,4 @@
-import { App, MarkdownView, Notice, Plugin, PluginManifest, TextFileView, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
+import { App, Editor, MarkdownView, Menu, MenuItem, Notice, Plugin, PluginManifest, TextFileView, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { Page } from './graph/Page';
 import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './Settings';
 import { errorlog, keepOnTop } from './utils/utils';
@@ -16,6 +16,7 @@ import { FieldSuggester } from './Suggesters/OntologySuggester';
 import { Literal } from 'obsidian-dataview/lib/data-model/value';
 import { isEmbedFileType } from './utils/fileUtils';
 import { URLParser } from './graph/URLParser';
+import { AddToOntologyModal, Ontology } from './Components/AddToOntologyModal';
 
 declare module "obsidian" {
   interface App {
@@ -58,6 +59,7 @@ export default class ExcaliBrain extends Plugin {
   public customNodeLabel: (dvPage: Literal, defaultName:string) => string
   public navigationHistory: string[] = [];
   public urlParser: URLParser;
+  private addToOntologyModal: AddToOntologyModal;
   
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
@@ -69,6 +71,7 @@ export default class ExcaliBrain extends Plugin {
         "Initializing index, please wait"
       )
     ]
+    this.addToOntologyModal = new AddToOntologyModal(app,this);
   }
 
 	async onload() {
@@ -76,6 +79,7 @@ export default class ExcaliBrain extends Plugin {
     this.navigationHistory = this.settings.navigationHistory;
 		this.addSettingTab(new ExcaliBrainSettingTab(this.app, this));
     this.registerEditorSuggest(new FieldSuggester(this));
+    this.registerEvents();
     this.urlParser = new URLParser(this);
     this.app.workspace.onLayoutReady(()=>{
       this.urlParser.init();
@@ -137,6 +141,46 @@ export default class ExcaliBrain extends Plugin {
       this.pluginLoaded = true;
     });
 	}
+
+  private registerEvents() {
+    this.registerEvent(
+      this.app.workspace.on("editor-menu", this.handleEditorMenu, this)
+    );
+  }
+
+  private getFieldName(editor: Editor): string {
+    let line = editor.getLine(editor.getCursor().line).substring(0,editor.getCursor().ch);
+    const regex = /(?:^|[(\[])(?:==|\*\*|~~|\*|_|__)?([^\:\]\()]*?)(?:==|\*\*|~~|\*|_|__)?::/g;
+    let lastMatch = null;
+    let match;
+  
+    while ((match = regex.exec(line)) !== null) {
+      lastMatch = match;
+    }
+    
+    //default to the full line, maybe the user positioned the cursor in the middle of the field
+    if(!lastMatch) {
+      line = editor.getLine(editor.getCursor().line);
+      while ((match = regex.exec(line)) !== null) {
+        lastMatch = match;
+      }
+    }
+    return lastMatch !== null ? lastMatch[1] : null;
+  }
+
+  private handleEditorMenu(menu: Menu, editor: Editor, view: MarkdownView) {
+    const field = this.getFieldName(editor);
+    if(field) {
+      menu.addItem((item: MenuItem) => {
+        item
+          .setTitle(`Add "${field}" to ExcaliBrain Ontology`)
+          .setIcon("plus")
+          .onClick(() => {
+            this.addToOntologyModal.show(field);
+          });
+      });
+    }
+  }
 
   public lowercasePathMap: Map<string,string>;
 
@@ -304,132 +348,72 @@ export default class ExcaliBrain extends Plugin {
     searchElement?.focus();
   }
 
+  private addFieldToOntology(field: string, direction: Ontology) {
+    this.addToOntologyModal.addFieldToOntology(direction, field);
+  }
+
   private registerCommands() {
     
-    const addFieldToOntology = (checking: boolean, desc: string):boolean => {
-      const activeView = app.workspace.activeLeaf?.view; 
-      if(checking) {
-        return (activeView instanceof MarkdownView) && activeView.getMode() === "source";
-      }
-      if(!(activeView instanceof MarkdownView) || activeView.getMode() !== "source") {
+    const addFieldToOntology = (checking: boolean, direction: Ontology | "select"):boolean => {
+      const activeView = app.workspace.activeLeaf?.view;
+      if(!activeView || !(activeView instanceof MarkdownView) || activeView.getMode() !== "source") {
         return false;
       }
-      const cursor = activeView.editor.getCursor();
-      const line = activeView.editor.getLine(cursor.line);
-      const field = line.match(/^([^\:]*)::/);
+      const field = this.getFieldName(activeView.editor);
       if(!field) {
         return false;
       }
-
-      (async() => {
-        await this.loadSettings();
-
-        if(this.settings.hierarchy.parents.includes(field[1])) {
-          new Notice(`${field[1]} is already registered as a PARENT`);
-          return;
-        }
-        if(this.settings.hierarchy.children.includes(field[1])) {
-          new Notice(`${field[1]} is already registered as a CHILD`);
-          return;
-        }
-        if(this.settings.hierarchy.leftFriends.includes(field[1])) {
-          new Notice(`${field[1]} is already registered as a LEFT-SIDE FRIEND`);
-          return;
-        }
-        if(this.settings.hierarchy.rightFriends.includes(field[1])) {
-          new Notice(`${field[1]} is already registered as a RIGHT-SIDE FRIEND`);
-          return;
-        }
-        if(this.settings.hierarchy.previous.includes(field[1])) {
-          new Notice(`${field[1]} is already registered as a PREVIOUS (FRIEND)`);
-          return;
-        }
-        if(this.settings.hierarchy.next.includes(field[1])) {
-          new Notice(`${field[1]} is already registered as a NEXT (FRIEND)`);
-          return;
-        }
-        
-        switch (desc) {
-          case "parent":
-            this.settings.hierarchy.parents.push(field[1]);
-            this.settings.hierarchy.parents = this.settings.hierarchy.parents.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
-            this.hierarchyLowerCase.parents = [];
-            this.settings.hierarchy.parents.forEach(f=>this.hierarchyLowerCase.parents.push(f.toLowerCase().replaceAll(" ","-")))    
-            break;
-          case "child":
-            this.settings.hierarchy.children.push(field[1]);
-            this.settings.hierarchy.children = this.settings.hierarchy.children.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
-            this.hierarchyLowerCase.children = [];
-            this.settings.hierarchy.children.forEach(f=>this.hierarchyLowerCase.children.push(f.toLowerCase().replaceAll(" ","-")))    
-            break;
-          case "rightFriend":
-            this.settings.hierarchy.rightFriends.push(field[1]);
-            this.settings.hierarchy.rightFriends = this.settings.hierarchy.rightFriends.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
-            this.hierarchyLowerCase.rightFriends = [];
-            this.settings.hierarchy.rightFriends.forEach(f=>this.hierarchyLowerCase.rightFriends.push(f.toLowerCase().replaceAll(" ","-")))    
-            break;
-          case "previous":
-            this.settings.hierarchy.previous.push(field[1]);
-            this.settings.hierarchy.previous = this.settings.hierarchy.previous.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
-            this.hierarchyLowerCase.previous = [];
-            this.settings.hierarchy.previous.forEach(f=>this.hierarchyLowerCase.previous.push(f.toLowerCase().replaceAll(" ","-")))    
-            break;
-          case "next":
-            this.settings.hierarchy.next.push(field[1]);
-            this.settings.hierarchy.next = this.settings.hierarchy.next.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
-            this.hierarchyLowerCase.next = [];
-            this.settings.hierarchy.next.forEach(f=>this.hierarchyLowerCase.next.push(f.toLowerCase().replaceAll(" ","-")))    
-            break;
-          default:
-            this.settings.hierarchy.leftFriends.push(field[1]);
-            this.settings.hierarchy.leftFriends = this.settings.hierarchy.leftFriends.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
-            this.hierarchyLowerCase.leftFriends = [];
-            this.settings.hierarchy.leftFriends.forEach(f=>this.hierarchyLowerCase.leftFriends.push(f.toLowerCase().replaceAll(" ","-")))    
-        }
-        await this.saveSettings();
-        if (this.scene && !this.scene.terminated) {
-          this.scene.vaultFileChanged = true;
-        }
-        new Notice(`Added ${field[1]} as ${desc}`);
-      })();
-      
+      if(checking) {
+        return true;
+      }
+      if(direction === "select") {
+        this.addToOntologyModal.show(field);
+        return true; 
+      }
+      this.addFieldToOntology(field,direction);
       return true;
-    } 
+    }
 
     this.addCommand({
       id: "excalibrain-addParentField",
       name: t("COMMAND_ADD_PARENT_FIELD"),
-      checkCallback: (checking: boolean) => addFieldToOntology(checking, "parent"),
+      checkCallback: (checking: boolean) => addFieldToOntology(checking, Ontology.Parent),
     });
 
     this.addCommand({
       id: "excalibrain-addChildField",
       name: t("COMMAND_ADD_CHILD_FIELD"),
-      checkCallback: (checking: boolean) => addFieldToOntology(checking, "child"),
+      checkCallback: (checking: boolean) => addFieldToOntology(checking, Ontology.Child),
     });
 
     this.addCommand({
       id: "excalibrain-addLeftFriendField",
       name: t("COMMAND_ADD_LEFT_FRIEND_FIELD"),
-      checkCallback: (checking: boolean) => addFieldToOntology(checking, "leftFriend"),
+      checkCallback: (checking: boolean) => addFieldToOntology(checking, Ontology.LeftFriend),
     });
 
     this.addCommand({
       id: "excalibrain-addRightFriendField",
       name: t("COMMAND_ADD_RIGHT_FRIEND_FIELD"),
-      checkCallback: (checking: boolean) => addFieldToOntology(checking, "rightFriend"),
+      checkCallback: (checking: boolean) => addFieldToOntology(checking, Ontology.RightFriend),
     });
 
     this.addCommand({
       id: "excalibrain-addPreviousField",
       name: t("COMMAND_ADD_PREVIOUS_FIELD"),
-      checkCallback: (checking: boolean) => addFieldToOntology(checking, "previous"),
+      checkCallback: (checking: boolean) => addFieldToOntology(checking, Ontology.Previous),
     });
 
     this.addCommand({
       id: "excalibrain-addNextField",
       name: t("COMMAND_ADD_NEXT_FIELD"),
-      checkCallback: (checking: boolean) => addFieldToOntology(checking, "next"),
+      checkCallback: (checking: boolean) => addFieldToOntology(checking, Ontology.Next),
+    });
+
+    this.addCommand({
+      id: "excalibrain-selectOntology",
+      name: t("COMMAND_ADD_ONTOLOGY_MODAL"),
+      checkCallback: (checking: boolean) => addFieldToOntology(checking, "select"),
     });
 
     this.addCommand({
