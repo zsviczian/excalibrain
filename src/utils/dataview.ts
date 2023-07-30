@@ -1,6 +1,7 @@
 import { App, TFile } from "obsidian";
 import { Literal } from "obsidian-dataview/lib/data-model/value";
 import ExcaliBrain from "src/excalibrain-main";
+import { plainLinkRegex } from "src/graph/URLParser";
 import { ExcaliBrainSettings } from "src/Settings";
 import { NodeStyle } from "src/types";
 
@@ -29,6 +30,12 @@ const readLinksFromString = (data: string, file:TFile):string[] => {
       }
     }
   }
+  
+  let match;
+  while ((match = plainLinkRegex.exec(data)) !== null) {
+    res.add(match[0]);
+  }
+
   return Array.from(res);
 }
 

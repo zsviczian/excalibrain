@@ -5,6 +5,7 @@ import { getTagStyle } from "src/utils/dataview";
 import { Page } from "./Page";
 import { ExcalidrawImageElement } from "@zsviczian/excalidraw/types/element/types";
 import { isEmbedFileType } from "src/utils/fileUtils";
+import { getEmbeddableDimensions } from "src/utils/embeddableHelper";
 
 export class Node {
   page: Page;
@@ -59,6 +60,7 @@ export class Node {
       this.style = {
         ...this.settings.baseNodeStyle,
         ...x.isInferred?this.settings.inferredNodeStyle:{},
+        ...x.page.isURL?this.settings.urlNodeStyle:{},
         ...x.page.isVirtual?this.settings.virtualNodeStyle:{},
         ...x.isCentral?this.settings.centralNodeStyle:{},
         ...x.isSibling?this.settings.siblingNodeStyle:{},
@@ -102,20 +104,25 @@ export class Node {
 
   async renderEmbedded():Promise<Dimensions> {
     const ea = this.ea;
-    const maxDimensions = {width: this.style.embedWidth, height: this.style.embedHeight};
-    if(isEmbedFileType(this.page.file, ea)) {
+    let maxDimensions = {width: this.style.embedWidth, height: this.style.embedHeight};
+    if((this.page.file && isEmbedFileType(this.page.file, ea)) || this.page.isURL) {
+      if(this.page.isURL) {
+        maxDimensions = getEmbeddableDimensions(this.page.url, maxDimensions);
+      }
       this.id = ea.addEmbeddable(
         this.center.x - maxDimensions.width/2, 
         this.center.y - maxDimensions.height/2,
         maxDimensions.width,
         maxDimensions.height,
-        undefined,
-        this.page.file      
+        this.page.isURL ? this.page.url : undefined,
+        this.page.isURL ? undefined : this.page.file      
       );
-      const box = ea.getElement(this.id) as any;
-      box.backgroundColor = this.style.backgroundColor;
-      box.strokeColor = this.style.borderColor;
-      box.strokeStyle = this.style.strokeStyle;
+      const embeddable = ea.getElement(this.id) as any;
+      //overriding the default link with the full filepath
+      embeddable.link = this.page.isURL ? this.page.url : `[[${this.page.file.path}]]`;
+      embeddable.backgroundColor = this.style.backgroundColor;
+      embeddable.strokeColor = this.style.borderColor;
+      embeddable.strokeStyle = this.style.strokeStyle;
       this.embeddedElementIds.push(this.id);
       return maxDimensions;
     } else {
@@ -127,6 +134,8 @@ export class Node {
         false,
       )
       const imgEl = ea.getElement(this.id) as Mutable<ExcalidrawImageElement>;
+      //overriding the default link with the full filepath
+      imgEl.link = `[[${this.page.file.path}]]`;
       let width  = imgEl.width;
       let height = imgEl.height;    
     
@@ -185,7 +194,7 @@ export class Node {
       }
     );
     const box = ea.getElement(this.id) as any;
-    box.link = `[[${this.page.file?.path??this.page.path}]]`;
+    box.link = this.page.isURL ? this.page.url : `[[${this.page.file?.path??this.page.path}]]`;
     box.backgroundColor = this.style.backgroundColor;
     box.strokeColor = this.style.borderColor;
     box.strokeStyle = this.style.strokeStyle;

@@ -46,7 +46,7 @@
 }
 
 .excalibrain-toolspanel-wrapper {
-  z-index: 1;
+  z-index: 3;
   position: absolute;
   top: 10px;
   padding-left: 10px;
@@ -56,7 +56,7 @@
 }
 
 .excalibrain-history-wrapper {
-  z-index: 1;
+  z-index: 3;
   position: absolute;
   bottom: 0px;
   padding-left: 7rem;
