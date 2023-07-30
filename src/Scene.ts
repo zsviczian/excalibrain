@@ -308,7 +308,11 @@ export class Scene {
     api.setMobileModeAllowed(false); //disable mobile view https://github.com/zsviczian/excalibrain/issues/9
     ea.style.fontFamily = style.fontFamily;
     ea.style.fontSize = style.fontSize;
-    this.textSize = ea.measureText("m".repeat(style.maxLabelLength));
+    const textSixe4x = ea.measureText("mi3l".repeat(style.maxLabelLength));
+    this.textSize = {
+      width: textSixe4x.width * 0.25,
+      height: textSixe4x.height
+    }
     this.nodeWidth = this.textSize.width + 2 * style.padding;
     if(this.plugin.settings.compactView) {
       this.nodeWidth = this.nodeWidth * 0.6;
@@ -524,6 +528,7 @@ export class Scene {
       rowHeight: isCenterEmbedded
         ? centerEmbedHeight
         : this.nodeHeight,
+        maxLabelLength: baseStyle.maxLabelLength
     });
     this.layouts.push(lCenter);
 
@@ -538,7 +543,8 @@ export class Scene {
       bottom: null,
       columns: childrenCols,
       columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      rowHeight: this.nodeHeight,
+      maxLabelLength: baseStyle.maxLabelLength
     });
     this.layouts.push(lChildren);
   
@@ -560,7 +566,8 @@ export class Scene {
       bottom: null,
       columns: 1,
       columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      rowHeight: this.nodeHeight,
+      maxLabelLength: baseStyle.maxLabelLength
     });
     this.layouts.push(lFriends);
 
@@ -573,7 +580,8 @@ export class Scene {
       bottom: null,
       columns: 1,
       columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      rowHeight: this.nodeHeight,
+      maxLabelLength: baseStyle.maxLabelLength
     });
     this.layouts.push(lNextFriends);
 
@@ -584,7 +592,8 @@ export class Scene {
       bottom: -2 * this.nodeHeight,
       columns: parentCols, // 3,
       columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      rowHeight: this.nodeHeight,
+      maxLabelLength: baseStyle.maxLabelLength
     });
     this.layouts.push(lParents);
     
@@ -605,9 +614,11 @@ export class Scene {
       columns: siblingsCols, 
       columnWidth: siblingsNodeWidth,
       rowHeight: siblingsNodeHeight,
+      maxLabelLength: baseStyle.maxLabelLength
     })
     this.layouts.push(lSiblings);
 
+    centralPage.maxLabelLength = baseStyle.maxLabelLength; 
     this.rootNode = new Node({
       ea,
       page: centralPage,
