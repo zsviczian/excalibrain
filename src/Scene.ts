@@ -364,6 +364,7 @@ export class Scene {
       if(n.page.path === this.ea.targetView.file.path) {
         return; 
       }
+      n.page.maxLabelLength = x.layout.spec.maxLabelLength;
       const node = new Node({
         ea: this.ea,
         page: n.page,
