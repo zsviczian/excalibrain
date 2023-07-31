@@ -234,11 +234,11 @@ export class ToolsPanel {
     //------------
     // Render weblinks in page
     //------------
-    this.buttons.push(
+    /*this.buttons.push(
       new ToggleButton(
         this.plugin,
-        ()=>this.plugin.settings.showURLNodes,
-        (val:boolean)=>this.plugin.settings.showURLNodes = val,
+        ()=>this.plugin.settings.showURLs,
+        (val:boolean)=>this.plugin.settings.showURLs = val,
         buttonsWrapperDiv,
         {
           display: "🌐",
@@ -247,7 +247,7 @@ export class ToolsPanel {
         },
         false
      )
-    )
+    )*/
     
     //------------
     //Display siblings

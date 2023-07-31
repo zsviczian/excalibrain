@@ -77,29 +77,20 @@ export class Pages {
           //path case sensitivity issue
           child = this.pages.get(this.plugin.lowercasePathMap.get(childPath.toLowerCase()));
         }
-        this.addInferredParentChild(parent,child);
+        if(this.plugin.settings.inferAllLinksAsFriends) {
+          child.addLeftFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
+          parent.addLeftFriend(child,RelationType.INFERRED, LinkDirection.TO);
+        } else {
+          if(this.plugin.settings.inverseInfer) { //https://github.com/zsviczian/excalibrain/issues/78
+            child.addChild(parent,RelationType.INFERRED, LinkDirection.FROM);
+            parent.addParent(child,RelationType.INFERRED, LinkDirection.TO);
+          } else {
+            child.addParent(parent,RelationType.INFERRED, LinkDirection.FROM);
+            parent.addChild(child,RelationType.INFERRED, LinkDirection.TO);
+          }
+        }
       })
     }); 
-  }
-
-  public addPageURLs() {
-    this.plugin.urlParser.fileToUrlMap.forEach((value, key)=>{
-      const page=this.get(key.path);
-      if(!page) return;
-      value.forEach(url=>{
-        let urlPage = this.get(url.url);
-        if(!urlPage) {
-          urlPage = new Page(this,url.url,null,this.plugin,false,false,url.alias,url.url);
-          this.add(url.url, urlPage);
-        }
-        this.addInferredParentChild(page,urlPage);
-        const originPage = this.get(url.origin);
-        if(originPage) {
-          urlPage.addParent(originPage,RelationType.INFERRED,LinkDirection.FROM);
-          originPage.addChild(urlPage,RelationType.INFERRED,LinkDirection.TO);
-        }
-      })
-    })
   }
 
   /**
