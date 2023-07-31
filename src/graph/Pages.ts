@@ -92,6 +92,9 @@ export class Pages {
           urlPage = new Page(this,url.url,null,this.plugin,false,false,url.alias,url.url);
           this.add(url.url, urlPage);
         }
+        if(url.alias !== "" && (urlPage.name === "" || urlPage.name === url.url)) {
+          urlPage.name = url.alias;
+        }
         this.addInferredParentChild(page,urlPage);
         const originPage = this.get(url.origin);
         if(originPage) {
