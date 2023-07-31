@@ -22,6 +22,7 @@ declare module "obsidian" {
   interface App {
     plugins: {
       disablePlugin(plugin: string):Promise<any>;
+      plugins: { [key: string]: Plugin; };
     };
   }
   interface WorkspaceLeaf {
@@ -313,6 +314,10 @@ export default class ExcaliBrain extends Plugin {
   }
 
   private excalidrawAvailable():boolean {
+    if(this.app.plugins.plugins["obsidian-excalidraw-plugin"] === this.EA.plugin) {
+      return true;
+    }
+
     const ea = getEA(this.scene?.leaf?.view);
     if(!ea) {
       this.EA = null;
@@ -322,10 +327,8 @@ export default class ExcaliBrain extends Plugin {
       new Notice("ExcaliBrain: Please start Excalidraw and try again.",4000);
       return false;
     }
-    if(this.EA !== ea) {
-      this.EA = ea;
-      this.registerExcalidrawAutomateHooks()
-    }
+    this.EA = ea;
+    this.registerExcalidrawAutomateHooks()
     return true;
   }
 
