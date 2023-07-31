@@ -337,6 +337,7 @@ export class Scene {
         api.zoomToFit(null, 5, 0.15);
       }
       ea.targetView.linksAlwaysOpenInANewPane = true;
+      ea.targetView.allowFrameButtonsInViewMode = true;
       await this.addEventHandler();
       this.historyPanel = new HistoryPanel((this.leaf.view as TextFileView).contentEl.querySelector(".excalidraw"),this.plugin);
       new Notice("ExcaliBrain On");
@@ -737,10 +738,17 @@ export class Scene {
   }
 
   private async brainEventHandler (leaf:WorkspaceLeaf, startup:boolean = false) {
+    const settings = this.plugin.settings;
+    
+    if(!this.ea.targetView?.file || this.ea.targetView.file.path !== settings.excalibrainFilepath) {
+      this.unloadScene();
+      return;
+    }
+
     if(this.disregardLeafChange) {
       return;
     }
-    const settings = this.plugin.settings;
+
     if(!startup && settings.embedCentralNode) {
       return;
     }
@@ -757,11 +765,6 @@ export class Scene {
     }
 
     if(this.pinLeaf && leaf !== this.centralLeaf) return;
-
-    if(!this.ea.targetView?.file || this.ea.targetView.file.path !== settings.excalibrainFilepath) {
-      this.unloadScene();
-      return;
-    }
     
     if(!(leaf?.view && (leaf.view instanceof FileView) && leaf.view.file)) {
       this.blockUpdateTimer = false;
@@ -920,6 +923,10 @@ export class Scene {
       this.ea.targetView.linksAlwaysOpenInANewPane = false;
     }
     
+    if(this.ea.targetView && isBoolean(this.ea.targetView.allowFrameButtonsInViewMode)) {
+      this.ea.targetView.allowFrameButtonsInViewMode = false;
+    }
+
     if(this.ea.targetView && this.ea.targetView.excalidrawAPI) {
       try {
         this.ea.targetView.semaphores.saving = false;

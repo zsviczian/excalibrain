@@ -83,10 +83,11 @@ export default class ExcaliBrain extends Plugin {
     this.registerEvents();
     this.urlParser = new URLParser(this);
     this.app.workspace.onLayoutReady(()=>{
+      this.urlParser.init();
       this.DVAPI = getAPI();
       if(!this.DVAPI) {
         (new WarningPrompt(
-          app,
+          this.app,
           "⚠ ExcaliBrain Disabled: DataView Plugin not found",
           t("DATAVIEW_NOT_FOUND"))
         ).show(async (result: boolean) => {
@@ -98,7 +99,7 @@ export default class ExcaliBrain extends Plugin {
       }
       if(!this.DVAPI.version.compare('>=', '0.5.31')) {
         (new WarningPrompt(
-          app,
+          this.app,
           "⚠ ExcaliBrain Disabled: Dataview upgrade requried",
           t("DATAVIEW_UPGRADE"))
         ).show(async (result: boolean) => {
@@ -201,6 +202,19 @@ export default class ExcaliBrain extends Plugin {
       await sleep(100);
     }
 
+    counter = 0;
+    while(!this.urlParser.initalized) {
+      if(counter++ % 100 === 10) {
+        new Notice("ExcaliBrain is waiting for URLParser to finish indexing",1000);
+      }
+      await sleep(100);
+    }
+
+    //Add all host urls
+    this.urlParser.hosts.forEach((url)=>{
+      this.pages.add(url, new Page(this.pages, url, null, this, false, false, url, url));
+    });
+
     //Add all folders and files
     const addFolderChildren = (parentFolder: TFolder, parent: Page) => {
       const children = parentFolder.children; 
@@ -256,13 +270,17 @@ export default class ExcaliBrain extends Plugin {
     //Add all links as inferred children to pages on which they were found
     this.pages.addResolvedLinks();
 
+    //Add all urls as inferred children to pages on which they were found
+    //and inferred children of their origins
+    this.pages.addPageURLs();
+
     const self = this;
     setTimeout(async()=>{
       //@ts-ignore
-      const bookmarksPlugin = app.internalPlugins.getPluginById("bookmarks");
+      const bookmarksPlugin = this.app.internalPlugins.getPluginById("bookmarks");
       if(!bookmarksPlugin) { //code to be removed when bookmarks plugin is released, only leave return
         //@ts-ignore
-        const starredPlugin = app.internalPlugins.getPluginById("starred");
+        const starredPlugin = this.app.internalPlugins.getPluginById("starred");
         if(!starredPlugin) {
           return;
         }
@@ -562,7 +580,7 @@ export default class ExcaliBrain extends Plugin {
     }
 
     this.EA.onLinkClickHook = (element,linkText,event) => {
-      const path = linkText.match(/\[\[([^\]]*)/)?.[1];
+      const path = linkText.match(/\[\[([^\]]*)/)?.[1] ?? linkText.match(/(http.*)/)?.[1];
       if(!path) return true;
       const page =  this.pages.get(path);
       const ea = this.EA;
@@ -595,15 +613,20 @@ export default class ExcaliBrain extends Plugin {
         return false;
       }
 
-      //if centralPage is in embeddedFrame, simply render the scene
+      //if centralPage is in embeddedFrame
       if(this.settings.embedCentralNode) {
+        //the user clicked the link handle in the top left, then open the file in a leaf
         if(this.scene.centralPagePath === page.path) {
-          if(this.scene.isCentralLeafStillThere()) {
-            this.scene.centralLeaf.openFile(page.file,{active:true});
-            return false;
+          if(page.isURL) {
+            return true; //let Excalidraw open the webpage
+          } else {
+            if(this.scene.isCentralLeafStillThere()) {
+              this.scene.centralLeaf.openFile(page.file,{active:true});
+              return false;
+            }
+            ea.targetView.linksAlwaysOpenInANewPane = false;
+            setTimeout(()=>ea.targetView.linksAlwaysOpenInANewPane = true,300);
           }
-          ea.targetView.linksAlwaysOpenInANewPane = false;
-          setTimeout(()=>ea.targetView.linksAlwaysOpenInANewPane = true,300);
           return true;
         }
         this.scene.renderGraphForPath(path);
@@ -612,7 +635,7 @@ export default class ExcaliBrain extends Plugin {
 
       const centralLeaf = this.scene.getCentralLeaf();
       //handle click on link to existing file
-      if(!page.isFolder && !page.isTag) {
+      if(!page.isFolder && !page.isTag && !page.isURL) {
         //if the leaf attached to ExcaliBrain already has the new file open, render the associated graph
         if((centralLeaf?.view as TextFileView)?.file?.path === path) {
           this.scene.renderGraphForPath(path);
@@ -821,6 +844,13 @@ export default class ExcaliBrain extends Plugin {
       display: t("NODESTYLE_INFERRED"),
       getInheritedStyle: ()=> this.settings.baseNodeStyle
     };
+    this.nodeStyles["url"] = {
+      style: this. settings.urlNodeStyle,
+      allowOverride: true,
+      userStyle: false,
+      display: t("NODESTYLE_URL"),
+      getInheritedStyle: ()=> this.settings.baseNodeStyle
+    },
     this.nodeStyles["virtual"] = {
       style: this.settings.virtualNodeStyle,
       allowOverride: true,
@@ -918,4 +948,3 @@ export default class ExcaliBrain extends Plugin {
     this.focusSearchAfterInitiation = false;
   }
 }
-

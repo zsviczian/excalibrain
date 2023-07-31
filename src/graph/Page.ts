@@ -63,14 +63,15 @@ export class Page {
     public plugin: ExcaliBrain,
     public isFolder: boolean=false,
     public isTag: boolean=false,
-    public name?: string
+    public name?: string,
+    public url:string = null
   ) {
     if(!name) {
       this.name = file 
       ? (file.extension === "md")
         ? file.basename
         : file.name
-      : getFilenameFromPath(path);
+      : Boolean(url) ? url : getFilenameFromPath(path);
     }
     this.mtime = file ? file.stat.mtime : null;
     this.neighbours = new Map<string,Relation>();
@@ -194,6 +195,12 @@ export class Page {
   }
 
   public getTitle(): string {
+    if(this.isURL) {
+      if(this.plugin.settings.renderAlias && this.name && this.name !== "") {
+        return this.name;
+      }
+      return this.url;
+    }
     const aliases = (this.file && this.plugin.settings.renderAlias)
       ? (this.dvPage?.file?.aliases?.values??[])
       : [];
@@ -253,18 +260,23 @@ export class Page {
     this.addDVFieldLinksToPage();
     this.neighbours.forEach(n=>n.target.addDVFieldLinksToPage());
 
-    const { showVirtualNodes, showAttachments, showFolderNodes, showTagNodes, showPageNodes } = this.plugin.settings
+    const { showVirtualNodes, showAttachments, showFolderNodes, showTagNodes, showPageNodes, showURLNodes } = this.plugin.settings
     return Array.from(this.neighbours)
       .filter(x=> (showVirtualNodes || !x[1].target.isVirtual) && 
         (showAttachments || !x[1].target.isAttachment) &&
         (showFolderNodes || !x[1].target.isFolder) &&
         (showTagNodes || !x[1].target.isTag) &&
-        (showPageNodes || x[1].target.isFolder || x[1].target.isTag || x[1].target.isAttachment)
-        )
+        (showPageNodes || x[1].target.isFolder || x[1].target.isTag || x[1].target.isAttachment || x[1].target.isURL) &&
+        (showURLNodes || !x[1].target.isURL)
+      )
   }
   
   public get isVirtual(): boolean {
-    return (this.file === null) && !this.isFolder && !this.isTag;
+    return (this.file === null) && !this.isFolder && !this.isTag && !this.isURL;
+  }
+
+  public get isURL(): boolean {
+    return Boolean(this.url);
   }
 
   public get isAttachment(): boolean {
@@ -438,6 +450,7 @@ export class Page {
         ? RelationType.INFERRED
         : null;
   };
+
 
   childrenCount():number {
     return this.getNeighbours()
