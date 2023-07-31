@@ -51,15 +51,15 @@ export class Pages {
 
   private addInferredParentChild(parent: Page, child: Page) {
     if(this.plugin.settings.inferAllLinksAsFriends) {
-      child.addLeftFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
-      parent.addLeftFriend(child,RelationType.INFERRED, LinkDirection.TO);
+      child.addLeftFriend(parent,RelationType.INFERRED, LinkDirection.TO);
+      parent.addLeftFriend(child,RelationType.INFERRED, LinkDirection.FROM);
     } else {
       if(this.plugin.settings.inverseInfer) { //https://github.com/zsviczian/excalibrain/issues/78
-        child.addChild(parent,RelationType.INFERRED, LinkDirection.FROM);
-        parent.addParent(child,RelationType.INFERRED, LinkDirection.TO);
+        child.addChild(parent,RelationType.INFERRED, LinkDirection.TO);
+        parent.addParent(child,RelationType.INFERRED, LinkDirection.FROM);
       } else {
-        child.addParent(parent,RelationType.INFERRED, LinkDirection.FROM);
-        parent.addChild(child,RelationType.INFERRED, LinkDirection.TO);
+        child.addParent(parent,RelationType.INFERRED, LinkDirection.TO);
+        parent.addChild(child,RelationType.INFERRED, LinkDirection.FROM);
       }
     }    
   }
@@ -134,15 +134,15 @@ export class Pages {
 export const addUnresolvedPage = (childPath: string, parent: Page, plugin: ExcaliBrain, pages: Pages):Page => {
   const newPage = pages.get(childPath) ?? new Page(pages,childPath,null,plugin);
   if(plugin.settings.inferAllLinksAsFriends) {
-    newPage.addLeftFriend(parent,RelationType.INFERRED, LinkDirection.FROM);
-    parent.addLeftFriend(newPage,RelationType.INFERRED, LinkDirection.TO);
+    newPage.addLeftFriend(parent,RelationType.INFERRED, LinkDirection.TO);
+    parent.addLeftFriend(newPage,RelationType.INFERRED, LinkDirection.FROM);
   } else {
     if(plugin.settings.inverseInfer) { //https://github.com/zsviczian/excalibrain/issues/78
-      newPage.addChild(parent,RelationType.INFERRED, LinkDirection.FROM);
-      parent.addParent(newPage,RelationType.INFERRED, LinkDirection.TO);
+      newPage.addChild(parent,RelationType.INFERRED, LinkDirection.TO);
+      parent.addParent(newPage,RelationType.INFERRED, LinkDirection.FROM);
     } else {
-      newPage.addParent(parent,RelationType.INFERRED, LinkDirection.FROM);
-      parent.addChild(newPage,RelationType.INFERRED, LinkDirection.TO);
+      newPage.addParent(parent,RelationType.INFERRED, LinkDirection.TO);
+      parent.addChild(newPage,RelationType.INFERRED, LinkDirection.FROM);
     }
   }
   pages.add(childPath,newPage);

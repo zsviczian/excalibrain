@@ -30,13 +30,13 @@ export class Links {
     }
     const key2 = nodeB.page.path+SEPARATOR+nodeA.page.path;
     const link = new Link(
-      linkDirection===LinkDirection.FROM
+      linkDirection===(settings.inverseArrowDirection ? LinkDirection.TO : LinkDirection.FROM)
         ? nodeB
         : nodeA,
-        linkDirection===LinkDirection.FROM
+        linkDirection===(settings.inverseArrowDirection ? LinkDirection.TO : LinkDirection.FROM)
         ? nodeA
         : nodeB,
-        linkDirection===LinkDirection.FROM
+        linkDirection===(settings.inverseArrowDirection ? LinkDirection.TO : LinkDirection.FROM)
           ? nodeBRole === Role.LEFT || nodeBRole === Role.RIGHT
             ? nodeBRole === Role.LEFT ? Role.LEFT : Role.RIGHT
             : nodeBRole === Role.CHILD

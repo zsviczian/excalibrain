@@ -102,7 +102,8 @@ export class Scene {
     const centralPage = this.plugin.pages.get(this.centralPagePath);
     if(
       centralPage?.file &&
-      !(centralPage.isFolder || centralPage.isTag || centralPage.isVirtual)
+      !(centralPage.isFolder || centralPage.isTag || centralPage.isVirtual) &&
+      !this.plugin.settings.embedCentralNode
     ) {
       if(!this.centralLeaf) {
         this.ea.openFileInNewOrAdjacentLeaf(centralPage.file);
@@ -113,7 +114,7 @@ export class Scene {
         this.centralLeaf.openFile(centralPage.file, {active: false});
       }
     }
-    await this.render();
+    await this.render(this.plugin.settings.embedCentralNode);
   }
 
   private getCentralPage():Page {

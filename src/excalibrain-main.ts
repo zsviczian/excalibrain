@@ -221,16 +221,16 @@ export default class ExcaliBrain extends Plugin {
         if(f instanceof TFolder) {
           const child = new Page(this.pages,"folder:"+f.path, null, this, true, false, f.name);
           this.pages.add("folder:"+f.path,child);
-          child.addParent(parent,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
-          parent.addChild(child,RelationType.DEFINED,LinkDirection.TO,"file-tree");
+          child.addParent(parent,RelationType.DEFINED,LinkDirection.TO,"file-tree");
+          parent.addChild(child,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
           addFolderChildren(f,child);
           return;
         } else {
           this.lowercasePathMap.set(f.path.toLowerCase(),f.path); //path case sensitivity issue (see Pages.ts and Scene.ts for more)
           const child = new Page(this.pages,f.path,f as TFile,this);
           this.pages.add(f.path,child);
-          child.addParent(parent,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
-          parent.addChild(child,RelationType.DEFINED,LinkDirection.TO,"file-tree");
+          child.addParent(parent,RelationType.DEFINED,LinkDirection.TO,"file-tree");
+          parent.addChild(child,RelationType.DEFINED,LinkDirection.FROM,"file-tree");
         }
       })
     }
@@ -313,7 +313,7 @@ export default class ExcaliBrain extends Plugin {
   }
 
   private excalidrawAvailable():boolean {
-    const ea = getEA();
+    const ea = getEA(this.scene?.leaf?.view);
     if(!ea) {
       this.EA = null;
       if(this.scene) {
@@ -322,7 +322,7 @@ export default class ExcaliBrain extends Plugin {
       new Notice("ExcaliBrain: Please start Excalidraw and try again.",4000);
       return false;
     }
-    if(!this.EA !== ea) {
+    if(this.EA !== ea) {
       this.EA = ea;
       this.registerExcalidrawAutomateHooks()
     }

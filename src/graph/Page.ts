@@ -95,8 +95,8 @@ export class Page {
           return;
         }
         if(this.neighbours.has(path)) return; //https://github.com/zsviczian/excalibrain/issues/74
-        child.addParent(this,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
-        this.addChild(child,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
+        child.addParent(this,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
+        this.addChild(child,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
       });
       return;
     }
@@ -129,8 +129,8 @@ export class Page {
         //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         //return;
       }
-      this.addParent(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
-      referencedPage.addChild(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+      this.addParent(referencedPage,RelationType.DEFINED,LinkDirection.FROM, item.field);
+      referencedPage.addChild(this,RelationType.DEFINED,LinkDirection.TO, item.field);
     });
 
     const childFields = this.plugin.hierarchyLowerCase.children;
@@ -141,8 +141,8 @@ export class Page {
         //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         //return;
       }        
-      this.addChild(referencedPage,RelationType.DEFINED,LinkDirection.TO, item.field);
-      referencedPage.addParent(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+      this.addChild(referencedPage,RelationType.DEFINED,LinkDirection.FROM, item.field);
+      referencedPage.addParent(this,RelationType.DEFINED,LinkDirection.TO, item.field);
     });
 
     const leftFriendFields = this.plugin.hierarchyLowerCase.leftFriends;
@@ -153,8 +153,8 @@ export class Page {
         //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         //return;
       }        
-      this.addLeftFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
-      referencedPage.addLeftFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+      this.addLeftFriend(referencedPage,RelationType.DEFINED,LinkDirection.FROM,item.field);
+      referencedPage.addLeftFriend(this,RelationType.DEFINED,LinkDirection.TO, item.field);
     });
 
     const rightFriendFields = this.plugin.hierarchyLowerCase.rightFriends;
@@ -165,8 +165,8 @@ export class Page {
         //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         //return;
       }        
-      this.addRightFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
-      referencedPage.addRightFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+      this.addRightFriend(referencedPage,RelationType.DEFINED,LinkDirection.FROM,item.field);
+      referencedPage.addRightFriend(this,RelationType.DEFINED,LinkDirection.TO, item.field);
     });
 
     const previousFields = this.plugin.hierarchyLowerCase.previous;
@@ -177,8 +177,8 @@ export class Page {
         //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         //return;
       }        
-      this.addPreviousFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
-      referencedPage.addNextFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+      this.addPreviousFriend(referencedPage,RelationType.DEFINED,LinkDirection.FROM,item.field);
+      referencedPage.addNextFriend(this,RelationType.DEFINED,LinkDirection.TO, item.field);
     });
 
     const nextFields = this.plugin.hierarchyLowerCase.next;
@@ -189,8 +189,8 @@ export class Page {
         //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
         //return;
       }        
-      this.addNextFriend(referencedPage,RelationType.DEFINED,LinkDirection.TO,item.field);
-      referencedPage.addPreviousFriend(this,RelationType.DEFINED,LinkDirection.FROM, item.field);
+      this.addNextFriend(referencedPage,RelationType.DEFINED,LinkDirection.FROM,item.field);
+      referencedPage.addPreviousFriend(this,RelationType.DEFINED,LinkDirection.TO, item.field);
     });    
   }
 
