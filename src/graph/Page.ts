@@ -55,7 +55,7 @@ export class Page {
   public dvPage: Record<string, Literal>;
   public primaryStyleTag: string;
   public dvIndexReady: boolean = false;
-  maxLabelLength: number;
+  public maxLabelLength: number;
   
   constructor(
     private pages: Pages,
