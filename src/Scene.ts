@@ -129,6 +129,21 @@ export class Scene {
     return centralPage;
   }
 
+  /** iterates through a neighbour stack and returns the longest title length found.
+   * @param Neighbour[]
+   * @returns number
+   * @description: Possibly time consuming - are there other options? 
+  */ 
+  private longestTitle(neighbours: Neighbour[], checkMax:number=20): number {
+    const lengths:number[] = [0];
+    for (let index = 0; (index<neighbours.length) && (index<=checkMax); index++) {
+      const item = neighbours[index];
+      lengths.push(item.page.getTitle().length);
+    }
+    return Math.max(...lengths);
+  }
+
+
   /**
    * Renders the ExcaliBrain graph for the file provided by its path
    * @param path 
@@ -482,11 +497,53 @@ export class Scene {
     this.layouts = [];
     const manyFriends = friends.length >= 10;
     const manyNextFriends = nextFriends.length >= 10;
+    const baseStyle = settings.baseNodeStyle;
+    const minLabelLength = 7;
+    
     const style = {
       ...settings.baseNodeStyle,
       ...settings.centralNodeStyle,
     };
-    const baseStyle = settings.baseNodeStyle;
+    const basestyle = settings.baseNodeStyle;
+    ea.style.fontFamily = basestyle.fontFamily;
+    ea.style.fontSize = basestyle.fontSize;
+    const baseChar4x = this.ea.measureText("mi3L".repeat(1));
+    const baseChar = {
+      width: baseChar4x.width * 0.25,
+      height: baseChar4x.height
+    };
+    this.nodeWidth = isCompactView
+      ? basestyle.maxLabelLength * baseChar.width + 2 * basestyle.padding
+      : this.textSize.width + 2 * style.padding;
+    
+    const compactFactor = isCompactView ? 1.4 : 2;
+
+    this.nodeHeight = compactFactor * (
+      isCompactView 
+        ? baseChar.height + 2 * basestyle.padding
+        : this.textSize.height + 2 * style.padding
+      );
+    const padding = 3 * basestyle.padding;
+
+    const isCenterEmbedded = 
+      settings.embedCentralNode &&
+      !centralPage.isVirtual &&
+      !centralPage.isFolder &&
+      !centralPage.isTag;
+    const centerEmbedWidth = settings.centerEmbedWidth;
+    const centerEmbedHeight = settings.centerEmbedHeight;
+
+    // container
+    const container = this.leaf.view.containerEl;
+    const h = container.innerHeight-150;
+    const w = container.innerWidth;
+    const rf = 1/(h/w);
+    const rfCorr = Math.min(rf,1);
+    
+    const correctedMaxLabelLength = Math.round(style.maxLabelLength*rfCorr);
+    const correctedMinLabelLength = Math.max(minLabelLength, correctedMaxLabelLength); 
+
+    //columns
     const siblingsCols = siblings.length >= 20
       ? 3
       : siblings.length >= 10
@@ -506,16 +563,82 @@ export class Scene {
       : (parents.length < 5
         ? [1, 1, 2, 3, 2][parents.length]
         : 3);
+    const friendCols = isCompactView && isCenterEmbedded
+      ? Math.ceil((friends.length*this.nodeHeight)/centerEmbedHeight)
+      : manyFriends
+        ? 2
+        : 1;
+  
+    const nextFriendCols = isCompactView && isCenterEmbedded
+      ? Math.ceil((nextFriends.length*this.nodeHeight)/centerEmbedHeight)
+      : manyNextFriends
+        ? 2
+        : 1;
+  
+    //neighbour length and width
 
+    //center     
+    const rootTitle = centralPage.getTitle();
+    const rootNode = ea.measureText(rootTitle.repeat(1));
+    const actualRootLength = [...new Intl.Segmenter().segment(rootTitle)].length;
+    const rootNodeLength = isCompactView
+      ? Math.min(actualRootLength, style.maxLabelLength)
+      : style.maxLabelLength;
+    const rootWidth = isCompactView ? rootNode.width + 2 * style.padding : this.nodeWidth;
 
-    const isCenterEmbedded = 
-      settings.embedCentralNode &&
-      !centralPage.isVirtual &&
-      !centralPage.isFolder &&
-      !centralPage.isTag;
-    const centerEmbedWidth = settings.centerEmbedWidth;
-    const centerEmbedHeight = settings.centerEmbedHeight;
+    const heightInCenter = isCenterEmbedded
+      ? centerEmbedHeight + 2 * this.nodeHeight
+      : 4 *this.nodeHeight;
     
+    //parents
+    const parentLabelLength = isCompactView
+      ? Math.min(this.longestTitle(parents), correctedMinLabelLength)
+      : style.maxLabelLength;
+
+    const parentWidth = isCompactView
+      ? parentLabelLength * baseChar.width + padding
+      : this.nodeWidth;
+
+    //children
+    const childLength = isCompactView
+    ? Math.min(this.longestTitle(children,20), correctedMinLabelLength)
+    : style.maxLabelLength;
+    
+    const childWidth = isCompactView
+      ? childLength * baseChar.width + padding
+      : this.nodeWidth;
+
+    // friends
+    const friendLength = isCompactView
+      ? Math.min(this.longestTitle(friends),correctedMinLabelLength)
+      : style.maxLabelLength;
+
+    const friendWidth = isCompactView
+      ? friendLength * baseChar.width + padding
+      : this.nodeWidth;
+
+    // nextfriends
+    const nextFriendLength = isCompactView
+    ? Math.min(this.longestTitle(nextFriends), correctedMinLabelLength)
+    : style.maxLabelLength;
+
+    const nextFriendWidth = isCompactView
+    ? nextFriendLength * baseChar.width + padding
+    : this.nodeWidth;
+
+    //siblings
+    const siblingsStyle = settings.siblingNodeStyle;
+    const siblingsPadding = siblingsStyle.padding??settings.baseNodeStyle.padding;
+    const siblingsLabelLength = isCompactView
+      ? Math.min(this.longestTitle(siblings,20), correctedMinLabelLength)
+      : siblingsStyle.maxLabelLength??settings.baseNodeStyle.maxLabelLength;
+    ea.style.fontFamily = siblingsStyle.fontFamily;
+    ea.style.fontSize = siblingsStyle.fontSize;
+    const siblingsTextSize = ea.measureText("m".repeat(siblingsLabelLength+3));
+    const siblingsNodeWidth =  siblingsTextSize.width + 3 * siblingsPadding;
+    const siblingsNodeHeight = compactFactor * (siblingsTextSize.height + 2 * siblingsPadding);
+
+    //layout
     const lCenter = new Layout({
       origoX: 0,
       origoY: isCenterEmbedded
@@ -526,11 +649,11 @@ export class Scene {
       columns: 1,
       columnWidth: isCenterEmbedded
         ? centerEmbedWidth
-        : this.nodeWidth,
+        : rootWidth,
       rowHeight: isCenterEmbedded
         ? centerEmbedHeight
-        : this.nodeHeight,
-        maxLabelLength: style.maxLabelLength
+        : rootNode.height,
+        maxLabelLength: rootNodeLength
     });
     this.layouts.push(lCenter);
 
@@ -544,9 +667,9 @@ export class Scene {
         : 2 * this.nodeHeight,
       bottom: null,
       columns: childrenCols,
-      columnWidth: this.nodeWidth,
+      columnWidth: childWidth,
       rowHeight: this.nodeHeight,
-      maxLabelLength: style.maxLabelLength
+      maxLabelLength: childLength
     });
     this.layouts.push(lChildren);
   
@@ -567,9 +690,9 @@ export class Scene {
       top: null,
       bottom: null,
       columns: 1,
-      columnWidth: this.nodeWidth,
+      columnWidth: friendWidth,
       rowHeight: this.nodeHeight,
-      maxLabelLength: style.maxLabelLength
+      maxLabelLength: friendLength
     });
     this.layouts.push(lFriends);
 
@@ -581,9 +704,9 @@ export class Scene {
       top: null,
       bottom: null,
       columns: 1,
-      columnWidth: this.nodeWidth,
+      columnWidth: nextFriendWidth,
       rowHeight: this.nodeHeight,
-      maxLabelLength: style.maxLabelLength
+      maxLabelLength: nextFriendLength
     });
     this.layouts.push(lNextFriends);
 
@@ -593,21 +716,12 @@ export class Scene {
       top: null,
       bottom: -2 * this.nodeHeight,
       columns: parentCols, // 3,
-      columnWidth: this.nodeWidth,
+      columnWidth: parentWidth,
       rowHeight: this.nodeHeight,
-      maxLabelLength: style.maxLabelLength
+      maxLabelLength: parentLabelLength
     });
     this.layouts.push(lParents);
     
-    const siblingsStyle = settings.siblingNodeStyle;
-    const siblingsPadding = siblingsStyle.padding??baseStyle.padding;
-    const siblingsLabelLength = siblingsStyle.maxLabelLength??baseStyle.maxLabelLength;
-    ea.style.fontFamily = siblingsStyle.fontFamily;
-    ea.style.fontSize = siblingsStyle.fontSize;
-    const siblingsTextSize = ea.measureText("m".repeat(siblingsLabelLength+3));
-    const siblingsNodeWidth = siblingsTextSize.width + 3 * siblingsPadding;
-    const siblingsNodeHeight = 2 * (siblingsTextSize.height + 2 * siblingsPadding);
-
     const lSiblings = new Layout({
       origoX: this.nodeWidth * ((parentCols-1)/2 + (siblingsCols+1.5)/3),
       origoY: -2.5 * this.nodeHeight,
@@ -616,10 +730,11 @@ export class Scene {
       columns: siblingsCols, 
       columnWidth: siblingsNodeWidth,
       rowHeight: siblingsNodeHeight,
-      maxLabelLength: style.maxLabelLength
+      maxLabelLength: siblingsLabelLength
     })
     this.layouts.push(lSiblings);
 
+    centralPage.maxLabelLength = rootNodeLength; 
     this.rootNode = new Node({
       ea,
       page: centralPage,
