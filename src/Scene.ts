@@ -102,7 +102,8 @@ export class Scene {
     const centralPage = this.plugin.pages.get(this.centralPagePath);
     if(
       centralPage?.file &&
-      !(centralPage.isFolder || centralPage.isTag || centralPage.isVirtual)
+      !(centralPage.isFolder || centralPage.isTag || centralPage.isVirtual) &&
+      !this.plugin.settings.embedCentralNode
     ) {
       if(!this.centralLeaf) {
         this.ea.openFileInNewOrAdjacentLeaf(centralPage.file);
@@ -113,7 +114,7 @@ export class Scene {
         this.centralLeaf.openFile(centralPage.file, {active: false});
       }
     }
-    await this.render();
+    await this.render(this.plugin.settings.embedCentralNode);
   }
 
   private getCentralPage():Page {
@@ -344,6 +345,7 @@ export class Scene {
         setTimeout(()=>api.zoomToFit(null, this.plugin.settings.maxZoom, 0.15),100);
       }
       ea.targetView.linksAlwaysOpenInANewPane = true;
+      ea.targetView.allowFrameButtonsInViewMode = true;
       await this.addEventHandler();
       this.historyPanel = new HistoryPanel((this.leaf.view as TextFileView).contentEl.querySelector(".excalidraw"),this.plugin);
       new Notice("ExcaliBrain On");
@@ -542,11 +544,11 @@ export class Scene {
     this.layouts.push(lChildren);
   
     const friendOrigoX = isCompactView && isCenterEmbedded
-      ? centerEmbedWidth/2  + 1.5 * this.nodeWidth
+      ? centerEmbedWidth/2  +  this.nodeWidth
       : Math.max(
           (((manyNextFriends?1:0)+Math.max(childrenCols,parentCols)+1.9)/2.4) * this.nodeWidth, // (manyChildren ? -3 : -2)  * this.nodeWidth,
           isCenterEmbedded
-            ? centerEmbedWidth/2 + 1.5 * this.nodeWidth
+            ? centerEmbedWidth/2 + this.nodeWidth
             : 0
         );
 
@@ -696,7 +698,7 @@ export class Scene {
     //-------------------------------------------------------
     // Render
     ea.style.opacity = 100;
-    await Promise.all(this.layouts.map(async (layout) => await layout.render(isCompactView)));
+    await Promise.all(this.layouts.map(async (layout) => await layout.render()));
     const nodeElements = ea.getElements();
     this.links.render(Array.from(this.toolsPanel.linkTagFilter.selectedLinks));
     
@@ -713,9 +715,8 @@ export class Scene {
     ea.elementsDict = newImagesDict;
 
     ea.addElementsToView(false,false);
-    ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
-
     excalidrawAPI.updateScene({appState: {viewBackgroundColor: settings.backgroundColor}});
+    ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
     if(settings.allowAutozoom && !retainCentralNode) {
       setTimeout(()=>excalidrawAPI.zoomToFit(ea.getViewElements(),settings.maxZoom,0.15),100);
     }
@@ -744,10 +745,17 @@ export class Scene {
   }
 
   private async brainEventHandler (leaf:WorkspaceLeaf, startup:boolean = false) {
+    const settings = this.plugin.settings;
+    
+    if(!this.ea.targetView?.file || this.ea.targetView.file.path !== settings.excalibrainFilepath) {
+      this.unloadScene();
+      return;
+    }
+
     if(this.disregardLeafChange) {
       return;
     }
-    const settings = this.plugin.settings;
+
     if(!startup && settings.embedCentralNode) {
       return;
     }
@@ -764,11 +772,6 @@ export class Scene {
     }
 
     if(this.pinLeaf && leaf !== this.centralLeaf) return;
-
-    if(!this.ea.targetView?.file || this.ea.targetView.file.path !== settings.excalibrainFilepath) {
-      this.unloadScene();
-      return;
-    }
     
     if(!(leaf?.view && (leaf.view instanceof FileView) && leaf.view.file)) {
       this.blockUpdateTimer = false;
@@ -927,6 +930,10 @@ export class Scene {
       this.ea.targetView.linksAlwaysOpenInANewPane = false;
     }
     
+    if(this.ea.targetView && isBoolean(this.ea.targetView.allowFrameButtonsInViewMode)) {
+      this.ea.targetView.allowFrameButtonsInViewMode = false;
+    }
+
     if(this.ea.targetView && this.ea.targetView.excalidrawAPI) {
       try {
         this.ea.targetView.semaphores.saving = false;

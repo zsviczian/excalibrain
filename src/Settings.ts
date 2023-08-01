@@ -27,10 +27,12 @@ export interface ExcaliBrainSettings {
   hierarchy: Hierarchy;
   inferAllLinksAsFriends: boolean;
   inverseInfer: boolean;
+  inverseArrowDirection: boolean;
   renderAlias: boolean;
   nodeTitleScript: string;
   backgroundColor: string;
   excludeFilepaths: string[];
+  autoOpenCentralDocument: boolean;
   showInferredNodes: boolean;
   showAttachments: boolean;
   showURLNodes: boolean;
@@ -85,10 +87,12 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   hierarchy: DEFAULT_HIERARCHY_DEFINITION,
   inferAllLinksAsFriends: false,
   inverseInfer: false,
+  inverseArrowDirection: false,
   renderAlias: true,
   nodeTitleScript: "",
   backgroundColor: "#0c3e6aff",
   excludeFilepaths: [],
+  autoOpenCentralDocument: true,
   showInferredNodes: true,
   showAttachments: true,
   showURLNodes: true,
@@ -1565,6 +1569,17 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           })
         )
 
+    new Setting(containerEl)
+      .setName(t("INVERSE_ARROW_DIRECTION_NAME"))
+      .setDesc(fragWithHTML(t("INVERSE_ARROW_DIRECTION_DESC")))
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.inverseArrowDirection)
+          .onChange(value => {
+            this.plugin.settings.inverseArrowDirection = value;
+            this.dirty = true;
+          })
+        )
 
     let pSetting:Setting, cSetting:Setting, fSetting:Setting, gSetting: Setting, mSetting: Setting, bSetting: Setting;
 

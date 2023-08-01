@@ -28,6 +28,8 @@ export default {
     "<li>If files mutually link to each other, they are FRIENDS</li></ul>",
   REVERSE_NAME: "Reverse infer logic",
   REVERSE_DESC: "<b>Toggle ON:</b> Treat backlinks as children and forward links as parents.<br><b>Toggle OFF:</b> Treat backlinks as parents and forward links as children</b>",
+  INVERSE_ARROW_DIRECTION_NAME: "Inverse arrow direction",
+  INVERSE_ARROW_DIRECTION_DESC: "<b>Toggle ON:</b> Display arrow heads in the opposite direction of the link direction.<br><b>Toggle OFF:</b> Display arrow heads in the same direction as the link direction</b>",
   PARENTS_NAME: "Parents",
   CHILDREN_NAME: "Children",
   LEFT_FRIENDS_NAME: "Left-Side Friends",
@@ -172,6 +174,7 @@ export default {
   COMMAND_ADD_RIGHT_FRIEND_FIELD: "Add dataview field to ontology as RIGHT-SIDE FRIEND",
   COMMAND_ADD_PREVIOUS_FIELD: "Add dataview field to ontology as PREVIOUS",
   COMMAND_ADD_NEXT_FIELD: "Add dataview field to ontology as NEXT",
+  COMMAND_ADD_ONTOLOGY_MODAL: "Add dataview field to ontology: Open Ontology Modal",
   COMMAND_START: "ExcaliBrain Normal",
   COMMAND_START_HOVER: "ExcaliBrain Hover-Editor",
   COMMAND_START_POPOUT: "ExcaliBrain Popout Window",
@@ -191,5 +194,12 @@ export default {
   SHOW_HIDE_FOLDER: "Show/Hide folder nodes",
   SHOW_HIDE_TAG: "Show/Hide tag nodes",
   SHOW_HIDE_PAGES: "Show/Hide page nodes (incl. defined, inferred, virtual and attachments)",
-  PIN_LEAF: "Link ExcaliBrain to most recent active leaf"
+  PIN_LEAF: "Link ExcaliBrain to most recent active leaf",
+  NAVIGATE_BACK: "Navigate back",
+  NAVIGATE_FORWARD: "Navigate forward",
+  REFRESH_VIEW: "Refresh",
+  AUTO_OPEN_DOCUMENT: "Auto-open document in other leaf when navigating to graph-node and open graph-node when navigating to document in workspace leaf",
+
+  //AddToOntologyModal
+  ADD_TO_ONTOLOGY_MODAL_DESC: "Select the direction of the ontology. If one of the buttons is highlighted, then the field is already part of the ontology in that direction.",
 }

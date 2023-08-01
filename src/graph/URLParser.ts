@@ -7,8 +7,8 @@ export interface FileURL {
   origin: string;
 }
 
-export const linkRegex = /\[([^[\]]+)\]\((https?:\d*?\/\/[a-z0-9&#=.\/\-?_]+)\)/gi; // Matches links in markdown format [label](url)
-export const plainLinkRegex = /(https?:\d*?\/\/[a-z0-9&#=.\/\-?_]+)/gi; // Matches plain links
+// Matches links in markdown format [label](url)
+export const linkRegex = /(?:\[([^[\]]+)\]\()((?:(?:ftp|https?|sftp|shttp|tftp):(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>"']|\([^\s()<>]*\))+(?:\([^\s()<>]*\)|[^\s`*!()\[\]{};:'".,<>?«»“”‘’]))\)|\b()((?:(?:ftp|https?|sftp|shttp|tftp):(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>"']|\([^\s()<>]*\))+(?:\([^\s()<>]*\)|[^\s`*!()\[\]{};:'".,<>?«»“”‘’]))\b/gi;
 
 export class URLParser {
   fileToUrlMap: Map<TFile, FileURL[]> = new Map();
@@ -52,7 +52,11 @@ export class URLParser {
 
     let match;
     while ((match = linkRegex.exec(content)) !== null) {
-      const [, alias, url] = match;
+      const alias = match[1] ?? match[3] ?? "";
+      let url = match[2] ?? match[4] ?? "";
+      if(!url.match(/^(?:ftp|https?|sftp|shttp|tftp):/)) {
+        url = "https://" + url;
+      }
       if (!links.has(url)) {
         const origin = this.getOrigin(url,file);
         links.set(url,{ url, alias, origin});
@@ -62,15 +66,6 @@ export class URLParser {
         if(link.alias === "") {
           links.set(url,{...link,alias});
         }
-      }
-    }
-
-    while ((match = plainLinkRegex.exec(content)) !== null) {
-      const url = match[0];
-      if (!links.has(url)) {
-        const origin = this.getOrigin(url,file);
-        links.set(url, { url, alias: '', origin});
-        this.updateInverseMap(url, file, origin);
       }
     }
 
@@ -125,10 +120,6 @@ export class URLParser {
     this.plugin.registerEvent(this.app.vault.on('create', modifyEventHandler));
     this.plugin.registerEvent(this.app.vault.on('modify', modifyEventHandler));
     this.plugin.registerEvent(this.app.vault.on('delete', deleteEventHandler));
-    /*this.plugin.registerEvent(this.app.vault.on('rename', async (file:TFile) => {
-      this.fileToUrlMap.delete(file);
-      await this.parseFileURLs(file);
-    }));*/
   }
 
 }
