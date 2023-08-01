@@ -84,7 +84,7 @@ export class Layout {
         return this.setPosition(newCenter00);
       }
       if (layoutPosition === 'left' || layoutPosition === 'right') {
-        const maxNodeWidth = Math.max(...this.renderedNodes.flat().map(node => node.labelSize().width));
+        const maxNodeWidth = Math.max(...this.renderedNodes.flat().map(node => node?.labelSize().width));
         const offset = maxNodeWidth > this.spec.columnWidth
           ? (maxNodeWidth - this.spec.columnWidth) / 2 + 0.2 * maxNodeWidth
           : 0;
