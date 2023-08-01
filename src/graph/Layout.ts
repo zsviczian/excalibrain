@@ -100,7 +100,7 @@ export class Layout {
       }
       else {
         const rowWidth = this.spec.columns * this.spec.columnWidth;
-        const nodeGap = this.spec.columnWidth * 0.5;
+        const nodeGap = rowWidth * 0.1;
         const initialCenter = (spec: LayoutSpecification, width: number, row: number) => {
           return width > spec.columnWidth
             ? {
@@ -116,9 +116,19 @@ export class Layout {
         let stackWidth = 0;
         let nodesInfo: { x: number, y: number, width: number }[][] = [];
         const alignCenter = (nodeInfo: { x: number, y: number, width: number }[]) => {
-          const residue = rowWidth - stackWidth;
-          const offset = (residue / 2) / nodeInfo.length;
-          return nodeInfo.map(node => { return { ...node, x: node.x + offset }; });
+          const centerX = center00.x - this.spec.columnWidth/2 + rowWidth/2;
+          let l = 0;
+          let r = nodeInfo.length-1;
+          while (l<=r){
+            const left = nodeInfo[l];
+            const right = nodeInfo[r];
+            const offset = centerX-(left.x + right.x)/2;
+              nodeInfo[l] = {...left,x:left.x + offset};
+              nodeInfo[r] = {...right,x:right.x + offset};
+              l +=1;
+              r -=1;
+          }
+          return nodeInfo;
         }
 
         nodes.forEach((node, index) => {
