@@ -523,7 +523,7 @@ export class Scene {
         ? baseChar.height + 2 * basestyle.padding
         : this.textSize.height + 2 * style.padding
       );
-    const padding = 3 * basestyle.padding;
+    const padding = 6 * basestyle.padding;
 
     const isCenterEmbedded = 
       settings.embedCentralNode &&
@@ -638,11 +638,80 @@ export class Scene {
     const siblingsNodeWidth =  siblingsTextSize.width + 3 * siblingsPadding;
     const siblingsNodeHeight = compactFactor * (siblingsTextSize.height + 2 * siblingsPadding);
 
-    //layout
+    // layout areas
+    const friendsArea = {
+      width:  friends.length>0? friendCols*friendWidth:0, 
+      height: friends.length>0? Math.ceil(friends.length/friendCols)*this.nodeHeight:0
+    }
+    const nextFriendsArea = {
+      width:  nextFriends.length>0? nextFriendCols*nextFriendWidth:0, 
+      height: nextFriends.length>0? Math.ceil(nextFriends.length/nextFriendCols)*this.nodeHeight:0
+    }
+    const parentsArea = {
+      width:  parents.length>0? parentCols*parentWidth:0, 
+      height: parents.length>0? Math.ceil(parents.length/parentCols)*this.nodeHeight:0
+    }
+    const childrenArea = {
+      width:  children.length>0? childrenCols*childWidth:0, 
+      height: children.length>0? Math.ceil(children.length/childrenCols)*this.nodeHeight:0
+    }
+    const siblingsArea = {
+      width:  siblings.length>0? siblingsNodeWidth*siblingsCols:0, 
+      height: siblings.length>0? Math.ceil(siblings.length/siblingsCols)*siblingsNodeHeight:0
+    }
+    
+    // Origos
+    const parentsOrigoY = isCompactView
+      ? (parentsArea.height + Math.max(friendsArea.height,nextFriendsArea.height,heightInCenter))*0.5 + padding
+      : (parentsArea.height + heightInCenter)*0.5;
+
+    const childrenOrigoY = isCompactView
+      ? (childrenArea.height + Math.max(friendsArea.height,nextFriendsArea.height,heightInCenter))*0.5 + padding
+      : (childrenArea.height + heightInCenter)*0.5;
+
+    const friendOrigoX = (isCompactView
+      ? Math.max(
+          (isCenterEmbedded?centerEmbedWidth:rootWidth) + friendsArea.width, 
+          childrenArea.width-friendsArea.width, 
+          parentsArea.width-friendsArea.width
+        )
+      : Math.max(
+          centerEmbedWidth,
+          parentsArea.width,
+          childrenArea.width
+        ) + friendsArea.width
+      )/2 + padding;
+        
+    const nextFriendOrigoX = (isCompactView
+      ? Math.max(
+          (isCenterEmbedded?centerEmbedWidth:rootWidth) + nextFriendsArea.width, 
+          childrenArea.width-nextFriendsArea.width, 
+          parentsArea.width-nextFriendsArea.width
+        )
+      : Math.max(
+          centerEmbedWidth,
+          parentsArea.width,
+          childrenArea.width
+        ) + nextFriendsArea.width
+      )/2 + padding;
+    
+    const siblingsOrigoX = (
+      Math.max(
+        parentsArea.width,
+        (isCenterEmbedded?centerEmbedWidth:rootWidth)
+      ) + siblingsArea.width)/2 + 3*siblingsPadding*(1 + siblingsCols);
+
+    const siblingsOrigoY = 
+      Math.max(
+        parentsOrigoY, 
+        (siblingsArea.height + nextFriendsArea.height)/2
+      ) + this.nodeHeight;
+
+    // layout    
     const lCenter = new Layout({
       origoX: 0,
       origoY: isCenterEmbedded
-        ? centerEmbedHeight - this.nodeHeight/2
+        ? centerEmbedHeight/2 - this.nodeHeight/2
         : 0,
       top: null,
       bottom: null,
@@ -659,12 +728,8 @@ export class Scene {
 
     const lChildren = new Layout({
       origoX: 0,
-      origoY: isCenterEmbedded
-        ? centerEmbedHeight + 1.5 * this.nodeHeight
-        : 2.5 * this.nodeHeight,
-      top: isCenterEmbedded
-        ? centerEmbedHeight + this.nodeHeight
-        : 2 * this.nodeHeight,
+      origoY: childrenOrigoY,
+      top: 0,
       bottom: null,
       columns: childrenCols,
       columnWidth: childWidth,
@@ -672,24 +737,13 @@ export class Scene {
       maxLabelLength: childLength
     });
     this.layouts.push(lChildren);
-  
-    const friendOrigoX = isCompactView && isCenterEmbedded
-      ? centerEmbedWidth/2  +  this.nodeWidth
-      : Math.max(
-          (((manyNextFriends?1:0)+Math.max(childrenCols,parentCols)+1.9)/2.4) * this.nodeWidth, // (manyChildren ? -3 : -2)  * this.nodeWidth,
-          isCenterEmbedded
-            ? centerEmbedWidth/2 + this.nodeWidth
-            : 0
-        );
-
+    
     const lFriends = new Layout({
       origoX: -friendOrigoX,
-      origoY: isCenterEmbedded
-        ? centerEmbedHeight/2
-        : 0,
+      origoY: 0,
       top: null,
       bottom: null,
-      columns: 1,
+      columns: friendCols,
       columnWidth: friendWidth,
       rowHeight: this.nodeHeight,
       maxLabelLength: friendLength
@@ -697,22 +751,20 @@ export class Scene {
     this.layouts.push(lFriends);
 
     const lNextFriends = new Layout({
-      origoX: friendOrigoX,
-      origoY: isCenterEmbedded
-        ? centerEmbedHeight/2
-        : 0,
+      origoX: nextFriendOrigoX,
+      origoY: 0,
       top: null,
       bottom: null,
-      columns: 1,
+      columns: nextFriendCols,
       columnWidth: nextFriendWidth,
       rowHeight: this.nodeHeight,
       maxLabelLength: nextFriendLength
     });
     this.layouts.push(lNextFriends);
-
+    
     const lParents = new Layout({
-      origoX: 0,
-      origoY: -2.5 * this.nodeHeight,
+      origoX:0,
+      origoY: - parentsOrigoY,
       top: null,
       bottom: -2 * this.nodeHeight,
       columns: parentCols, // 3,
@@ -721,12 +773,13 @@ export class Scene {
       maxLabelLength: parentLabelLength
     });
     this.layouts.push(lParents);
-    
+
     const lSiblings = new Layout({
-      origoX: this.nodeWidth * ((parentCols-1)/2 + (siblingsCols+1.5)/3),
-      origoY: -2.5 * this.nodeHeight,
+      //origoX: this.nodeWidth * ((parentCols-1)/2 + (siblingsCols+1.5)/3), //orig
+      origoX: siblingsOrigoX,
+      origoY: - siblingsOrigoY,
       top: null,
-      bottom: - this.nodeHeight/2, 
+      bottom: null,
       columns: siblingsCols, 
       columnWidth: siblingsNodeWidth,
       rowHeight: siblingsNodeHeight,
