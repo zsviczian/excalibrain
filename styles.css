@@ -22,20 +22,20 @@
    TOOLS PANEL
   ------------ */
   .excalibrain-toolspanel-divider {
-    width: 2px;
+    width: 0.15em;
     background-color: var(--default-border-color);
-    margin-left: 8px;
-    margin-right: 3px;
+    margin-left: 0.5em;
+    margin-right: 0.2em;
   }
   
   .excalibrain-toolspanel-wrapper {
     z-index: 3;
     position: absolute;
-    top: 10px;
-    padding-left: 10px;
+    top: 0.6em;
+    padding-left: 0.6em;
     /* Set width to auto to fit its content */
     width: auto;
-    padding-right: 10px;
+    padding-right: 0.6em;
     pointer-events: none;
   }
   
@@ -43,14 +43,14 @@
   .excalibrain-searchinput {
     /* Adjust flex properties to make them appear in separate rows */
     flex-wrap: wrap;
-    margin-bottom: 5px; /* Add a small margin to separate the rows */
+    margin-bottom: 0.3em; /* Add a small margin to separate the rows */
   }
   
   .excalibrain-button {
     vertical-align: middle;
-    padding-left: 5px;
-    padding-right: 5px;
-    margin-left: 5px !important;
+    padding-left: 0.3em;
+    padding-right: 0.3em;
+    margin-left: 0.3em !important;
     margin-right: 0px !important;
     width: 2.4em !important;
   }
@@ -64,7 +64,7 @@
   }
   
   .excalibrain-searchinput {
-    width: 400px;
+    width: 28.8em;
     vertical-align: middle;
     pointer-events: all;
   }
@@ -73,12 +73,35 @@
     display: flex; /* Change display to flex */
     /* Adjust width to the content */
     width: auto;
-    margin-top: 5px;
     pointer-events: all;
-    margin-left: -5px;
+    margin-left: -0.3em;
+    margin-top: 0.3em;
   }
   
+  /* Media Query */
+  @media screen and (min-width: 90em) {
+    .excalibrain-dropdown-wrapper,
+    .excalibrain-buttons {
+      /* Make them appear in the same row */
+      display: flex !important;
+    }
+  
+    .excalibrain-dropdown-wrapper {
+      /* Float to the left */
+      float: left;
+      margin-bottom: 0px;
+    }
+  
+    .excalibrain-buttons {
+      /* Float to the right */
+      float: right;
+      margin-top: 0px;
+    }
 
+    .excalibrain-toolspanel-wrapper {
+      width: 100%;
+    }
+  }
 /* -----------
      HISTORY
   ------------ */
@@ -185,7 +208,7 @@
   ------------ */
 .multiselect-container {
   padding-left: 5px;
-  width:200px;
+  width:14.4em;
   pointer-events: all;
 }
 
