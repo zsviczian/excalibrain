@@ -32,6 +32,7 @@ export interface ExcaliBrainSettings {
   nodeTitleScript: string;
   backgroundColor: string;
   excludeFilepaths: string[];
+  autoOpenCentralDocument: boolean;
   showInferredNodes: boolean;
   showAttachments: boolean;
   showURLNodes: boolean;
@@ -91,6 +92,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   nodeTitleScript: "",
   backgroundColor: "#0c3e6aff",
   excludeFilepaths: [],
+  autoOpenCentralDocument: true,
   showInferredNodes: true,
   showAttachments: true,
   showURLNodes: true,
