@@ -395,249 +395,93 @@ export class Scene {
     });
   }
 
-  /**
-   * if retainCentralNode is true, the central node is not removed from the scene when the scene is rendered
-   * this will ensure that the embedded frame in the center is not reloaded
-   * @param retainCentralNode 
-   * @returns 
-   */
-  private async render(retainCentralNode:boolean = false) {
-    if(this.historyPanel) {
-      this.historyPanel.rerender()
-    }
-    if(!this.centralPagePath) return;
+  private getNeighbors(centralPage: Page): {
+    parents: Neighbour[],
+    children: Neighbour[],
+    friends: Neighbour[],
+    nextFriends: Neighbour[],
+    siblings: Neighbour[]
+  } {
     const settings = this.plugin.settings;
-    const isCompactView = settings.compactView;
-    let centralPage = this.plugin.pages.get(this.centralPagePath);
-    if(!centralPage) {
-      //path case sensitivity issue
-      this.centralPagePath = this.plugin.lowercasePathMap.get(this.centralPagePath.toLowerCase());
-      centralPage = this.plugin.pages.get(this.centralPagePath);
-      if(!centralPage) return;
-      this.centralPageFile = centralPage.file;
-    }
-
-    const ea = this.ea;
-    retainCentralNode = 
-      retainCentralNode && Boolean(this.rootNode) &&
-      settings.embedCentralNode && ((centralPage.file && isEmbedFileType(centralPage.file,ea)) || centralPage.isURL);
-
-    this.zoomToFitOnNextBrainLeafActivate = !ea.targetView.containerEl.isShown();
-
-    ea.clear();
-    const excalidrawAPI = ea.getExcalidrawAPI() as ExcalidrawImperativeAPI;
-    ea.copyViewElementsToEAforEditing(ea.getViewElements());
-    //delete existing elements from view. The actual delete will happen when addElementsToView is called
-    //I delete them this way to avoid the splash screen flashing up when the scene is cleared
-    //https://github.com/zsviczian/obsidian-excalidraw-plugin/issues/1248#event-9940972555
-    ea.getElements()
-      .filter((el: ExcalidrawElement)=>!retainCentralNode || !this.rootNode.embeddedElementIds.includes(el.id))
-      .forEach((el: Mutable<ExcalidrawElement>)=>el.isDeleted=true);
-    ea.style.verticalAlign = "middle";
-    
-    //Extract URLs as child nodes 
-
-    //List nodes for the graph
-    const parents = centralPage.getParents()
-      .filter(x => 
-        (x.page.path !== centralPage.path) &&
-        !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
-        (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
-      .slice(0,settings.maxItemCount);
-    const parentPaths = parents.map(x=>x.page.path);
-
-    const children =centralPage.getChildren()
-      .filter(x => 
-        (x.page.path !== centralPage.path) &&
-        !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
-        (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
-      .slice(0,settings.maxItemCount);
-    
-    const friends = centralPage.getLeftFriends().concat(centralPage.getPreviousFriends())
-      .filter(x => 
-        (x.page.path !== centralPage.path) &&
-        !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
-        (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
-      .slice(0,settings.maxItemCount);
-
-    const nextFriends = centralPage.getRightFriends().concat(centralPage.getNextFriends())
-      .filter(x => 
-        (x.page.path !== centralPage.path) &&
-        !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
-        (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
-      .slice(0,settings.maxItemCount);
-
-    const rawSiblings = centralPage
-      .getSiblings()
-      .filter(s => 
-        //the node is not included already as a parent, child, or friend
-        !(parents.some(p=>p.page.path === s.page.path)  ||
-          children.some(c=>c.page.path === s.page.path) ||
-          friends.some(f=>f.page.path === s.page.path)  ||
-          nextFriends.some(f=>f.page.path === s.page.path)  ||
-          //or not exluded via folder path in settings
-          settings.excludeFilepaths.some(p => s.page.path.startsWith(p))
-        ) && 
-        //it is not the current central page
-        (s.page.path !== centralPage.path));
-
-    const siblings = rawSiblings
-      .filter(s => 
-        //Only display siblings for which the parents are actually displayed.
-        //There might be siblings whose parnets have been filtered from view
-        s.page.getParents().map(x=>x.page.path).some(y=>parentPaths.includes(y)) &&
-        //filter based on primary tag
-        (!s.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(s.page.primaryStyleTag)))
-      .slice(0,settings.maxItemCount);
-
-    //-------------------------------------------------------
-    // Generate layout and nodes
-    this.nodesMap = new Map<string,Node>();
-    this.links = new Links(this.plugin);
-    this.layouts = [];
-    const manyFriends = friends.length >= 10;
-    const manyNextFriends = nextFriends.length >= 10;
-    const baseStyle = settings.baseNodeStyle;
-    const minLabelLength = 7;
-    
-    const style = {
-      ...settings.baseNodeStyle,
-      ...settings.centralNodeStyle,
-    };
-    const basestyle = settings.baseNodeStyle;
-    ea.style.fontFamily = basestyle.fontFamily;
-    ea.style.fontSize = basestyle.fontSize;
-    const baseChar4x = this.ea.measureText("mi3L".repeat(1));
-    const baseChar = {
-      width: baseChar4x.width * 0.25,
-      height: baseChar4x.height
-    };
-    this.nodeWidth = isCompactView
-      ? basestyle.maxLabelLength * baseChar.width + 2 * basestyle.padding
-      : this.textSize.width + 2 * style.padding;
-    
-    const compactFactor = isCompactView ? 1.4 : 2;
-
-    this.nodeHeight = compactFactor * (
-      isCompactView 
-        ? baseChar.height + 2 * basestyle.padding
-        : this.textSize.height + 2 * style.padding
-      );
-    const padding = 6 * basestyle.padding;
-
-    const isCenterEmbedded = 
-      settings.embedCentralNode &&
-      !centralPage.isVirtual &&
-      !centralPage.isFolder &&
-      !centralPage.isTag;
-    const centerEmbedWidth = settings.centerEmbedWidth;
-    const centerEmbedHeight = settings.centerEmbedHeight;
-
-    // container
-    const container = this.leaf.view.containerEl;
-    const h = container.innerHeight-150;
-    const w = container.innerWidth;
-    const rf = 1/(h/w);
-    const rfCorr = Math.min(rf,1);
-    
-    const correctedMaxLabelLength = Math.round(style.maxLabelLength*rfCorr);
-    const correctedMinLabelLength = Math.max(minLabelLength, correctedMaxLabelLength); 
-
-    //columns
-    const siblingsCols = siblings.length >= 20
-      ? 3
-      : siblings.length >= 10
-        ? 2
-        : 1;
-    const childrenCols = isCompactView
-      ? (children.length <= 12 
-        ? [1, 1, 2, 3, 3, 3, 3, 2, 2, 3, 3, 2, 2][children.length]
-        : 3)
-      : (children.length <= 12 
-        ? [1, 1, 2, 3, 3, 3, 3, 4, 4, 5, 5, 4, 4][children.length]
-        : 5);
-    const parentCols = isCompactView
-      ? (parents.length < 2
-        ? 1
-        : 2)
-      : (parents.length < 5
-        ? [1, 1, 2, 3, 2][parents.length]
-        : 3);
-    const friendCols = isCompactView && isCenterEmbedded
-      ? Math.ceil((friends.length*this.nodeHeight)/centerEmbedHeight)
-      : manyFriends
-        ? 2
-        : 1;
+        //List nodes for the graph
+        const parents = centralPage.getParents()
+        .filter(x => 
+          (x.page.path !== centralPage.path) &&
+          !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+          (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
+        .slice(0,settings.maxItemCount);
+      const parentPaths = parents.map(x=>x.page.path);
   
-    const nextFriendCols = isCompactView && isCenterEmbedded
-      ? Math.ceil((nextFriends.length*this.nodeHeight)/centerEmbedHeight)
-      : manyNextFriends
-        ? 2
-        : 1;
+      const children =centralPage.getChildren()
+        .filter(x => 
+          (x.page.path !== centralPage.path) &&
+          !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+          (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
+        .slice(0,settings.maxItemCount);
+      
+      const friends = centralPage.getLeftFriends().concat(centralPage.getPreviousFriends())
+        .filter(x => 
+          (x.page.path !== centralPage.path) &&
+          !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+          (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
+        .slice(0,settings.maxItemCount);
   
-    //neighbour length and width
+      const nextFriends = centralPage.getRightFriends().concat(centralPage.getNextFriends())
+        .filter(x => 
+          (x.page.path !== centralPage.path) &&
+          !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+          (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
+        .slice(0,settings.maxItemCount);
+  
+      const rawSiblings = centralPage
+        .getSiblings()
+        .filter(s => 
+          //the node is not included already as a parent, child, or friend
+          !(parents.some(p=>p.page.path === s.page.path)  ||
+            children.some(c=>c.page.path === s.page.path) ||
+            friends.some(f=>f.page.path === s.page.path)  ||
+            nextFriends.some(f=>f.page.path === s.page.path)  ||
+            //or not exluded via folder path in settings
+            settings.excludeFilepaths.some(p => s.page.path.startsWith(p))
+          ) && 
+          //it is not the current central page
+          (s.page.path !== centralPage.path));
+  
+      const siblings = rawSiblings
+        .filter(s => 
+          //Only display siblings for which the parents are actually displayed.
+          //There might be siblings whose parnets have been filtered from view
+          s.page.getParents().map(x=>x.page.path).some(y=>parentPaths.includes(y)) &&
+          //filter based on primary tag
+          (!s.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(s.page.primaryStyleTag)))
+        .slice(0,settings.maxItemCount);
+      return {parents,children,friends,nextFriends,siblings};
+  }
 
-    //center     
-    const rootTitle = centralPage.getTitle();
-    const rootNode = ea.measureText(rootTitle.repeat(1));
-    const actualRootLength = [...new Intl.Segmenter().segment(rootTitle)].length;
-    const rootNodeLength = isCompactView
-      ? Math.min(actualRootLength, style.maxLabelLength)
-      : style.maxLabelLength;
-    const rootWidth = isCompactView ? rootNode.width + 2 * style.padding : this.nodeWidth;
-
-    const heightInCenter = isCenterEmbedded
-      ? centerEmbedHeight + 2 * this.nodeHeight
-      : 4 *this.nodeHeight;
-    
-    //parents
-    const parentLabelLength = isCompactView
-      ? Math.min(this.longestTitle(parents), correctedMinLabelLength)
-      : style.maxLabelLength;
-
-    const parentWidth = isCompactView
-      ? parentLabelLength * baseChar.width + padding
-      : this.nodeWidth;
-
-    //children
-    const childLength = isCompactView
-    ? Math.min(this.longestTitle(children,20), correctedMinLabelLength)
-    : style.maxLabelLength;
-    
-    const childWidth = isCompactView
-      ? childLength * baseChar.width + padding
-      : this.nodeWidth;
-
-    // friends
-    const friendLength = isCompactView
-      ? Math.min(this.longestTitle(friends),correctedMinLabelLength)
-      : style.maxLabelLength;
-
-    const friendWidth = isCompactView
-      ? friendLength * baseChar.width + padding
-      : this.nodeWidth;
-
-    // nextfriends
-    const nextFriendLength = isCompactView
-    ? Math.min(this.longestTitle(nextFriends), correctedMinLabelLength)
-    : style.maxLabelLength;
-
-    const nextFriendWidth = isCompactView
-    ? nextFriendLength * baseChar.width + padding
-    : this.nodeWidth;
-
-    //siblings
-    const siblingsStyle = settings.siblingNodeStyle;
-    const siblingsPadding = siblingsStyle.padding??settings.baseNodeStyle.padding;
-    const siblingsLabelLength = isCompactView
-      ? Math.min(this.longestTitle(siblings,20), correctedMinLabelLength)
-      : siblingsStyle.maxLabelLength??settings.baseNodeStyle.maxLabelLength;
-    ea.style.fontFamily = siblingsStyle.fontFamily;
-    ea.style.fontSize = siblingsStyle.fontSize;
-    const siblingsTextSize = ea.measureText("m".repeat(siblingsLabelLength+3));
-    const siblingsNodeWidth =  siblingsTextSize.width + 3 * siblingsPadding;
-    const siblingsNodeHeight = compactFactor * (siblingsTextSize.height + 2 * siblingsPadding);
-
+  private calculateAreas({
+    parents,     parentCols,     parentWidth,
+    children,    childrenCols,   childWidth,
+    friends,     friendCols,     friendWidth,
+    nextFriends, nextFriendCols, nextFriendWidth,
+    siblings,    siblingsCols,   siblingsNodeWidth, siblingsNodeHeight
+  }:{
+    parents: Neighbour[],
+    children: Neighbour[],
+    friends: Neighbour[],
+    nextFriends: Neighbour[],
+    siblings: Neighbour[],
+    friendCols: number,
+    friendWidth: number,
+    nextFriendCols: number,
+    nextFriendWidth: number,
+    parentCols: number,
+    parentWidth: number,
+    childrenCols: number,
+    childWidth: number,
+    siblingsNodeWidth: number,
+    siblingsCols: number,
+    siblingsNodeHeight: number
+  }) {
     // layout areas
     const friendsArea = {
       width:  friends.length>0? friendCols*friendWidth:0, 
@@ -659,36 +503,276 @@ export class Scene {
       width:  siblings.length>0? siblingsNodeWidth*siblingsCols:0, 
       height: siblings.length>0? Math.ceil(siblings.length/siblingsCols)*siblingsNodeHeight:0
     }
+    return {friendsArea,nextFriendsArea,parentsArea,childrenArea,siblingsArea};
+  }
+  
+  private calculateCompactLayoutParams({
+    centralPage,
+    parents,
+    children,
+    friends,
+    nextFriends,
+    siblings,
+    isCenterEmbedded,
+    centerEmbedHeight,
+    centerEmbedWidth,
+  }:{
+    centralPage: Page, 
+    parents: Neighbour[],
+    children: Neighbour[],
+    friends: Neighbour[],
+    nextFriends: Neighbour[],
+    siblings: Neighbour[],
+    isCenterEmbedded: boolean,
+    centerEmbedHeight: number,
+    centerEmbedWidth: number
+  }) {
+    const settings = this.plugin.settings;
+    const ea = this.ea;
+    const manyFriends = friends.length >= 10;
+    const manyNextFriends = nextFriends.length >= 10;
+    const minLabelLength = 7;
+    
+    const style = {
+      ...settings.baseNodeStyle,
+      ...settings.centralNodeStyle,
+    };
+    const basestyle = settings.baseNodeStyle;
+    ea.style.fontFamily = basestyle.fontFamily;
+    ea.style.fontSize = basestyle.fontSize;
+    const baseChar4x = this.ea.measureText("mi3L".repeat(1));
+    const baseChar = {
+      width: baseChar4x.width * 0.25,
+      height: baseChar4x.height
+    };
+    this.nodeWidth = basestyle.maxLabelLength * baseChar.width + 2 * basestyle.padding
+
+    const compactFactor = 1.4;
+
+    this.nodeHeight = compactFactor * (baseChar.height + 2 * basestyle.padding);
+    const padding = 6 * basestyle.padding;
+
+    // container
+    const container = ea.targetView.containerEl;
+    const h = container.innerHeight-150;
+    const w = container.innerWidth;
+    const rf = 1/(h/w);
+    const rfCorr = Math.min(rf,1);
+    
+    const correctedMaxLabelLength = Math.round(style.maxLabelLength*rfCorr);
+    const correctedMinLabelLength = Math.max(minLabelLength, correctedMaxLabelLength); 
+
+    //columns
+    const siblingsCols = siblings.length >= 20
+      ? 3
+      : siblings.length >= 10
+        ? 2
+        : 1;
+    const childrenCols = children.length <= 12 
+        ? [1, 1, 2, 3, 3, 3, 3, 2, 2, 3, 3, 2, 2][children.length]
+        : 3;
+
+    const parentCols = (parents.length < 2) ? 1 : 2;
+
+    const friendCols = isCenterEmbedded
+      ? Math.ceil((friends.length*this.nodeHeight)/centerEmbedHeight)
+      : manyFriends
+        ? 2
+        : 1;
+  
+    const nextFriendCols = isCenterEmbedded
+      ? Math.ceil((nextFriends.length*this.nodeHeight)/centerEmbedHeight)
+      : manyNextFriends
+        ? 2
+        : 1;
+  
+    //center     
+    const rootTitle = centralPage.getTitle();
+    const rootNode = ea.measureText(rootTitle.repeat(1));
+    const actualRootLength = [...new Intl.Segmenter().segment(rootTitle)].length;
+    const rootNodeLength = Math.min(actualRootLength, style.maxLabelLength);
+    const rootWidth = rootNode.width + 2 * style.padding;
+
+    const heightInCenter = isCenterEmbedded
+      ? centerEmbedHeight + 2 * this.nodeHeight
+      : 4 *this.nodeHeight;
+    
+    //parents
+    const parentLabelLength = Math.min(this.longestTitle(parents), correctedMinLabelLength);
+    const parentWidth = parentLabelLength * baseChar.width + padding;
+
+    //children
+    const childLength = Math.min(this.longestTitle(children,20), correctedMinLabelLength);
+    const childWidth = childLength * baseChar.width + padding;
+
+    // friends
+    const friendLength = Math.min(this.longestTitle(friends),correctedMinLabelLength);
+    const friendWidth = friendLength * baseChar.width + padding;
+
+    // nextfriends
+    const nextFriendLength = Math.min(this.longestTitle(nextFriends), correctedMinLabelLength);
+    const nextFriendWidth = nextFriendLength * baseChar.width + padding;
+
+    //siblings
+    const siblingsStyle = settings.siblingNodeStyle;
+    const siblingsPadding = siblingsStyle.padding??settings.baseNodeStyle.padding;
+    const siblingsLabelLength = Math.min(this.longestTitle(siblings,20), correctedMinLabelLength);
+    ea.style.fontFamily = siblingsStyle.fontFamily;
+    ea.style.fontSize = siblingsStyle.fontSize;
+    const siblingsTextSize = ea.measureText("m".repeat(siblingsLabelLength+3));
+    const siblingsNodeWidth =  siblingsTextSize.width + 3 * siblingsPadding;
+    const siblingsNodeHeight = compactFactor * (siblingsTextSize.height + 2 * siblingsPadding);
+
+    // layout areas
+    const {parentsArea,childrenArea,friendsArea,nextFriendsArea,siblingsArea} = this.calculateAreas({
+      parents,     parentCols,     parentWidth,
+      children,    childrenCols,   childWidth,
+      friends,     friendCols,     friendWidth,
+      nextFriends, nextFriendCols, nextFriendWidth,
+      siblings,    siblingsCols,   siblingsNodeWidth, siblingsNodeHeight
+    });
     
     // Origos
-    const parentsOrigoY = isCompactView
-      ? (parentsArea.height + Math.max(friendsArea.height,nextFriendsArea.height,heightInCenter))*0.5 + padding
-      : (parentsArea.height + heightInCenter)*0.5;
+    const parentsOrigoY = (parentsArea.height + Math.max(friendsArea.height,nextFriendsArea.height,heightInCenter))*0.5 + padding;
+    const childrenOrigoY = (childrenArea.height + Math.max(friendsArea.height,nextFriendsArea.height,heightInCenter))*0.5 + padding;
 
-    const childrenOrigoY = isCompactView
-      ? (childrenArea.height + Math.max(friendsArea.height,nextFriendsArea.height,heightInCenter))*0.5 + padding
-      : (childrenArea.height + heightInCenter)*0.5;
+    const friendOrigoX = Math.max(
+        (isCenterEmbedded?centerEmbedWidth:rootWidth) + friendsArea.width, 
+        childrenArea.width-friendsArea.width, 
+        parentsArea.width-friendsArea.width
+      )/2 + padding;
+        
+    const nextFriendOrigoX = Math.max(
+        (isCenterEmbedded?centerEmbedWidth:rootWidth) + nextFriendsArea.width, 
+        childrenArea.width-nextFriendsArea.width, 
+        parentsArea.width-nextFriendsArea.width
+      )/2 + padding;
+    
+    const siblingsOrigoX = (
+      Math.max(
+        parentsArea.width,
+        (isCenterEmbedded?centerEmbedWidth:rootWidth)
+      ) + siblingsArea.width)/2 + 3*siblingsPadding*(1 + siblingsCols);
 
-    const friendOrigoX = (isCompactView
-      ? Math.max(
-          (isCenterEmbedded?centerEmbedWidth:rootWidth) + friendsArea.width, 
-          childrenArea.width-friendsArea.width, 
-          parentsArea.width-friendsArea.width
-        )
-      : Math.max(
+    const siblingsOrigoY = 
+      Math.max(
+        parentsOrigoY, 
+        (siblingsArea.height + nextFriendsArea.height)/2
+      ) + this.nodeHeight;
+    return {rootWidth, rootNode, rootNodeLength, childrenOrigoY, parentsOrigoY, friendOrigoX, nextFriendOrigoX, siblingsOrigoX, siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength, siblingsCols, friendsArea, nextFriendsArea, childWidth, parentWidth, friendWidth, nextFriendWidth, childLength, parentLabelLength, friendLength, nextFriendLength, childrenCols, parentCols, friendCols, nextFriendCols};
+  }
+
+  private calculatNormalLayoutParams({
+    centralPage,
+    parents,
+    children,
+    friends,
+    nextFriends,
+    siblings,
+    isCenterEmbedded,
+    centerEmbedHeight,
+    centerEmbedWidth,
+  }:{
+    centralPage: Page, 
+    parents: Neighbour[],
+    children: Neighbour[],
+    friends: Neighbour[],
+    nextFriends: Neighbour[],
+    siblings: Neighbour[],
+    isCenterEmbedded: boolean,
+    centerEmbedHeight: number,
+    centerEmbedWidth: number
+  }) {
+    const settings = this.plugin.settings;
+    const ea = this.ea;
+    const manyFriends = friends.length >= 10;
+    const manyNextFriends = nextFriends.length >= 10;
+    
+    const style = {
+      ...settings.baseNodeStyle,
+      ...settings.centralNodeStyle,
+    };
+    const basestyle = settings.baseNodeStyle;
+    ea.style.fontFamily = basestyle.fontFamily;
+    ea.style.fontSize = basestyle.fontSize;
+    this.nodeWidth = this.textSize.width + 2 * style.padding;
+    
+    const compactFactor = 2;
+
+    this.nodeHeight = compactFactor * (this.textSize.height + 2 * style.padding);
+    const padding = 6 * basestyle.padding;
+
+    //columns
+    const siblingsCols = siblings.length >= 20
+      ? 3
+      : siblings.length >= 10
+        ? 2
+        : 1;
+    const childrenCols = children.length <= 12 
+        ? [1, 1, 2, 3, 3, 3, 3, 4, 4, 5, 5, 4, 4][children.length]
+        : 5;
+    const parentCols = parents.length < 5
+        ? [1, 1, 2, 3, 2][parents.length]
+        : 3;
+    const friendCols = manyFriends ? 2 : 1;
+    const nextFriendCols = manyNextFriends ? 2 : 1;
+
+    //center     
+    const rootTitle = centralPage.getTitle();
+    const rootNode = ea.measureText(rootTitle.repeat(1));
+    const rootNodeLength = style.maxLabelLength;
+    const rootWidth = this.nodeWidth;
+
+    const heightInCenter = 4 *this.nodeHeight;
+    
+    //parents
+    const parentLabelLength = style.maxLabelLength;
+    const parentWidth = this.nodeWidth;
+
+    //children
+    const childLength = style.maxLabelLength;
+    const childWidth = this.nodeWidth;
+
+    // friends
+    const friendLength = style.maxLabelLength;
+    const friendWidth = this.nodeWidth;
+
+    // nextfriends
+    const nextFriendLength = style.maxLabelLength;
+    const nextFriendWidth = this.nodeWidth;
+
+    //siblings
+    const siblingsStyle = settings.siblingNodeStyle;
+    const siblingsPadding = siblingsStyle.padding??settings.baseNodeStyle.padding;
+    const siblingsLabelLength = siblingsStyle.maxLabelLength??settings.baseNodeStyle.maxLabelLength;
+    ea.style.fontFamily = siblingsStyle.fontFamily;
+    ea.style.fontSize = siblingsStyle.fontSize;
+    const siblingsTextSize = ea.measureText("m".repeat(siblingsLabelLength+3));
+    const siblingsNodeWidth =  siblingsTextSize.width + 3 * siblingsPadding;
+    const siblingsNodeHeight = compactFactor * (siblingsTextSize.height + 2 * siblingsPadding);
+
+    // layout areas
+    const {parentsArea,childrenArea,friendsArea,nextFriendsArea,siblingsArea} = this.calculateAreas({
+      parents,     parentCols,     parentWidth,
+      children,    childrenCols,   childWidth,
+      friends,     friendCols,     friendWidth,
+      nextFriends, nextFriendCols, nextFriendWidth,
+      siblings,    siblingsCols,   siblingsNodeWidth, siblingsNodeHeight
+    });
+
+    // Origos
+    const parentsOrigoY = (parentsArea.height + heightInCenter)*0.5;
+
+    const childrenOrigoY = (childrenArea.height + heightInCenter)*0.5;
+
+    const friendOrigoX = (Math.max(
           centerEmbedWidth,
           parentsArea.width,
           childrenArea.width
         ) + friendsArea.width
       )/2 + padding;
         
-    const nextFriendOrigoX = (isCompactView
-      ? Math.max(
-          (isCenterEmbedded?centerEmbedWidth:rootWidth) + nextFriendsArea.width, 
-          childrenArea.width-nextFriendsArea.width, 
-          parentsArea.width-nextFriendsArea.width
-        )
-      : Math.max(
+    const nextFriendOrigoX = (Math.max(
           centerEmbedWidth,
           parentsArea.width,
           childrenArea.width
@@ -706,6 +790,84 @@ export class Scene {
         parentsOrigoY, 
         (siblingsArea.height + nextFriendsArea.height)/2
       ) + this.nodeHeight;
+      return {rootWidth, rootNode, rootNodeLength, childrenOrigoY, parentsOrigoY, friendOrigoX, nextFriendOrigoX, siblingsOrigoX, siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength, siblingsCols, friendsArea, nextFriendsArea, childWidth, parentWidth, friendWidth, nextFriendWidth, childLength, parentLabelLength, friendLength, nextFriendLength, childrenCols, parentCols, friendCols, nextFriendCols};
+  }
+
+  /**
+   * if retainCentralNode is true, the central node is not removed from the scene when the scene is rendered
+   * this will ensure that the embedded frame in the center is not reloaded
+   * @param retainCentralNode 
+   * @returns 
+   */
+  private async render(retainCentralNode:boolean = false) {
+    if(this.historyPanel) {
+      this.historyPanel.rerender()
+    }
+    if(!this.centralPagePath) return;
+
+    const settings = this.plugin.settings;
+    const isCompactView = settings.compactView;
+    
+    let centralPage = this.plugin.pages.get(this.centralPagePath);
+    if(!centralPage) {
+      //path case sensitivity issue
+      this.centralPagePath = this.plugin.lowercasePathMap.get(this.centralPagePath.toLowerCase());
+      centralPage = this.plugin.pages.get(this.centralPagePath);
+      if(!centralPage) return;
+      this.centralPageFile = centralPage.file;
+    }
+
+    const ea = this.ea;
+    retainCentralNode = 
+      retainCentralNode && Boolean(this.rootNode) &&
+      settings.embedCentralNode && ((centralPage.file && isEmbedFileType(centralPage.file,ea)) || centralPage.isURL);
+
+    this.zoomToFitOnNextBrainLeafActivate = !ea.targetView.containerEl.isShown();
+
+    ea.clear();
+    ea.copyViewElementsToEAforEditing(ea.getViewElements());
+    //delete existing elements from view. The actual delete will happen when addElementsToView is called
+    //I delete them this way to avoid the splash screen flashing up when the scene is cleared
+    //https://github.com/zsviczian/obsidian-excalidraw-plugin/issues/1248#event-9940972555
+    ea.getElements()
+      .filter((el: ExcalidrawElement)=>!retainCentralNode || !this.rootNode.embeddedElementIds.includes(el.id))
+      .forEach((el: Mutable<ExcalidrawElement>)=>el.isDeleted=true);
+    ea.style.verticalAlign = "middle";
+
+    const {parents,children,friends,nextFriends,siblings} = this.getNeighbors(centralPage);
+
+    //-------------------------------------------------------
+    // Generate layout and nodes
+    this.nodesMap = new Map<string,Node>();
+    this.links = new Links(this.plugin);
+    this.layouts = [];
+
+    const isCenterEmbedded = 
+      settings.embedCentralNode &&
+      !centralPage.isVirtual &&
+      !centralPage.isFolder &&
+      !centralPage.isTag;
+    const centerEmbedWidth = settings.centerEmbedWidth;
+    const centerEmbedHeight = settings.centerEmbedHeight;
+
+    const {
+      rootNode, rootWidth, rootNodeLength,
+      childrenOrigoY, childWidth, childLength, childrenCols,
+      parentsOrigoY, parentWidth, parentLabelLength, parentCols,
+      friendOrigoX, friendWidth, friendLength, friendCols,
+      nextFriendOrigoX, nextFriendWidth, nextFriendLength, nextFriendCols,
+      siblingsOrigoX, siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength, siblingsCols,
+    } = isCompactView 
+      ? this.calculateCompactLayoutParams({
+          centralPage,
+          parents, children, friends, nextFriends, siblings,
+          isCenterEmbedded, centerEmbedHeight, centerEmbedWidth,
+        }) 
+      : this.calculatNormalLayoutParams({
+          centralPage,
+          parents, children, friends, nextFriends, siblings,
+          isCenterEmbedded, centerEmbedHeight, centerEmbedWidth,
+        });
 
     // layout    
     const lCenter = new Layout({
@@ -893,6 +1055,7 @@ export class Scene {
 
     ea.elementsDict = newImagesDict;
 
+    const excalidrawAPI = ea.getExcalidrawAPI() as ExcalidrawImperativeAPI;
     ea.addElementsToView(false,false);
     excalidrawAPI.updateScene({appState: {viewBackgroundColor: settings.backgroundColor}});
     ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
