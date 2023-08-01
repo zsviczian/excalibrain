@@ -403,59 +403,60 @@ export class Scene {
     siblings: Neighbour[]
   } {
     const settings = this.plugin.settings;
-        //List nodes for the graph
-        const parents = centralPage.getParents()
-        .filter(x => 
-          (x.page.path !== centralPage.path) &&
-          !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
-          (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
-        .slice(0,settings.maxItemCount);
-      const parentPaths = parents.map(x=>x.page.path);
-  
-      const children =centralPage.getChildren()
-        .filter(x => 
-          (x.page.path !== centralPage.path) &&
-          !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
-          (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
-        .slice(0,settings.maxItemCount);
-      
-      const friends = centralPage.getLeftFriends().concat(centralPage.getPreviousFriends())
-        .filter(x => 
-          (x.page.path !== centralPage.path) &&
-          !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
-          (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
-        .slice(0,settings.maxItemCount);
-  
-      const nextFriends = centralPage.getRightFriends().concat(centralPage.getNextFriends())
-        .filter(x => 
-          (x.page.path !== centralPage.path) &&
-          !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
-          (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
-        .slice(0,settings.maxItemCount);
-  
-      const rawSiblings = centralPage
-        .getSiblings()
-        .filter(s => 
-          //the node is not included already as a parent, child, or friend
-          !(parents.some(p=>p.page.path === s.page.path)  ||
-            children.some(c=>c.page.path === s.page.path) ||
-            friends.some(f=>f.page.path === s.page.path)  ||
-            nextFriends.some(f=>f.page.path === s.page.path)  ||
-            //or not exluded via folder path in settings
-            settings.excludeFilepaths.some(p => s.page.path.startsWith(p))
-          ) && 
-          //it is not the current central page
-          (s.page.path !== centralPage.path));
-  
-      const siblings = rawSiblings
-        .filter(s => 
-          //Only display siblings for which the parents are actually displayed.
-          //There might be siblings whose parnets have been filtered from view
-          s.page.getParents().map(x=>x.page.path).some(y=>parentPaths.includes(y)) &&
-          //filter based on primary tag
-          (!s.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(s.page.primaryStyleTag)))
-        .slice(0,settings.maxItemCount);
-      return {parents,children,friends,nextFriends,siblings};
+    
+    //List nodes for the graph
+    const parents = centralPage.getParents()
+      .filter(x => 
+        (x.page.path !== centralPage.path) &&
+        !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+        (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
+      .slice(0,settings.maxItemCount);
+    const parentPaths = parents.map(x=>x.page.path);
+
+    const children =centralPage.getChildren()
+      .filter(x => 
+        (x.page.path !== centralPage.path) &&
+        !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+        (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
+      .slice(0,settings.maxItemCount);
+    
+    const friends = centralPage.getLeftFriends().concat(centralPage.getPreviousFriends())
+      .filter(x => 
+        (x.page.path !== centralPage.path) &&
+        !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+        (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
+      .slice(0,settings.maxItemCount);
+
+    const nextFriends = centralPage.getRightFriends().concat(centralPage.getNextFriends())
+      .filter(x => 
+        (x.page.path !== centralPage.path) &&
+        !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+        (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
+      .slice(0,settings.maxItemCount);
+
+    const rawSiblings = centralPage
+      .getSiblings()
+      .filter(s => 
+        //the node is not included already as a parent, child, or friend
+        !(parents.some(p=>p.page.path === s.page.path)  ||
+          children.some(c=>c.page.path === s.page.path) ||
+          friends.some(f=>f.page.path === s.page.path)  ||
+          nextFriends.some(f=>f.page.path === s.page.path)  ||
+          //or not exluded via folder path in settings
+          settings.excludeFilepaths.some(p => s.page.path.startsWith(p))
+        ) && 
+        //it is not the current central page
+        (s.page.path !== centralPage.path));
+
+    const siblings = rawSiblings
+      .filter(s => 
+        //Only display siblings for which the parents are actually displayed.
+        //There might be siblings whose parnets have been filtered from view
+        s.page.getParents().map(x=>x.page.path).some(y=>parentPaths.includes(y)) &&
+        //filter based on primary tag
+        (!s.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(s.page.primaryStyleTag)))
+      .slice(0,settings.maxItemCount);
+    return {parents,children,friends,nextFriends,siblings};
   }
 
   private calculateAreas({
@@ -659,7 +660,15 @@ export class Scene {
         parentsOrigoY, 
         (siblingsArea.height + nextFriendsArea.height)/2
       ) + this.nodeHeight;
-    return {rootWidth, rootNode, rootNodeLength, childrenOrigoY, parentsOrigoY, friendOrigoX, nextFriendOrigoX, siblingsOrigoX, siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength, siblingsCols, friendsArea, nextFriendsArea, childWidth, parentWidth, friendWidth, nextFriendWidth, childLength, parentLabelLength, friendLength, nextFriendLength, childrenCols, parentCols, friendCols, nextFriendCols};
+
+    return {
+      rootNode,                         rootWidth,                             rootNodeLength,
+      childrenOrigoY,                   childWidth,                            childLength,         childrenCols,
+      parentsOrigoY,                    parentWidth,                           parentLabelLength,   parentCols,
+      friendOrigoX,                     friendWidth,                           friendLength,        friendCols,
+      nextFriendOrigoX,                 nextFriendWidth,                       nextFriendLength,    nextFriendCols,
+      siblingsOrigoX,   siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength, siblingsCols,
+    };
   }
 
   private calculatNormalLayoutParams({
@@ -790,7 +799,14 @@ export class Scene {
         parentsOrigoY, 
         (siblingsArea.height + nextFriendsArea.height)/2
       ) + this.nodeHeight;
-      return {rootWidth, rootNode, rootNodeLength, childrenOrigoY, parentsOrigoY, friendOrigoX, nextFriendOrigoX, siblingsOrigoX, siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength, siblingsCols, friendsArea, nextFriendsArea, childWidth, parentWidth, friendWidth, nextFriendWidth, childLength, parentLabelLength, friendLength, nextFriendLength, childrenCols, parentCols, friendCols, nextFriendCols};
+      return {
+        rootNode,                         rootWidth,                             rootNodeLength,
+        childrenOrigoY,                   childWidth,                            childLength,         childrenCols,
+        parentsOrigoY,                    parentWidth,                           parentLabelLength,   parentCols,
+        friendOrigoX,                     friendWidth,                           friendLength,        friendCols,
+        nextFriendOrigoX,                 nextFriendWidth,                       nextFriendLength,    nextFriendCols,
+        siblingsOrigoX,   siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength, siblingsCols,
+      };
   }
 
   /**
