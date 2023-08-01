@@ -15,7 +15,7 @@ import { ExcalidrawElement } from "obsidian-excalidraw-plugin";
 import { isEmbedFileType } from "./utils/fileUtils";
 import { Page } from "./graph/Page";
 import { ExcalidrawImperativeAPI } from "@zsviczian/excalidraw/types/types"
-
+ 
 export class Scene {
   ea: ExcalidrawAutomate;
   plugin: ExcaliBrain;
