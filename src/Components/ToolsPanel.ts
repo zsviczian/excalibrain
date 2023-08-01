@@ -5,12 +5,12 @@ import ExcaliBrain from "src/excalibrain-main";
 import { splitFolderAndFilename } from "src/utils/fileUtils";
 import { PageSuggest } from "../Suggesters/PageSuggester";
 import { LinkTagFilter } from "./LinkTagFilter";
-import { keepOnTop } from "src/utils/utils";
 import { getIcon } from "obsidian";
+import { addVerticalDivider } from "./VerticalDivider";
 
 export class ToolsPanel {
   private wrapperDiv: HTMLDivElement;
-  private buttons: ToggleButton[] = [];
+  private buttons: (ToggleButton|HTMLElement)[] = [];
   public linkTagFilter: LinkTagFilter;
   public searchElement: HTMLInputElement;
 
@@ -108,6 +108,63 @@ export class ToolsPanel {
      )
     )
 
+    addVerticalDivider(buttonsWrapperDiv);
+
+    //------------
+    //Navigate back
+    //------------
+    this.buttons.push(
+      new ToggleButton(
+        this.plugin,
+        ()=>false,
+        (val:boolean)=>{},
+        buttonsWrapperDiv,
+        {
+          display: "<",
+          icon: getIcon("lucide-arrow-big-left").outerHTML,
+          tooltip: t("NAVIGATE_BACK")
+        },
+        false
+     )
+    )
+
+    //------------
+    //Navigate forward
+    //------------
+    this.buttons.push(
+      new ToggleButton(
+        this.plugin,
+        ()=>false,
+        (val:boolean)=>{},
+        buttonsWrapperDiv,
+        {
+          display: ">",
+          icon: getIcon("lucide-arrow-big-right").outerHTML,
+          tooltip: t("NAVIGATE_FORWARD")
+        },
+        false
+     )
+    )
+    
+    //------------
+    //Refresh view
+    //------------
+    this.buttons.push(
+      new ToggleButton(
+        this.plugin,
+        ()=>false,
+        (val:boolean)=>this.plugin.scene.pinLeaf = val,
+        buttonsWrapperDiv,
+        {
+          display: "🔄",
+          icon: getIcon("lucide-refresh-cw").outerHTML,
+          tooltip: t("REFRESH_VIEW")
+        },
+        false
+     )
+    )
+
+    addVerticalDivider(buttonsWrapperDiv);
     //------------
     //Attachments
     //------------
@@ -290,7 +347,9 @@ export class ToolsPanel {
   }
 
   rerender() {
-    this.buttons.forEach(b=>b.setColor());
+    this.buttons.forEach(b => {
+      if(b instanceof ToggleButton) b.setColor();
+    });
     this.linkTagFilter.render();
   }
 
