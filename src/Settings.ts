@@ -83,7 +83,7 @@ export interface ExcaliBrainSettings {
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   compactView: false,
-  compactingFactor: 1,
+  compactingFactor: 1.5,
   excalibrainFilepath: "excalibrain.md",
   indexUpdateInterval: 5000,
   hierarchy: DEFAULT_HIERARCHY_DEFINITION,
