@@ -366,6 +366,7 @@ export class Scene {
       if(n.page.path === this.ea.targetView.file.path) {
         return; 
       }
+      n.page.maxLabelLength = x.layout.spec.maxLabelLength;
       const node = new Node({
         ea: this.ea,
         page: n.page,
@@ -481,6 +482,10 @@ export class Scene {
     this.layouts = [];
     const manyFriends = friends.length >= 10;
     const manyNextFriends = nextFriends.length >= 10;
+    const style = {
+      ...settings.baseNodeStyle,
+      ...settings.centralNodeStyle,
+    };
     const baseStyle = settings.baseNodeStyle;
     const siblingsCols = siblings.length >= 20
       ? 3
@@ -525,6 +530,7 @@ export class Scene {
       rowHeight: isCenterEmbedded
         ? centerEmbedHeight
         : this.nodeHeight,
+        maxLabelLength: style.maxLabelLength
     });
     this.layouts.push(lCenter);
 
@@ -539,7 +545,8 @@ export class Scene {
       bottom: null,
       columns: childrenCols,
       columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      rowHeight: this.nodeHeight,
+      maxLabelLength: style.maxLabelLength
     });
     this.layouts.push(lChildren);
   
@@ -561,7 +568,8 @@ export class Scene {
       bottom: null,
       columns: 1,
       columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      rowHeight: this.nodeHeight,
+      maxLabelLength: style.maxLabelLength
     });
     this.layouts.push(lFriends);
 
@@ -574,7 +582,8 @@ export class Scene {
       bottom: null,
       columns: 1,
       columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      rowHeight: this.nodeHeight,
+      maxLabelLength: style.maxLabelLength
     });
     this.layouts.push(lNextFriends);
 
@@ -585,7 +594,8 @@ export class Scene {
       bottom: -2 * this.nodeHeight,
       columns: parentCols, // 3,
       columnWidth: this.nodeWidth,
-      rowHeight: this.nodeHeight
+      rowHeight: this.nodeHeight,
+      maxLabelLength: style.maxLabelLength
     });
     this.layouts.push(lParents);
     
@@ -606,6 +616,7 @@ export class Scene {
       columns: siblingsCols, 
       columnWidth: siblingsNodeWidth,
       rowHeight: siblingsNodeHeight,
+      maxLabelLength: style.maxLabelLength
     })
     this.layouts.push(lSiblings);
 
