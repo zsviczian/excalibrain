@@ -7,7 +7,7 @@ import { Node } from "./graph/Node";
 import ExcaliBrain from "./excalibrain-main";
 import { ExcaliBrainSettings } from "./Settings";
 import { ToolsPanel } from "./Components/ToolsPanel";
-import { Mutable, Neighbour, RelationType, Role } from "./types";
+import { Mutable, Neighbour, NodeStyle, RelationType, Role } from "./types";
 import { HistoryPanel } from "./Components/HistoryPanel";
 import { WarningPrompt } from "./utils/Prompts";
 import { keepOnTop } from "./utils/utils";
@@ -507,7 +507,7 @@ export class Scene {
     return {friendsArea,nextFriendsArea,parentsArea,childrenArea,siblingsArea};
   }
   
-  private calculateCompactLayoutParams({
+  private calculateLayoutParams({
     centralPage,
     parents,
     children,
@@ -517,6 +517,7 @@ export class Scene {
     isCenterEmbedded,
     centerEmbedHeight,
     centerEmbedWidth,
+    style,
   }:{
     centralPage: Page, 
     parents: Neighbour[],
@@ -526,29 +527,27 @@ export class Scene {
     siblings: Neighbour[],
     isCenterEmbedded: boolean,
     centerEmbedHeight: number,
-    centerEmbedWidth: number
+    centerEmbedWidth: number,
+    style: NodeStyle,
   }) {
     const settings = this.plugin.settings;
     const ea = this.ea;
+    const basestyle = settings.baseNodeStyle;
+
+    const isCompactView = settings.compactView;
+    const compactFactor = 1.4 * settings.compactingFactor;
+    const horizontalFactor = 1 * settings.compactingFactor;
+
     const manyFriends = friends.length >= 10;
     const manyNextFriends = nextFriends.length >= 10;
     const minLabelLength = 7;
     
-    const style = {
-      ...settings.baseNodeStyle,
-      ...settings.centralNodeStyle,
-    };
-    const basestyle = settings.baseNodeStyle;
-    ea.style.fontFamily = basestyle.fontFamily;
-    ea.style.fontSize = basestyle.fontSize;
     const baseChar4x = this.ea.measureText("mi3L".repeat(1));
     const baseChar = {
       width: baseChar4x.width * 0.25,
       height: baseChar4x.height
     };
     this.nodeWidth = basestyle.maxLabelLength * baseChar.width + 2 * basestyle.padding;
-
-    const compactFactor = 1.4;
 
     this.nodeHeight = compactFactor * (baseChar.height + 2 * basestyle.padding);
     const padding = 6 * basestyle.padding;
@@ -569,11 +568,20 @@ export class Scene {
       : siblings.length >= 10
         ? 2
         : 1;
-    const childrenCols = children.length <= 12 
+    
+    const childrenCols = isCompactView 
+      ? children.length <= 12 
         ? [1, 1, 2, 3, 3, 3, 3, 2, 2, 3, 3, 2, 2][children.length]
-        : 3;
+        : 3
+      : children.length <= 12 
+        ? [1, 1, 2, 3, 3, 3, 3, 4, 4, 5, 5, 4, 4][children.length]
+        : 5;
 
-    const parentCols = (parents.length < 2) ? 1 : 2;
+    const parentCols = isCompactView
+      ? (parents.length < 2) ? 1 : 2
+      : parents.length < 5
+        ? [1, 1, 2, 3, 2][parents.length]
+        : 3;;
 
     const friendCols = isCenterEmbedded
       ? Math.ceil((friends.length*this.nodeHeight)/centerEmbedHeight)
@@ -600,19 +608,19 @@ export class Scene {
     
     //parents
     const parentLabelLength = Math.min(this.longestTitle(parents), correctedMinLabelLength);
-    const parentWidth = parentLabelLength * baseChar.width + padding;
+    const parentWidth = horizontalFactor * (parentLabelLength * baseChar.width + padding);
 
     //children
     const childLength = Math.min(this.longestTitle(children,20), correctedMinLabelLength);
-    const childWidth = childLength * baseChar.width + padding;
+    const childWidth = horizontalFactor * (childLength * baseChar.width + padding);
 
     // friends
     const friendLength = Math.min(this.longestTitle(friends),correctedMinLabelLength);
-    const friendWidth = friendLength * baseChar.width + padding;
+    const friendWidth = horizontalFactor * (friendLength * baseChar.width + padding);
 
     // nextfriends
     const nextFriendLength = Math.min(this.longestTitle(nextFriends), correctedMinLabelLength);
-    const nextFriendWidth = nextFriendLength * baseChar.width + padding;
+    const nextFriendWidth = horizontalFactor * (nextFriendLength * baseChar.width + padding);
 
     //siblings
     const siblingsStyle = settings.siblingNodeStyle;
@@ -621,7 +629,7 @@ export class Scene {
     ea.style.fontFamily = siblingsStyle.fontFamily;
     ea.style.fontSize = siblingsStyle.fontSize;
     const siblingsTextSize = ea.measureText("m".repeat(siblingsLabelLength+3));
-    const siblingsNodeWidth =  siblingsTextSize.width + 3 * siblingsPadding;
+    const siblingsNodeWidth =  horizontalFactor * (siblingsTextSize.width + 3 * siblingsPadding);
     const siblingsNodeHeight = compactFactor * (siblingsTextSize.height + 2 * siblingsPadding);
 
     // layout areas
@@ -671,7 +679,7 @@ export class Scene {
     };
   }
 
-  private calculatNormalLayoutParams({
+  /*private calculatNormalLayoutParams({
     centralPage,
     parents,
     children,
@@ -681,6 +689,7 @@ export class Scene {
     isCenterEmbedded,
     centerEmbedHeight,
     centerEmbedWidth,
+    style,
   }:{
     centralPage: Page, 
     parents: Neighbour[],
@@ -690,23 +699,19 @@ export class Scene {
     siblings: Neighbour[],
     isCenterEmbedded: boolean,
     centerEmbedHeight: number,
-    centerEmbedWidth: number
+    centerEmbedWidth: number,
+    style: NodeStyle,
   }) {
     const settings = this.plugin.settings;
     const ea = this.ea;
+    const basestyle = settings.baseNodeStyle;
+
+    const compactFactor = 2;
+
     const manyFriends = friends.length >= 10;
     const manyNextFriends = nextFriends.length >= 10;
     
-    const style = {
-      ...settings.baseNodeStyle,
-      ...settings.centralNodeStyle,
-    };
-    const basestyle = settings.baseNodeStyle;
-    ea.style.fontFamily = basestyle.fontFamily;
-    ea.style.fontSize = basestyle.fontSize;
     this.nodeWidth = this.textSize.width + 2 * style.padding;
-    
-    const compactFactor = 2;
 
     this.nodeHeight = compactFactor * (this.textSize.height + 2 * style.padding);
     const padding = 6 * basestyle.padding;
@@ -717,14 +722,26 @@ export class Scene {
       : siblings.length >= 10
         ? 2
         : 1;
+
     const childrenCols = children.length <= 12 
         ? [1, 1, 2, 3, 3, 3, 3, 4, 4, 5, 5, 4, 4][children.length]
         : 5;
+  
     const parentCols = parents.length < 5
         ? [1, 1, 2, 3, 2][parents.length]
         : 3;
-    const friendCols = manyFriends ? 2 : 1;
-    const nextFriendCols = manyNextFriends ? 2 : 1;
+
+    const friendCols = isCenterEmbedded
+    ? Math.ceil((friends.length*this.nodeHeight)/centerEmbedHeight)
+    : manyFriends
+      ? 2
+      : 1;
+
+    const nextFriendCols = isCenterEmbedded
+      ? Math.ceil((nextFriends.length*this.nodeHeight)/centerEmbedHeight)
+      : manyNextFriends
+        ? 2
+        : 1;
 
     //center     
     const rootTitle = centralPage.getTitle();
@@ -732,7 +749,9 @@ export class Scene {
     const rootNodeLength = style.maxLabelLength;
     const rootWidth = this.nodeWidth;
 
-    const heightInCenter = 4 *this.nodeHeight;
+    const heightInCenter = isCenterEmbedded
+      ? centerEmbedHeight + 2 * this.nodeHeight
+      : 4 *this.nodeHeight;
     
     //parents
     const parentLabelLength = style.maxLabelLength;
@@ -807,7 +826,7 @@ export class Scene {
         nextFriendOrigoX,                 nextFriendWidth,                       nextFriendLength,    nextFriendCols,
         siblingsOrigoX,   siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength, siblingsCols,
       };
-  }
+  }*/
 
   /**
    * if retainCentralNode is true, the central node is not removed from the scene when the scene is rendered
@@ -822,7 +841,6 @@ export class Scene {
     if(!this.centralPagePath) return;
 
     const settings = this.plugin.settings;
-    const isCompactView = settings.compactView;
     
     let centralPage = this.plugin.pages.get(this.centralPagePath);
     if(!centralPage) {
@@ -866,6 +884,14 @@ export class Scene {
     const centerEmbedWidth = settings.centerEmbedWidth;
     const centerEmbedHeight = settings.centerEmbedHeight;
 
+    const style = {
+      ...settings.baseNodeStyle,
+      ...settings.centralNodeStyle,
+    };
+    const basestyle = settings.baseNodeStyle;
+    ea.style.fontFamily = basestyle.fontFamily;
+    ea.style.fontSize = basestyle.fontSize;
+
     const {
       rootNode, rootWidth, rootNodeLength,
       childrenOrigoY, childWidth, childLength, childrenCols,
@@ -873,18 +899,13 @@ export class Scene {
       friendOrigoX, friendWidth, friendLength, friendCols,
       nextFriendOrigoX, nextFriendWidth, nextFriendLength, nextFriendCols,
       siblingsOrigoX, siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength, siblingsCols,
-    } = isCompactView 
-      ? this.calculateCompactLayoutParams({
-          centralPage,
-          parents, children, friends, nextFriends, siblings,
-          isCenterEmbedded, centerEmbedHeight, centerEmbedWidth,
-        }) 
-      : this.calculatNormalLayoutParams({
-          centralPage,
-          parents, children, friends, nextFriends, siblings,
-          isCenterEmbedded, centerEmbedHeight, centerEmbedWidth,
-        });
-
+    } = this.calculateLayoutParams({
+      centralPage,
+      parents, children, friends, nextFriends, siblings,
+      isCenterEmbedded, centerEmbedHeight, centerEmbedWidth,
+      style,
+    });
+ 
     // layout    
     const lCenter = new Layout({
       origoX: 0,

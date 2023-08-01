@@ -22,6 +22,7 @@ import { DEFAULT_HIERARCHY_DEFINITION, DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, P
 
 export interface ExcaliBrainSettings {
   compactView: boolean;
+  compactingFactor: number;
   excalibrainFilepath: string;
   indexUpdateInterval: number;
   hierarchy: Hierarchy;
@@ -82,6 +83,7 @@ export interface ExcaliBrainSettings {
 
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   compactView: false,
+  compactingFactor: 1,
   excalibrainFilepath: "excalibrain.md",
   indexUpdateInterval: 5000,
   hierarchy: DEFAULT_HIERARCHY_DEFINITION,
@@ -498,7 +500,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     deleteValue:()=>void,
     allowOverride: boolean,
     defaultValue: number,
-  ) {
+  ): Setting {
     let displayText: HTMLDivElement;
     let toggleComponent: ToggleComponent;
     let sliderComponent: SliderComponent;
@@ -560,6 +562,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     });
 
     setDisabled(allowOverride && !toggleComponent.getValue());
+    return setting;
   }
 
   toggle(
@@ -1726,7 +1729,23 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           this.dirty = true;
         })
       )
-        
+
+    this.numberslider(
+      containerEl,
+      t("COMPACTING_FACTOR_NAME"),
+      t("COMPACTING_FACTOR_NAME"),
+      {min:1,max:2,step:0.1},
+      () => this.plugin.settings.compactingFactor,
+      (val) => {
+        this.plugin.settings.compactingFactor = val;
+        this.dirty = true;
+      },
+      ()=> {
+      },
+      false,
+      1,
+    )
+
     const filepathList = new Setting(containerEl)
       .setName(t("EXCLUDE_PATHLIST_NAME"))
       .setDesc(fragWithHTML(t("EXCLUDE_PATHLIST_DESC")))
