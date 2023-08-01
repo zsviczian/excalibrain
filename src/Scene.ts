@@ -487,13 +487,6 @@ export class Scene {
       ...settings.centralNodeStyle,
     };
     const baseStyle = settings.baseNodeStyle;
-
-    const max = children.reduce((prev, current) => (prev.y > current.y) ? prev : current, 1)
-    const max2 = children.reduce(function(prev, current) {
-      return (prev > current.page.getTitle().length) ? prev : current
-  })
-
-
     const siblingsCols = siblings.length >= 20
       ? 3
       : siblings.length >= 10
