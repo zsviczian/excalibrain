@@ -546,7 +546,7 @@ export class Scene {
       width: baseChar4x.width * 0.25,
       height: baseChar4x.height
     };
-    this.nodeWidth = basestyle.maxLabelLength * baseChar.width + 2 * basestyle.padding
+    this.nodeWidth = basestyle.maxLabelLength * baseChar.width + 2 * basestyle.padding;
 
     const compactFactor = 1.4;
 
