@@ -195,6 +195,9 @@ export default {
   SHOW_HIDE_TAG: "Show/Hide tag nodes",
   SHOW_HIDE_PAGES: "Show/Hide page nodes (incl. defined, inferred, virtual and attachments)",
   PIN_LEAF: "Link ExcaliBrain to most recent active leaf",
+  NAVIGATE_BACK: "Navigate back",
+  NAVIGATE_FORWARD: "Navigate forward",
+  REFRESH_VIEW: "Refresh",
 
   //AddToOntologyModal
   ADD_TO_ONTOLOGY_MODAL_DESC: "Select the direction of the ontology. If one of the buttons is highlighted, then the field is already part of the ontology in that direction.",
