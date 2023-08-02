@@ -57,7 +57,7 @@ export class Scene {
   }
 
   public getCentralLeaf(): WorkspaceLeaf {
-    if(this.plugin.settings.embedCentralNode) {
+    if(!this.plugin.settings.autoOpenCentralDocument) {
       return null;
     }
     return this.centralLeaf;
@@ -103,7 +103,7 @@ export class Scene {
     if(
       centralPage?.file &&
       !(centralPage.isFolder || centralPage.isTag || centralPage.isVirtual) &&
-      !this.plugin.settings.embedCentralNode
+      this.plugin.settings.autoOpenCentralDocument
     ) {
       if(!this.centralLeaf) {
         this.ea.openFileInNewOrAdjacentLeaf(centralPage.file);
@@ -194,7 +194,7 @@ export class Scene {
       return; //don't reload the file if it has not changed
     }
 
-    if(isFile && shouldOpenFile && !settings.embedCentralNode) {
+    if(isFile && shouldOpenFile && settings.autoOpenCentralDocument) {
       const centralLeaf = this.getCentralLeaf();
       //@ts-ignore
       if(!centralLeaf || !this.app.workspace.getLeafById(centralLeaf.id)) {
@@ -202,9 +202,9 @@ export class Scene {
       } else {
         centralLeaf.openFile(page.file, {active: false});
       }
-      this.addToHistory(page.file.path);
+      this.plugin.navigationHistory.addToHistory(page.file.path);
     } else {
-      this.addToHistory(page.path);
+      this.plugin.navigationHistory.addToHistory(page.path);
     }
 
     if(page.isFolder && !settings.showFolderNodes) {
@@ -225,21 +225,6 @@ export class Scene {
     this.centralPagePath = path;
     this.centralPageFile = page.file;
     await this.render(isSameFileAsCurrent);
-  }
-
-  async addToHistory(path: string) {
-    const nh = this.plugin.navigationHistory;
-    if(nh.last() === path) {
-      return;
-    }
-    const i = nh.indexOf(path);
-    if(i>-1) {
-      nh.splice(i,1);
-    }
-    if(nh.length>50) {
-      nh.shift();
-    }
-    nh.push(path);
   }
 
   public static async openExcalidrawLeaf(ea: ExcalidrawAutomate, settings: ExcaliBrainSettings, leaf: WorkspaceLeaf) {
@@ -986,7 +971,7 @@ export class Scene {
       return;
     }
 
-    if(!startup && settings.embedCentralNode) {
+    if(!startup && !settings.autoOpenCentralDocument) {
       return;
     }
 
@@ -1039,7 +1024,7 @@ export class Scene {
       await this.plugin.createIndex();
     }
 
-    this.addToHistory(rootFile.path);
+    this.plugin.navigationHistory.addToHistory(rootFile.path);
     this.centralPagePath = rootFile.path;
     this.centralPageFile = rootFile;
     this.centralLeaf = leaf;
@@ -1086,7 +1071,7 @@ export class Scene {
       this.brainEventHandler(leafToOpen, true);
     } else {
       if(this.plugin.navigationHistory.length>0) {
-        const lastFilePath = this.plugin.navigationHistory.last();
+        const lastFilePath = this.plugin.navigationHistory.last;
         setTimeout(()=>this.renderGraphForPath(lastFilePath,true),100);
       }
     }
@@ -1183,7 +1168,7 @@ export class Scene {
     if(saveSettings) {
       setTimeout(async () => {
         await this.plugin.loadSettings(); //only overwrite the navigation history, save other synchronized settings
-        this.plugin.settings.navigationHistory = [...this.plugin.navigationHistory];
+        this.plugin.settings.navigationHistory = [...this.plugin.navigationHistory.get()];
         await this.plugin.saveSettings();
       },400);
     }

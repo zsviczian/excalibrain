@@ -21,63 +21,83 @@
 /* -----------
    TOOLS PANEL
   ------------ */
-  .excalibrain-toolspanel-divider {
-    width: 2px;
-    background-color: var(--default-border-color);
-    margin-left: 8px;
-    margin-right: 3px;
-  }
-  
   .excalibrain-toolspanel-wrapper {
     z-index: 3;
     position: absolute;
-    top: 10px;
-    padding-left: 10px;
+    top: 0.6em;
+    padding-left: 0.6em;
     /* Set width to auto to fit its content */
-    width: auto;
-    padding-right: 10px;
+    width: 100%;
+    padding-right: 0.6em;
     pointer-events: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
   }
   
   .excalibrain-dropdown-wrapper,
+  .excalibrain-buttons {
+    pointer-events: none;
+    margin-top: 0.3em;
+    max-width: 37em;
+    justify-content: space-between;
+  }
+
   .excalibrain-searchinput {
-    /* Adjust flex properties to make them appear in separate rows */
-    flex-wrap: wrap;
-    margin-bottom: 5px; /* Add a small margin to separate the rows */
-  }
-  
-  .excalibrain-button {
-    vertical-align: middle;
-    padding-left: 5px;
-    padding-right: 5px;
-    margin-left: 5px !important;
-    margin-right: 0px !important;
-    width: 2.4em !important;
-  }
-  
-  .excalibrain-button.off {
-    background-color: var(--island-bg-color);
-  }
-  
-  .excalibrain-button.on {
-    background-color: var(--color-primary-darker);
-  }
-  
-  .excalibrain-searchinput {
-    width: 400px;
+    width: 26em;
     vertical-align: middle;
     pointer-events: all;
   }
   
   .excalibrain-buttons {
-    display: flex; /* Change display to flex */
-    /* Adjust width to the content */
-    width: auto;
-    margin-top: 5px;
-    pointer-events: all;
-    margin-left: -5px;
+    margin-left: -0.3em;
+    display: flex;
+    float: right;
+    flex: 1 0 30em;
   }
-  
+
+  .excalibrain-toolspanel-divider {
+    width: 0.15em;
+    background-color: var(--default-border-color);
+    margin-left: 0.5em;
+    margin-right: 0.2em;
+  }
+
+  .excalibrain-button {
+    pointer-events: all;
+    vertical-align: middle;
+    padding-left: 0.3em;
+    padding-right: 0.3em;
+    margin-left: 0.3em !important;
+    margin-right: 0px !important;
+    width: 2.4em !important;
+    justify-content: center !important;
+    box-shadow: none;
+    transition: box-shadow 0.3s ease;
+  }
+
+  .excalibrain-button.off {
+      background-color: var(--island-bg-color);
+  }
+
+  .excalibrain-button.on {
+      background-color: var(--color-primary-darker);
+  }
+
+  .excalibrain-button:hover {
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+  }
+
+  .excalibrain-button:active {
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6);
+  }
+
+  .excalibrain-button.disabled {
+    background-color: var(--island-bg-color);
+    pointer-events: none;
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 
 /* -----------
      HISTORY
@@ -98,6 +118,8 @@
   overflow-y: hidden;
   display: -webkit-box;
   overflow-x: scroll;
+  padding-left: 0.5em;
+  background-color: #00000030;
 }
 
 .excalibrain-history-divider {
@@ -184,8 +206,8 @@
    MULTISELECT
   ------------ */
 .multiselect-container {
-  padding-left: 5px;
-  width:200px;
+  padding-left: 0.3em;
+  width:14.2em;
   pointer-events: all;
 }
 

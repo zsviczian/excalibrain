@@ -17,6 +17,7 @@ import { Literal } from 'obsidian-dataview/lib/data-model/value';
 import { isEmbedFileType } from './utils/fileUtils';
 import { URLParser } from './graph/URLParser';
 import { AddToOntologyModal, Ontology } from './Components/AddToOntologyModal';
+import { NavigationHistory } from './Components/NavigationHistory';
 
 declare module "obsidian" {
   interface App {
@@ -58,7 +59,7 @@ export default class ExcaliBrain extends Plugin {
   public starred: Page[] = [];
   private focusSearchAfterInitiation:boolean = false;
   public customNodeLabel: (dvPage: Literal, defaultName:string) => string
-  public navigationHistory: string[] = [];
+  public navigationHistory: NavigationHistory
   public urlParser: URLParser;
   private addToOntologyModal: AddToOntologyModal;
   
@@ -77,7 +78,7 @@ export default class ExcaliBrain extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-    this.navigationHistory = this.settings.navigationHistory;
+    this.navigationHistory = new NavigationHistory(this.settings.navigationHistory);
 		this.addSettingTab(new ExcaliBrainSettingTab(this.app, this));
     this.registerEditorSuggest(new FieldSuggester(this));
     this.registerEvents();
@@ -613,8 +614,8 @@ export default class ExcaliBrain extends Plugin {
         return false;
       }
 
-      //if centralPage is in embeddedFrame
-      if(this.settings.embedCentralNode) {
+      //if navigation is not automatically syncrhonized with the active tab in Obsidian
+      if(!this.settings.autoOpenCentralDocument) {
         //the user clicked the link handle in the top left, then open the file in a leaf
         if(this.scene.centralPagePath === page.path) {
           if(page.isURL) {
