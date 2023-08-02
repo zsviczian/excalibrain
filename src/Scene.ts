@@ -511,6 +511,7 @@ export class Scene {
     centerEmbedHeight,
     centerEmbedWidth,
     style,
+    rootNode,
   }:{
     centralPage: Page, 
     parents: Neighbour[],
@@ -522,6 +523,7 @@ export class Scene {
     centerEmbedHeight: number,
     centerEmbedWidth: number,
     style: NodeStyle,
+    rootNode: Node,
   }) {
     const settings = this.plugin.settings;
     const ea = this.ea;
@@ -544,7 +546,7 @@ export class Scene {
 
     this.nodeHeight = compactFactor * (baseChar.height + 2 * basestyle.padding);
     const padding = 6 * basestyle.padding;
-    const prefixLength = 1;
+    const prefixLength = rootNode.prefix.length;
 
     // container
     const container = ea.targetView.containerEl;
@@ -591,10 +593,10 @@ export class Scene {
   
     //center     
     const rootTitle = centralPage.getTitle();
-    const rootNode = ea.measureText(rootTitle.repeat(1));
+    const rootNodeDimensions = ea.measureText(rootTitle.repeat(1));
     const actualRootLength = [...new Intl.Segmenter().segment(rootTitle)].length;
     const rootNodeLength = Math.min(actualRootLength + prefixLength, style.maxLabelLength);
-    const rootWidth = rootNode.width + 2 * style.padding;
+    const rootWidth = rootNodeDimensions.width + 2 * style.padding;
     const heightInCenter = isCenterEmbedded
       ? centerEmbedHeight + 2 * this.nodeHeight
       : 4 *this.nodeHeight;
@@ -663,7 +665,7 @@ export class Scene {
       ) + this.nodeHeight;
 
     return {
-      rootNode,                         rootWidth,                             rootNodeLength,
+      rootNodeDimensions,               rootWidth,                             rootNodeLength,
       childrenOrigoY,                   childWidth,                            childLength,         childrenCols,
       parentsOrigoY,                    parentWidth,                           parentLabelLength,   parentCols,
       friendOrigoX,                     friendWidth,                           friendLength,        friendCols,
@@ -736,8 +738,19 @@ export class Scene {
     ea.style.fontFamily = basestyle.fontFamily;
     ea.style.fontSize = basestyle.fontSize;
 
+    this.rootNode = new Node({
+      ea,
+      page: centralPage,
+      isInferred: false,
+      isCentral: true,
+      isSibling: false,
+      friendGateOnLeft: true,
+      isEmbeded: isCenterEmbedded,
+      embeddedElementIds: retainCentralNode ? this.rootNode?.embeddedElementIds : undefined,
+    });
+
     const {
-      rootNode, rootWidth, rootNodeLength,
+      rootNodeDimensions, rootWidth, rootNodeLength,
       childrenOrigoY, childWidth, childLength, childrenCols,
       parentsOrigoY, parentWidth, parentLabelLength, parentCols,
       friendOrigoX, friendWidth, friendLength, friendCols,
@@ -747,7 +760,7 @@ export class Scene {
       centralPage,
       parents, children, friends, nextFriends, siblings,
       isCenterEmbedded, centerEmbedHeight, centerEmbedWidth,
-      style,
+      style, rootNode: this.rootNode
     });
  
     // layout    
@@ -764,7 +777,7 @@ export class Scene {
         : rootWidth,
       rowHeight: isCenterEmbedded
         ? centerEmbedHeight
-        : rootNode.height,
+        : rootNodeDimensions.height,
         maxLabelLength: rootNodeLength
     });
     this.layouts.push(lCenter);
@@ -831,16 +844,6 @@ export class Scene {
     this.layouts.push(lSiblings);
 
     centralPage.maxLabelLength = rootNodeLength; 
-    this.rootNode = new Node({
-      ea,
-      page: centralPage,
-      isInferred: false,
-      isCentral: true,
-      isSibling: false,
-      friendGateOnLeft: true,
-      isEmbeded: isCenterEmbedded,
-      embeddedElementIds: retainCentralNode ? this.rootNode?.embeddedElementIds : undefined,
-    });
 
     this.nodesMap.set(centralPage.path,this.rootNode);
     lCenter.nodes.push(this.rootNode);
