@@ -5,7 +5,7 @@ import ExcaliBrain from "src/excalibrain-main";
 import { splitFolderAndFilename } from "src/utils/fileUtils";
 import { PageSuggest } from "../Suggesters/PageSuggester";
 import { LinkTagFilter } from "./LinkTagFilter";
-import { getIcon } from "obsidian";
+import { EditableFileView, getIcon, TextFileView, WorkspaceLeaf } from "obsidian";
 import { addVerticalDivider } from "./VerticalDivider";
 
 export class ToolsPanel {
@@ -119,7 +119,7 @@ export class ToolsPanel {
       updateIndex: false,
     });
     this.buttons.push(bb);
-    
+
     //------------
     //Navigate forward
     //------------
@@ -165,26 +165,47 @@ export class ToolsPanel {
     //------------
     //Pin Leaf
     //------------
-    this.buttons.push(
-      new ToggleButton({
-        plugin: this.plugin,
-        getVal: () => this.plugin.scene.pinLeaf,
-        setVal: (val: boolean) => {
-          this.plugin.scene.pinLeaf = val;
-          return true;
+    const pinLeafButton = new ToggleButton({
+      plugin: this.plugin,
+      getVal: () => this.plugin.scene.pinLeaf,
+      setVal: (val: boolean) => {
+        this.plugin.scene.pinLeaf = val;
+        if(val) {
+          const leaves: WorkspaceLeaf[] = [];
+          this.plugin.app.workspace.iterateAllLeaves(leaf => {
+            if(
+              leaf.view?.getViewType() === "empty" ||
+              leaf.view instanceof EditableFileView && leaf !== this.plugin.scene?.leaf
+            ) {
+              leaves.push(leaf);
+            }
+          });
+          leaves.sort((a,b) => (a.activeTime - b.activeTime)>0?-1:1);
+          if(leaves.length>0) {
+            this.plugin.scene.centralLeaf = leaves[0];
+          }
+        }
+        return true;
+      },
+      isEnabled: () => {
+        if(!this.plugin.settings.autoOpenCentralDocument) return false;
+        if(this.plugin.scene && !this.plugin.scene.isCentralLeafStillThere()) {
+          this.plugin.scene.pinLeaf = false;
+        }
+        return true;
+      },
+      wrapper: buttonsWrapperDiv,
+      options: {
+        display: "📌",
+        icon: {
+          on: getIcon("lucide-pin").outerHTML,
+          off: getIcon("lucide-pin-off").outerHTML,
         },
-        wrapper: buttonsWrapperDiv,
-        options: {
-          display: "📌",
-          icon: {
-            on: getIcon("lucide-pin").outerHTML,
-            off: getIcon("lucide-pin-off").outerHTML,
-          },
-          tooltip: t("PIN_LEAF"),
-        },
-        updateIndex: false,
-      })
-    );
+        tooltip: t("PIN_LEAF"),
+      },
+      updateIndex: false,
+    })
+    this.buttons.push(pinLeafButton);
 
     //------------
     //Automatically open central node in leaf
@@ -195,6 +216,7 @@ export class ToolsPanel {
         getVal: () => this.plugin.settings.autoOpenCentralDocument,
         setVal: (val: boolean) => {
           this.plugin.settings.autoOpenCentralDocument = val;
+          pinLeafButton.updateButton();
           return true;
         },
         wrapper: buttonsWrapperDiv,

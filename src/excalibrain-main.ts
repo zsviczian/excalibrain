@@ -28,6 +28,7 @@ declare module "obsidian" {
   }
   interface WorkspaceLeaf {
     id: string;
+    activeTime: number;
   }
 }
 
@@ -634,7 +635,7 @@ export default class ExcaliBrain extends Plugin {
         return false;
       }
 
-      const centralLeaf = this.scene.getCentralLeaf();
+      const centralLeaf = this.scene.centralLeaf;
       //handle click on link to existing file
       if(!page.isFolder && !page.isTag && !page.isURL) {
         //if the leaf attached to ExcaliBrain already has the new file open, render the associated graph

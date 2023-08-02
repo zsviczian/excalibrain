@@ -23,7 +23,7 @@ export class Scene {
   leaf: WorkspaceLeaf;
   centralPagePath: string; //path of the page in the center of the graph
   centralPageFile: TFile;
-  public centralLeaf: WorkspaceLeaf; //workspace leaf containing the central page
+  private _centralLeaf: WorkspaceLeaf; //workspace leaf containing the central page
   textSize: {width:number, height:number};
   nodeWidth: number;
   nodeHeight: number;
@@ -56,11 +56,18 @@ export class Scene {
     this.links = new Links(plugin);
   }
 
-  public getCentralLeaf(): WorkspaceLeaf {
-    if(!this.plugin.settings.autoOpenCentralDocument) {
+  set centralLeaf(leaf: WorkspaceLeaf) {
+    this._centralLeaf = leaf;
+  }
+  
+  get centralLeaf(): WorkspaceLeaf {
+    if(!this.plugin.settings.autoOpenCentralDocument || !this._centralLeaf) {
       return null;
     }
-    return this.centralLeaf;
+    if(this.app.workspace.getLeafById(this._centralLeaf.id)) {
+      return this._centralLeaf;
+    } 
+    return null;
   }
 
   public async initialize(focusSearchAfterInitiation: boolean) {
@@ -195,7 +202,7 @@ export class Scene {
     }
 
     if(isFile && shouldOpenFile && settings.autoOpenCentralDocument) {
-      const centralLeaf = this.getCentralLeaf();
+      const centralLeaf = this.centralLeaf;
       //@ts-ignore
       if(!centralLeaf || !this.app.workspace.getLeafById(centralLeaf.id)) {
         this.centralLeaf = this.ea.openFileInNewOrAdjacentLeaf(page.file);
@@ -337,8 +344,9 @@ export class Scene {
         "✨ For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
         "under 'Links and Transclusion'.\n\n⚠ ExcaliBrain may need to wait for " +
         "DataView to initialize its index.\nThis can take up to a few minutes after starting Obsidian.", {textAlign:"center"});
-      ea.addElementsToView(false,false);
-      ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
+      ea.addElementsToView(false,false).then(()=>{
+        ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
+      });
     }
     const frame3 = async () => {
       if(this.plugin.settings.allowAutozoom) {
@@ -929,9 +937,10 @@ export class Scene {
     ea.elementsDict = newImagesDict;
 
     const excalidrawAPI = ea.getExcalidrawAPI() as ExcalidrawImperativeAPI;
-    ea.addElementsToView(false,false);
-    excalidrawAPI.updateScene({appState: {viewBackgroundColor: settings.backgroundColor}});
-    ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
+    ea.addElementsToView(false,false).then(()=>{
+      excalidrawAPI.updateScene({appState: {viewBackgroundColor: settings.backgroundColor}});
+      ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
+    });
     if(settings.allowAutozoom && !retainCentralNode) {
       setTimeout(()=>excalidrawAPI.zoomToFit(ea.getViewElements(),settings.maxZoom,0.15),100);
     }
@@ -948,7 +957,7 @@ export class Scene {
   public isCentralLeafStillThere():boolean {
     const settings = this.plugin.settings;
     //@ts-ignore
-    const noCentralLeaf = app.workspace.getLeafById(this.centralLeaf.id) === null ;
+    const noCentralLeaf = app.workspace.getLeafById(this.centralLeaf?.id) === null ;
     if(noCentralLeaf) {
       return false;
     }
