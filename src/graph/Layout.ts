@@ -53,8 +53,136 @@ export class Layout {
         ? Array(columns).fill(null).map((_,j) => sortedNodes[i*columns+j]) //full row
         : getRowLayout(itemCount % columns).map(idx => idx ? sortedNodes[i*columns+idx-1]:null));
   }
+	private setCompactPosition(center00: { x: number, y: number }) {
+		const fixOverlap = (center00: { x: number, y: number }) => {
 
-  async render() {
+			//I think if LayoutSpecification could add layoutPositionTag property: 'center' | 'children' | ...
+			//,this will be more simple and clear.
+			const layoutPosition = this.spec.origoX === 0
+				? (this.spec.top === null && this.spec.bottom === null)
+					? 'center'
+					: this.spec.origoY < 0 ? 'top' : 'bottom'
+				: (this.spec.top === null && this.spec.bottom === null)
+					? this.spec.origoX < 0 ? 'left' : 'right'
+					: 'sibling';
+
+			if (layoutPosition === 'center') {
+				return this.setPosition(center00);
+			}
+			if (layoutPosition === 'sibling') {
+				const maxNodeWidth = Math.max(...this.renderedNodes.flatMap(row =>
+					row.map(node => node?.labelSize().width)
+				));
+				const gap = Math.abs(this.spec.origoX);
+				const offset = maxNodeWidth > gap
+					? (maxNodeWidth - gap) + 0.5 * maxNodeWidth
+					: 0;
+				const newCenter00 = {
+					x: center00.x + offset,
+					y: center00.y,
+				}
+				return this.setPosition(newCenter00);
+			}
+			if (layoutPosition === 'left' || layoutPosition === 'right') {
+				const maxNodeWidth = Math.max(...this.renderedNodes.flat().map(node => node?.labelSize().width));
+				const offset = maxNodeWidth > this.spec.columnWidth
+					? (maxNodeWidth - this.spec.columnWidth) / 2 + 0.2 * maxNodeWidth
+					: 0;
+				const newCenter00 = {
+					x: layoutPosition === 'left'
+						? center00.x - offset
+						: center00.x + offset,
+					y: center00.y,
+				}
+				return this.setPosition(newCenter00);
+
+			}
+			else {
+				const rowWidth = this.spec.columns * this.spec.columnWidth;
+				const nodeGap = rowWidth * 0.05;
+				const initialCenter = (spec: LayoutSpecification, width: number, row: number) => {
+					return width > spec.columnWidth
+						? {
+							x: center00.x + (width - spec.columnWidth) / 2,
+							y: center00.y + row * spec.rowHeight,
+						}
+						: {
+							x: center00.x - (spec.columnWidth - width) / 2,
+							y: center00.y + row * spec.rowHeight,
+						}
+				}
+				const nodes = this.renderedNodes.flat().filter(node => !!node);
+				let stackWidth = 0;
+				const nodesInfo: { x: number, y: number, width: number }[][] = [];
+				const alignCenter = (nodeInfo: { x: number, y: number, width: number }[]) => {
+					const residue = rowWidth - stackWidth;
+					const len = nodeInfo.length;
+					const offset = residue / (len - 1);
+					return nodeInfo.map((node, index) => {
+						if (index === 0) {
+							return len === 1
+								? { ...node, x: node.x + residue / 2 }
+								: node;
+						}
+						return { ...node, x: node.x + offset * index };
+					})
+				}
+
+				nodes.forEach((node, index) => {
+					const width = node.labelSize().width;
+					const row = nodesInfo.length - 1;
+					if (index === 0) {
+						const init = initialCenter(this.spec, width, 0);
+						stackWidth = width;
+						nodesInfo.push([{ ...init, width }]);
+					}
+					else if ((stackWidth + nodeGap + width) > rowWidth) {
+						nodesInfo[row] = alignCenter(nodesInfo[row]);
+						const newRow = row + 1;
+						const init = initialCenter(this.spec, width, newRow);
+						stackWidth = width;
+						nodesInfo.push([{ width, ...init }]);
+					}
+					else {
+						const prev_center = nodesInfo[row].last();
+						nodesInfo[row].push({
+							...prev_center,
+							width,
+							x: prev_center.x + prev_center.width / 2 + nodeGap + width / 2,
+						})
+						stackWidth = stackWidth + nodeGap + width;
+					}
+
+				});
+
+				const nodePosition = nodesInfo.flatMap((nodes, row) => {
+					if (row === nodesInfo.length - 1) {
+						return alignCenter(nodes)
+					}
+					return nodes
+				});
+
+				return nodes.map((node, index) => {
+					const info = nodePosition[index];
+					node?.setCenter({ ...info });
+					return node;
+				});
+			}
+		}
+		return fixOverlap(center00);
+	}
+	private setPosition(center00: { x: number, y: number }) {
+		return this.renderedNodes.map((nodes, row) => {
+			return nodes.map((node, idx) => {
+				node?.setCenter({
+					x: center00.x + idx * this.spec.columnWidth,
+					y: center00.y + row * this.spec.rowHeight
+				});
+				return node
+			})
+		}).flat();
+	}
+  async render(isCompactView:boolean) {
     this.layout();
     const rows = this.renderedNodes.length;
     const height = rows * this.spec.rowHeight;
@@ -71,16 +199,14 @@ export class Layout {
       x: this.spec.origoX - (this.spec.columns === 1 ? 0 : (this.spec.columns-1)/2*this.spec.columnWidth),
       y: top
     };
-    for (const [row, nodes] of this.renderedNodes.entries()) {
-      for (const [idx, node] of nodes.entries()) {
-        if(node) {
-          node.setCenter({
-            x: center00.x + idx*this.spec.columnWidth,
-            y: center00.y + row*this.spec.rowHeight
-          });
-          await node.render();
+
+    const renderedNodesWithPosition = isCompactView
+      ? this.setCompactPosition(center00)
+      : this.setPosition(center00);
+    for (const [_, node] of renderedNodesWithPosition.entries()) {
+      if (node) {
+        await node.render();
         }
       }
     }
-  }
 }

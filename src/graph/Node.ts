@@ -82,6 +82,21 @@ export class Node {
       : label;
   }
 
+  labelSize(){
+    const ea = this.ea;
+    ea.style.fontSize = this.style.fontSize;
+    ea.style.fontFamily = this.style.fontFamily;
+    ea.style.fillStyle = this.style.fillStyle;
+    ea.style.roughness = this.style.roughness;
+    ea.style.strokeSharpness = this.style.strokeShaprness;
+    ea.style.strokeWidth = this.style.strokeWidth;
+    ea.style.strokeColor = this.style.textColor;
+    ea.style.backgroundColor = "transparent";
+    const label = this.displayText();
+    const labelSize = ea.measureText(`${label}`);
+    return {width:labelSize.width + 2*this.style.padding,height:labelSize.height} ;
+  }
+
   setCenter(center:{x:number, y:number}) {
     this.center = center;
   }
