@@ -117,6 +117,7 @@ export class ToolsPanel {
         tooltip: t("NAVIGATE_BACK"),
       },
       updateIndex: false,
+      shouldRerenderOnToggle: false,
     });
     this.buttons.push(bb);
 
@@ -139,6 +140,7 @@ export class ToolsPanel {
         tooltip: t("NAVIGATE_FORWARD"),
       },
       updateIndex: false,
+      shouldRerenderOnToggle: false,
     });
 
     this.buttons.push(fb);

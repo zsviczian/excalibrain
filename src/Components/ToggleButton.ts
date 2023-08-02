@@ -7,7 +7,7 @@ export class ToggleButton {
   private getVal: ()=>boolean;
   private isEnabled: ()=>boolean;
 
-  constructor({ plugin, getVal, setVal, isEnabled, wrapper, options, updateIndex} : {
+  constructor({ plugin, getVal, setVal, isEnabled, wrapper, options, updateIndex, shouldRerenderOnToggle} : {
     plugin: ExcaliBrain,
     getVal: ()=>boolean,
     setVal: (val:boolean)=>boolean,
@@ -18,8 +18,12 @@ export class ToggleButton {
       icon?: string | {on: string, off: string},
       tooltip: string
     },
-    updateIndex: boolean
+    updateIndex: boolean,
+    shouldRerenderOnToggle?: boolean,
   }) {
+    if(typeof shouldRerenderOnToggle === "undefined") {
+      shouldRerenderOnToggle = true;
+    }
     this.getVal = getVal;
     this.isEnabled = isEnabled;
     this.button = wrapper.createEl("button", {
@@ -45,7 +49,7 @@ export class ToggleButton {
       if(shouldSaveSettings) plugin.saveSettings();
       this.updateButton();
       if(options.icon) this.button.innerHTML = getIcon(getVal());
-      plugin.scene?.reRender(updateIndex);
+      if(shouldRerenderOnToggle) plugin.scene?.reRender(updateIndex);
     }
   }
 
