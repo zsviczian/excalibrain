@@ -81,6 +81,7 @@ export class ToolsPanel {
             filename: `ExcaliBrain Snapshot - ${splitFolderAndFilename(this.plugin.scene.centralPagePath).basename}`,
             onNewPane: true
           });
+          return false;
         },
         buttonsWrapperDiv,
         {
@@ -99,7 +100,7 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>false,
-        (val:boolean)=>{},
+        (val:boolean)=>false,
         buttonsWrapperDiv,
         {
           display: "<",
@@ -113,20 +114,22 @@ export class ToolsPanel {
     //------------
     //Navigate forward
     //------------
-    this.buttons.push(
-      new ToggleButton(
-        this.plugin,
-        ()=>false,
-        (val:boolean)=>{},
-        buttonsWrapperDiv,
-        {
-          display: ">",
-          icon: getIcon("lucide-arrow-big-right").outerHTML,
-          tooltip: t("NAVIGATE_FORWARD")
-        },
-        false
-     )
-    )
+    new ToggleButton(
+      this.plugin,
+      ()=>false,
+      (val:boolean)=>{
+        const lastItemIDX = this.plugin.settings.navigationHistory.length;
+        this.plugin.scene.renderGraphForPath(this.plugin.settings.navigationHistory[lastItemIDX-1]);
+        return false;
+      },
+      buttonsWrapperDiv,
+      {
+        display: ">",
+        icon: getIcon("lucide-arrow-big-right").outerHTML,
+        tooltip: t("NAVIGATE_FORWARD")
+      },
+      false
+   )
     
     //------------
     //Refresh view
@@ -135,7 +138,7 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>false,
-        (val:boolean)=>this.plugin.scene.pinLeaf = val,
+        (val:boolean)=>false,
         buttonsWrapperDiv,
         {
           display: "🔄",
@@ -153,7 +156,10 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>this.plugin.scene.pinLeaf,
-        (val:boolean)=>this.plugin.scene.pinLeaf = val,
+        (val:boolean)=>{
+          this.plugin.scene.pinLeaf = val;
+          return true;
+        },
         buttonsWrapperDiv,
         {
           display: "📌",
@@ -171,7 +177,10 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>this.plugin.settings.autoOpenCentralDocument,
-        (val:boolean)=>this.plugin.settings.autoOpenCentralDocument = val,
+        (val:boolean)=>{
+          this.plugin.settings.autoOpenCentralDocument = val;
+          return true;
+        },
         buttonsWrapperDiv,
         {
           display: "🔌",
@@ -190,7 +199,10 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>this.plugin.settings.showAttachments,
-        (val:boolean)=>this.plugin.settings.showAttachments = val,
+        (val:boolean)=>{
+          this.plugin.settings.showAttachments = val;
+          return true;
+        },
         buttonsWrapperDiv,
         {
           display: "📎",
@@ -207,7 +219,10 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>this.plugin.settings.showVirtualNodes,
-        (val:boolean)=>this.plugin.settings.showVirtualNodes = val,
+        (val:boolean)=>{
+          this.plugin.settings.showVirtualNodes = val;
+          return true;
+        },
         buttonsWrapperDiv,
         {
           display: "∅",
@@ -225,7 +240,10 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>this.plugin.settings.showInferredNodes,
-        (val:boolean)=>this.plugin.settings.showInferredNodes = val,
+        (val:boolean)=>{
+          this.plugin.settings.showInferredNodes = val;
+          return true;
+        },
         buttonsWrapperDiv,
         {
           display: "🤔",
@@ -242,7 +260,10 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>this.plugin.settings.showPageNodes,
-        (val:boolean)=>this.plugin.settings.showPageNodes = val,
+        (val:boolean)=>{
+          this.plugin.settings.showPageNodes = val;
+          return true;
+        },
         buttonsWrapperDiv,
         {
           display: "📄",
@@ -259,7 +280,10 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>this.plugin.settings.renderAlias,
-        (val:boolean)=>this.plugin.settings.renderAlias = val,
+        (val:boolean)=>{
+          this.plugin.settings.renderAlias = val;
+          return true;
+        },
         buttonsWrapperDiv,
         {
           display: "🧥",
@@ -277,7 +301,10 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>this.plugin.settings.showFolderNodes,
-        (val:boolean)=>this.plugin.settings.showFolderNodes = val,
+        (val:boolean)=>{
+          this.plugin.settings.showFolderNodes = val;
+          return true;
+        },
         buttonsWrapperDiv,
         {
           display: "📂",
@@ -295,7 +322,10 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>this.plugin.settings.showTagNodes,
-        (val:boolean)=>this.plugin.settings.showTagNodes = val,
+        (val:boolean)=>{
+          this.plugin.settings.showTagNodes = val;
+          return true;
+        },
         buttonsWrapperDiv,
         {
           display: "#",
@@ -313,7 +343,10 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>this.plugin.settings.showURLNodes,
-        (val:boolean)=>this.plugin.settings.showURLNodes = val,
+        (val:boolean)=>{
+          this.plugin.settings.showURLNodes = val;
+          return true;
+        },
         buttonsWrapperDiv,
         {
           display: "🌐",
@@ -331,7 +364,10 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>this.plugin.settings.renderSiblings,
-        (val:boolean)=>this.plugin.settings.renderSiblings = val,
+        (val:boolean)=>{
+          this.plugin.settings.renderSiblings = val;
+          return true;
+        },
         buttonsWrapperDiv,
         {
           display: "👨‍👩‍👧‍👦",
@@ -349,7 +385,10 @@ export class ToolsPanel {
       new ToggleButton(
         this.plugin,
         ()=>this.plugin.settings.embedCentralNode,
-        (val:boolean)=>this.plugin.settings.embedCentralNode = val,
+        (val:boolean)=>{
+          this.plugin.settings.embedCentralNode = val;
+          return true;
+        },
         buttonsWrapperDiv,
         {
           display: "⏹️",

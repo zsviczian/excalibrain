@@ -1,21 +1,26 @@
+import { type } from "os";
 import ExcaliBrain from "src/excalibrain-main";
 import { keepOnTop } from "src/utils/utils";
 
 export class ToggleButton {
   private button: HTMLButtonElement;
+  private updateIndex: boolean = true;
+  private getVal: ()=>boolean;
 
-  constructor(
+  constructor({ plugin, getVal, setVal, wrapper, options, updateIndex} : {
     plugin: ExcaliBrain,
-    private getVal: ()=>boolean,
-    setVal: (val:boolean)=>void,
+    getVal: ()=>boolean,
+    setVal: (val:boolean)=>boolean,
     wrapper: HTMLElement,
     options: {
       display?: string,
       icon?: string,
       tooltip: string
     },
-    private updateIndex: boolean = true
-  ) {
+    updateIndex?: boolean
+  }) {
+    if(typeof updateIndex === "boolean") this.updateIndex = updateIndex;
+    this.getVal = getVal;
     this.button = wrapper.createEl("button", {
       cls: "excalibrain-button",
     });
@@ -29,8 +34,8 @@ export class ToggleButton {
     this.setColor();
 
     this.button.onclick = () => {
-      setVal(!getVal());
-      plugin.saveSettings();
+      const shouldSaveSettings = setVal(!getVal());
+      if(shouldSaveSettings) plugin.saveSettings();
       this.setColor();
       plugin.scene?.reRender(this.updateIndex);
     }

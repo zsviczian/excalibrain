@@ -200,7 +200,7 @@ export default {
   NAVIGATE_BACK: "Navigate back",
   NAVIGATE_FORWARD: "Navigate forward",
   REFRESH_VIEW: "Refresh",
-  AUTO_OPEN_DOCUMENT: "Auto-open document in other leaf when navigating to graph-node and open graph-node when navigating to document in workspace leaf",
+  AUTO_OPEN_DOCUMENT: "Synchronize navigation. When plugs are connected, changes to ExcaliBrain focus will be reflected in the active  Obsidian tab and vice versa.",
 
   //AddToOntologyModal
   ADD_TO_ONTOLOGY_MODAL_DESC: "Select the direction of the ontology. If one of the buttons is highlighted, then the field is already part of the ontology in that direction.",
