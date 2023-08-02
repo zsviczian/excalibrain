@@ -546,7 +546,7 @@ export class Scene {
 
     this.nodeHeight = compactFactor * (baseChar.height + 2 * basestyle.padding);
     const padding = 6 * basestyle.padding;
-    const prefixLength = rootNode.prefix.length;
+    const prefixLength = Math.max(rootNode.prefix.length,1);
 
     // container
     const container = ea.targetView.containerEl;
