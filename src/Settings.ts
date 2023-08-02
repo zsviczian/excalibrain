@@ -34,6 +34,7 @@ export interface ExcaliBrainSettings {
   backgroundColor: string;
   excludeFilepaths: string[];
   autoOpenCentralDocument: boolean;
+  toggleEmbedTogglesAutoOpen: boolean;
   showInferredNodes: boolean;
   showAttachments: boolean;
   showURLNodes: boolean;
@@ -95,6 +96,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   backgroundColor: "#0c3e6aff",
   excludeFilepaths: [],
   autoOpenCentralDocument: true,
+  toggleEmbedTogglesAutoOpen: true,
   showInferredNodes: true,
   showAttachments: true,
   showURLNodes: true,
@@ -1713,7 +1715,63 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.plugin.settings.boldFields = value;
             this.dirty = true;
           }))
+
+    // ------------------------------
+    // Behavior
+    // ------------------------------
+    this.containerEl.createEl("h1", {
+      cls: "excalibrain-settings-h1",
+      text: t("BEHAVIOR_HEAD") 
+    });
+
+    //toggleEmbedTogglesAutoOpen: boolean;
+    new Setting(containerEl)
+    .setName(t("TOGGLE_AUTOOPEN_WHEN_EMBED_TOGGLE_NAME"))
+    .setDesc(fragWithHTML(t("TOGGLE_AUTOOPEN_WHEN_EMBED_TOGGLE_DESC")))
+    .addToggle(toggle => 
+      toggle
+        .setValue(this.plugin.settings.toggleEmbedTogglesAutoOpen)
+        .onChange(value => {
+          this.plugin.settings.toggleEmbedTogglesAutoOpen = value;
+          this.dirty = true;
+        }))
+
+    const filepathList = new Setting(containerEl)
+      .setName(t("EXCLUDE_PATHLIST_NAME"))
+      .setDesc(fragWithHTML(t("EXCLUDE_PATHLIST_DESC")))
+      .addTextArea((text)=> {
+        text.inputEl.style.height = "100px";
+        text.inputEl.style.width = "100%";
+        text
+          .setValue(this.plugin.settings.excludeFilepaths.join(", "))
+          .onChange(value => {
+            value = value.replaceAll("\n"," ");
+            const paths = value.split(",").map(s=>s.trim());
+            this.plugin.settings.excludeFilepaths = paths.filter(p=>p!=="");
+            this.dirty = true;
+          });
+        })
+    filepathList.descEl.style.width = "90%";
+    filepathList.controlEl.style.width = "90%";
     
+    const nodeScriptSetting = new Setting(containerEl)
+      .setName(t("NODETITLE_SCRIPT_NAME"))
+      .setDesc(fragWithHTML(t("NODETITLE_SCRIPT_DESC")))
+      .addTextArea(text=> {
+        text.inputEl.style.height = "200px";
+        text.inputEl.style.width = "100%";
+        text
+          .setValue(this.plugin.settings.nodeTitleScript)
+          .onChange(value => {
+            this.plugin.settings.nodeTitleScript = value;
+            this.dirty = true;
+          })
+        });
+    nodeScriptSetting.descEl.style.width="90%";
+    nodeScriptSetting.controlEl.style.width="90%";
+    // ------------------------------
+    // Display
+    // ------------------------------
     this.containerEl.createEl("h1", {
       cls: "excalibrain-settings-h1",
       text: t("DISPLAY_HEAD") 
@@ -1746,24 +1804,6 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       1,
     )
 
-    const filepathList = new Setting(containerEl)
-      .setName(t("EXCLUDE_PATHLIST_NAME"))
-      .setDesc(fragWithHTML(t("EXCLUDE_PATHLIST_DESC")))
-      .addTextArea((text)=> {
-        text.inputEl.style.height = "100px";
-        text.inputEl.style.width = "100%";
-        text
-          .setValue(this.plugin.settings.excludeFilepaths.join(", "))
-          .onChange(value => {
-            value = value.replaceAll("\n"," ");
-            const paths = value.split(",").map(s=>s.trim());
-            this.plugin.settings.excludeFilepaths = paths.filter(p=>p!=="");
-            this.dirty = true;
-          });
-        })
-    filepathList.descEl.style.width = "90%";
-    filepathList.controlEl.style.width = "90%";
-
     new Setting(containerEl)
       .setName(t("SHOW_FULL_TAG_PATH_NAME"))
       .setDesc(fragWithHTML(t("SHOW_FULL_TAG_PATH_DESC")))
@@ -1775,7 +1815,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
           }))
 
-    new Setting(containerEl)
+    /*new Setting(containerEl)
       .setName(t("RENDERALIAS_NAME"))
       .setDesc(fragWithHTML(t("RENDERALIAS_DESC")))
       .addToggle(toggle=>
@@ -1786,22 +1826,6 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.dirty = true;
           })
       );
-
-    const nodeScriptSetting = new Setting(containerEl)
-      .setName(t("NODETITLE_SCRIPT_NAME"))
-      .setDesc(fragWithHTML(t("NODETITLE_SCRIPT_DESC")))
-      .addTextArea(text=> {
-        text.inputEl.style.height = "200px";
-        text.inputEl.style.width = "100%";
-        text
-          .setValue(this.plugin.settings.nodeTitleScript)
-          .onChange(value => {
-            this.plugin.settings.nodeTitleScript = value;
-            this.dirty = true;
-          })
-        });
-    nodeScriptSetting.descEl.style.width="90%";
-    nodeScriptSetting.controlEl.style.width="90%";
 
     new Setting(containerEl)
       .setName(t("SHOWINFERRED_NAME"))
@@ -1837,7 +1861,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
             this.plugin.settings.showVirtualNodes = value;
             this.dirty = true;
           })
-      );
+      );*/
 
     this.numberslider(
       containerEl,
@@ -1931,6 +1955,9 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
         this.plugin.settings.centerEmbedHeight
       )
 
+    // ------------------------------
+    // Style
+    // ------------------------------
     containerEl.createEl("h1", {
       cls: "excalibrain-settings-h1",
       text: t("STYLE_HEAD")
