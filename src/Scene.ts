@@ -536,6 +536,7 @@ export class Scene {
 
     this.nodeHeight = compactFactor * (baseChar.height + 2 * basestyle.padding);
     const padding = 6 * basestyle.padding;
+    const prefixLength = 1;
 
     // container
     const container = ea.targetView.containerEl;
@@ -584,33 +585,32 @@ export class Scene {
     const rootTitle = centralPage.getTitle();
     const rootNode = ea.measureText(rootTitle.repeat(1));
     const actualRootLength = [...new Intl.Segmenter().segment(rootTitle)].length;
-    const rootNodeLength = Math.min(actualRootLength, style.maxLabelLength);
+    const rootNodeLength = Math.min(actualRootLength + prefixLength, style.maxLabelLength);
     const rootWidth = rootNode.width + 2 * style.padding;
-
     const heightInCenter = isCenterEmbedded
       ? centerEmbedHeight + 2 * this.nodeHeight
       : 4 *this.nodeHeight;
     
     //parents
-    const parentLabelLength = Math.min(this.longestTitle(parents), correctedMinLabelLength);
+    const parentLabelLength = Math.min(this.longestTitle(parents) + prefixLength, correctedMinLabelLength);
     const parentWidth = horizontalFactor * (parentLabelLength * baseChar.width + padding);
 
     //children
-    const childLength = Math.min(this.longestTitle(children,20), correctedMinLabelLength);
+    const childLength = Math.min(this.longestTitle(children,20) + prefixLength, correctedMinLabelLength);
     const childWidth = horizontalFactor * (childLength * baseChar.width + padding);
 
     // friends
-    const friendLength = Math.min(this.longestTitle(friends),correctedMinLabelLength);
+    const friendLength = Math.min(this.longestTitle(friends) + prefixLength,correctedMinLabelLength);
     const friendWidth = horizontalFactor * (friendLength * baseChar.width + padding);
 
     // nextfriends
-    const nextFriendLength = Math.min(this.longestTitle(nextFriends), correctedMinLabelLength);
+    const nextFriendLength = Math.min(this.longestTitle(nextFriends) + prefixLength, correctedMinLabelLength);
     const nextFriendWidth = horizontalFactor * (nextFriendLength * baseChar.width + padding);
 
     //siblings
     const siblingsStyle = settings.siblingNodeStyle;
     const siblingsPadding = siblingsStyle.padding??settings.baseNodeStyle.padding;
-    const siblingsLabelLength = Math.min(this.longestTitle(siblings,20), correctedMinLabelLength);
+    const siblingsLabelLength = Math.min(this.longestTitle(siblings,20) + prefixLength, correctedMinLabelLength);
     ea.style.fontFamily = siblingsStyle.fontFamily;
     ea.style.fontSize = siblingsStyle.fontSize;
     const siblingsTextSize = ea.measureText("m".repeat(siblingsLabelLength+3));
