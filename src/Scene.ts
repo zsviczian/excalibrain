@@ -205,7 +205,7 @@ export class Scene {
       const centralLeaf = this.centralLeaf;
       //@ts-ignore
       if(!centralLeaf || !this.app.workspace.getLeafById(centralLeaf.id)) {
-        this.centralLeaf = this.ea.openFileInNewOrAdjacentLeaf(page.file);
+        this.centralLeaf = this.ea.openFileInNewOrAdjacentLeaf(page.file, {active: false});
       } else {
         centralLeaf.openFile(page.file, {active: false});
       }
