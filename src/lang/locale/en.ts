@@ -16,10 +16,12 @@ export default {
                            "Because frequent background index updates can be resource intensive you have an option to increase the time interval for the index-updates which in turn will reduce the " +
                            "overhead on your system.",
   HIERARCHY_HEAD: "Ontology",
-  HIERARCHY_DESC: "Enter the Dataview field names separated by comma (,) that you will use to define link directions in your graph.<br>" +
-    "You can also add fields to the ontology on the fly from the markdown editor by typing the new field at the beginning of a paragraph (e.g.: 'Consits of::') " +
-    "and then calling one of the command palette actions to <code>Add dataview field to ontology as PARENT</code>, or <code>as CHILD</code>, " +
-    "<code>as FRIEND</code>, or <code>as RIGHT FRIEND</code>",
+  HIERARCHY_DESC: "Ontology, in the the heart of Excalibrain. It is the context of our knowledge graph and refers to a system for organizing and defining the relationships between different nodes in the graph. " +
+    "It allows us to add semantic meaning to connections by associating them with specific Dataview fields, such as 'author' or 'chapter,' which influence the way nodes are positioned relative to each other on the graph. " +
+    "This approach enables a more structured and meaningful representation of information, making it easier to understand and explore the interconnectedness of concepts within the markdown documents in your Vault.<br><br>" +
+    "Enter the field names separated by comma (,) that you will use to define links in your graph.<br><br>" +
+    "You can also add fields to the ontology on the fly from the markdown editor by typing the new field (e.g.: 'Consits of::') " +
+    "and then calling one of the command palette actions to <code>Add dataview field to ontology as ...</code>, or by opening the context menu.",
   INFER_NAME: "Infer all implicit relationships as Friend",
   INFER_DESC: "<b>Toggle On:</b> All implicit links in the document are interpreted as FRIENDS.<br>" + 
     "<b>Toggle Off:</b> The following logic is used:<ul>" +
@@ -58,15 +60,14 @@ export default {
     "More info on inline fields: [DataView Help](https://blacksmithgu.github.io/obsidian-dataview/data-annotation/)",
   BOLD_FIELDS_NAME: "Add selected field with BOLD",
   BOLD_FIELDS_DESC: "Add selected field to text with bold typeface, i.e. (**field name**:: ) resulting in (<b>field name</b>:: )",
+
   DISPLAY_HEAD: "Display",
   COMPACT_VIEW_NAME: "Compact view",
   COMPACT_VIEW_DESC: "Controls the width of the graph by setting the maximum number of columns that are displayed for children and parent nodes.<br><b>Toggle ON:</b>The max number of child columns is 3, and the max number of parent columns is 2<br><b>Toggle OFF:</b>The max number of child columns is 5, max number of parent columns is 3",
   COMPACTING_FACTOR_NAME: "Compacting factor",
   COMPACTING_FACTOR_DESC: "The higher the number the more compact the graph will be. The lower the number the more spread out the graph will be.",
-  EXCLUDE_PATHLIST_NAME: "Filepaths to exclude",
-  EXCLUDE_PATHLIST_DESC: "Enter comma-separated list of filepaths to exclude from the index.",
-  RENDERALIAS_NAME: "Display alias if available",
-  RENDERALIAS_DESC: "Displays the page alias instead of the filename if it is specified in the page's front matter.",
+  /*RENDERALIAS_NAME: "Display alias if available",
+  RENDERALIAS_DESC: "Displays the page alias instead of the filename if it is specified in the page's front matter.",*/
   NODETITLE_SCRIPT_NAME: "Javascript for rendering node names",
   NODETITLE_SCRIPT_DESC: "Javascript code to render the node title. If you don't need it, just leave this field empty.<br>" +
     "Function definition: <code>customNodeLabel: (dvPage: Literal, defaultName:string) => string</code><br>" +
@@ -78,7 +79,7 @@ export default {
     "<code>DataviewAPI.page('full filepath including extension')</code><br>" + 
     "Here's an example code that will display the value of the title field if available, else the filename, followed by the state (if available): <br>" +
     "<code>dvPage.title??defaultName & (dvPage.state ? ' - ' & dvPage.state : '')</code>",
-  SHOWINFERRED_NAME: "Display inferred relationships",
+  /*SHOWINFERRED_NAME: "Display inferred relationships",
   SHOWINFERRED_DESC: "<b>Toggle ON</b>: Display both explicitly defined and inferred links. Forward links are children, backlinks are parents, " +
     "if two page mutually referes to one another then relationship is inferred to be a friendship. Explicitly defined relationships always " +
     "take priority.<br><b>Toggle OFF</b>: Display only explicitely defined relationships.",
@@ -86,7 +87,12 @@ export default {
   SHOWVIRTUAL_DESC: "<b>Toggle ON</b>: Display unresolved links.<br><b>Toggle OFF</b>: Do not display unresolved links.",
   SHOWATTACHMENTS_NAME: "Include attachments",
   SHOWATTACHMENTS_DESC: "<b>Toggle ON</b>: Display every type of file on the graph. " +
-    "<br><b>Toggle OFF</b>: Display only markdown files.",
+    "<br><b>Toggle OFF</b>: Display only markdown files.",*/
+  
+  BEHAVIOR_HEAD: "Behavior",
+  EXCLUDE_PATHLIST_NAME: "Filepaths to exclude",
+  EXCLUDE_PATHLIST_DESC: "Enter comma-separated list of filepaths to exclude from the index.",
+
   STYLE_HEAD: "Styling",
   STYLE_DESC: "Styles are applied in sequence.<br><ol><li><b>Base</b> node style</li>" +
     "<li><b>Inferred</b> node style (only applied if the node is inferred)</li><li><b>Virtual</b> node style (only applied if the node is virtual)</li> " +
@@ -196,11 +202,15 @@ export default {
   SHOW_HIDE_FOLDER: "Show/Hide folder nodes",
   SHOW_HIDE_TAG: "Show/Hide tag nodes",
   SHOW_HIDE_PAGES: "Show/Hide page nodes (incl. defined, inferred, virtual and attachments)",
-  PIN_LEAF: "Link ExcaliBrain to most recent active leaf",
+  PIN_LEAF: "Link ExcaliBrain to the most recent active leaf. When linked, ExcaliBrain will only monitor changes of the pinned leaf and open synchronized pages only on the pinned leaf.",
   NAVIGATE_BACK: "Navigate back",
   NAVIGATE_FORWARD: "Navigate forward",
   REFRESH_VIEW: "Refresh",
-  AUTO_OPEN_DOCUMENT: "Synchronize navigation. When plugs are connected, changes to ExcaliBrain focus will be reflected in the active  Obsidian tab and vice versa.",
+  AUTO_OPEN_DOCUMENT: "Synchronize navigation. When plugs are connected, changes to ExcaliBrain focus will be reflected in the active  Obsidian tab and vice versa.\n\n" +
+    "You can link/unlink this button to the '<> Display central node as embedded frame' button in the ExcaliBrain settings.",
+  TOGGLE_AUTOOPEN_WHEN_EMBED_TOGGLE_NAME: "Synchronize navigation on Embed toggle",
+  TOGGLE_AUTOOPEN_WHEN_EMBED_TOGGLE_DESC: "<b>Toggle ON</b>: When you toggle the <i>'<kbd>&lt;&thinsp;&gt;</kbd> Display central node as embedded frame'</i> button, ExcaliBrain will automatically turn navigation synchronization on<br>" +
+    "<b>Toggle OFF</b>: When you toggle the <i>'<kbd>&lt;&thinsp;&gt;</kbd> Display central node as embedded frame'</i> button, ExcaliBrain will not automatically turn navigation synchronization on",
 
   //AddToOntologyModal
   ADD_TO_ONTOLOGY_MODAL_DESC: "Select the direction of the ontology. If one of the buttons is highlighted, then the field is already part of the ontology in that direction.",

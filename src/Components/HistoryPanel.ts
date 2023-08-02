@@ -23,7 +23,7 @@ export class HistoryPanel {
     const container = this.wrapperDiv.createDiv({
       cls: "excalibrain-history-container"
     })
-    const nh = this.plugin.navigationHistory;
+    const nh = this.plugin.navigationHistory.get();
 
     for(let i=nh.length-1;i>=0;i--) {
       if(i !== nh.length-1) {

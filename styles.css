@@ -72,15 +72,32 @@
     margin-right: 0px !important;
     width: 2.4em !important;
     justify-content: center !important;
+    box-shadow: none;
+    transition: box-shadow 0.3s ease;
   }
 
   .excalibrain-button.off {
-    background-color: var(--island-bg-color);
+      background-color: var(--island-bg-color);
   }
-  
+
   .excalibrain-button.on {
-    background-color: var(--color-primary-darker);
+      background-color: var(--color-primary-darker);
   }
+
+  .excalibrain-button:hover {
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+  }
+
+  .excalibrain-button:active {
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6);
+  }
+
+  .excalibrain-button.disabled {
+    background-color: var(--island-bg-color);
+    pointer-events: none;
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 
 /* -----------
      HISTORY
