@@ -74,9 +74,12 @@ export class Node {
     this.title = this.page.getTitle();
   }
 
+  get prefix(): string {
+    return(this.style.prefix??"");
+  }
 
   private displayText(): string {
-    const label = (this.style.prefix??"") + this.title;
+    const label = this.prefix + this.title;
     const segmentedLength = [...new Intl.Segmenter().segment(label)].length; //'Unicode-proof' https://stackoverflow.com/questions/54369513/how-to-count-the-correct-length-of-a-string-with-emojis-in-javascript
     const lengthCorrection = label.length-segmentedLength;
     return segmentedLength > this.page.maxLabelLength 
