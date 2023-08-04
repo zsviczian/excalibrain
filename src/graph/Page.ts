@@ -250,7 +250,13 @@ export class Page {
       ci: r.isChild && r.childType === RelationType.INFERRED,
       cd: r.isChild && r.childType === RelationType.DEFINED,
       lfd: (!this.plugin.settings.inferAllLinksAsFriends && r.isLeftFriend) ||
-        (this.plugin.settings.inferAllLinksAsFriends && r.isLeftFriend && !(r.parentType === RelationType.DEFINED || r.childType === RelationType.DEFINED)),
+        (this.plugin.settings.inferAllLinksAsFriends && r.isLeftFriend && 
+          !(r.parentType === RelationType.DEFINED ||
+            r.childType === RelationType.DEFINED ||
+            r.rightFriendType === RelationType.DEFINED ||
+            r.nextFriendType === RelationType.DEFINED ||
+            r.previousFriendType === RelationType.DEFINED)
+        ),
       rfd: r.isRightFriend && (r.rightFriendType === RelationType.DEFINED),
       pfd: r.isPreviousFriend && (r.previousFriendType === RelationType.DEFINED),
       nfd: r.isNextFriend && (r.nextFriendType === RelationType.DEFINED),
