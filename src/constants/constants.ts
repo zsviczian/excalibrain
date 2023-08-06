@@ -2,7 +2,7 @@ import { NodeStyle, LinkStyle } from "../types";
 
 export const APPNAME = "ExcaliBrain";
 export const PLUGIN_NAME = "excalibrain"
-export const MINEXCALIDRAWVERSION = "1.9.13"
+export const MINEXCALIDRAWVERSION = "1.9.14"
 export const PREDEFINED_LINK_STYLES = ["base","inferred","file-tree","tag-tree"];
 export const SUGGEST_LIMIT = 30;
 

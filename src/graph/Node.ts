@@ -177,7 +177,7 @@ export class Node {
       this.center.y - labelSize.height / 2,
       label,
       {
-        wrapAt: this.style.maxLabelLength+5,
+        wrapAt: this.style.maxLabelLength+50,
         textAlign: "center",
         box: true,
         boxPadding: this.style.padding,
