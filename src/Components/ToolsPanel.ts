@@ -449,6 +449,27 @@ export class ToolsPanel {
       })
     );
 
+    // ------------
+    // Display Compact Buttion
+    // ------------
+    this.buttons.push(
+      new ToggleButton({
+        plugin: this.plugin,
+        getVal: () => this.plugin.settings.compactView,
+        setVal: (val: boolean) => {
+          this.plugin.settings.compactView = val;
+          return true;
+        },
+        wrapper: buttonsWrapperDiv,
+        options: {
+          display: "🗃️",
+          icon: getIcon("lucide-minimize-2").outerHTML,
+          tooltip: t("COMPACT_VIEW_NAME"),
+        },
+        updateIndex: false,
+      })
+    );    
+
     this.contentEl.appendChild(this.wrapperDiv);
   }
 
