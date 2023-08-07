@@ -150,22 +150,6 @@ export class Scene {
     return Math.max(...lengths);
   }
 
-  /** iterates through a neighbour stack and returns the longest title length (emoji-safe) found.
-   * @param Neighbour[]
-   * @returns number
-   * @description: Implements Intl.Segmenter()
-  */ 
-  private longestTitleWithSegmenter(neighbours: Neighbour[], checkMax:number=20): number {
-    const lengths:number[] = [0];
-    for (let index = 0; (index<neighbours.length) && (index<=checkMax); index++) {
-      const title = neighbours[index].page.getTitle();
-      const segmentedLength = [...new Intl.Segmenter().segment(title)].length;
-      lengths.push(segmentedLength);
-    }
-    return Math.max(...lengths);
-  }
-
-
   /**
    * Renders the ExcaliBrain graph for the file provided by its path
    * @param path 
