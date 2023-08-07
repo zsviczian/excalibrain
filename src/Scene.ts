@@ -693,8 +693,6 @@ export class Scene {
    * @returns 
    */
   private async render(retainCentralNode:boolean = false) {
-    console.time('render ADHD');
-
     if(this.historyPanel) {
       this.historyPanel.rerender()
     }
@@ -904,9 +902,7 @@ export class Scene {
       });
     }
 
-
-    console.timeEnd('render ADHD');
-
+    
     //-------------------------------------------------------
     // Generate links for all displayed nodes
     const addLinks = (nodeA: Node, neighbours:Neighbour[],role: Role) => {
