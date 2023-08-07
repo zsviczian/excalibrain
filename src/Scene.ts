@@ -150,6 +150,21 @@ export class Scene {
     return Math.max(...lengths);
   }
 
+  /** iterates through a neighbour stack and returns the longest title length (emoji-safe) found.
+   * @param Neighbour[]
+   * @returns number
+   * @description: Implements Intl.Segmenter()
+  */ 
+  private longestTitleWithSegmenter(neighbours: Neighbour[], checkMax:number=20): number {
+    const lengths:number[] = [0];
+    for (let index = 0; (index<neighbours.length) && (index<=checkMax); index++) {
+      const title = neighbours[index].page.getTitle();
+      const segmentedLength = [...new Intl.Segmenter().segment(title)].length;
+      lengths.push(segmentedLength);
+    }
+    return Math.max(...lengths);
+  }
+
 
   /**
    * Renders the ExcaliBrain graph for the file provided by its path
@@ -318,9 +333,6 @@ export class Scene {
     ea.style.fontSize = style.fontSize;
     this.textSize = ea.measureText("m".repeat(style.maxLabelLength));
     this.nodeWidth = this.textSize.width + 2 * style.padding;
-    if(this.plugin.settings.compactView) {
-      this.nodeWidth = this.nodeWidth * 0.6;
-    }
     this.nodeHeight = 2 * (this.textSize.height + 2 * style.padding);
 
     const frame1 = () => {
@@ -546,8 +558,8 @@ export class Scene {
 
     this.nodeHeight = compactFactor * (baseChar.height + 2 * basestyle.padding);
     const padding = 6 * basestyle.padding;
-    const prefixLength = Math.max(rootNode.prefix.length,1);
-
+    const prefixLength = Math.max(rootNode.prefix.length,2);
+    
     // container
     const container = ea.targetView.containerEl;
     const h = container.innerHeight-150;
@@ -681,6 +693,8 @@ export class Scene {
    * @returns 
    */
   private async render(retainCentralNode:boolean = false) {
+    console.time('render ADHD');
+
     if(this.historyPanel) {
       this.historyPanel.rerender()
     }
@@ -889,6 +903,9 @@ export class Scene {
         friendGateOnLeft: true
       });
     }
+
+
+    console.timeEnd('render ADHD');
 
     //-------------------------------------------------------
     // Generate links for all displayed nodes
@@ -1187,7 +1204,7 @@ export class Scene {
     this.toolsPanel?.terminate();
     this.toolsPanel = undefined;
     this.historyPanel?.terminate();
-    this.historyPanel = undefined;
+    this.historyPanel = undefined;  
     this.ea.targetView = undefined;
     this.leaf = undefined;
     this.centralLeaf = undefined;
