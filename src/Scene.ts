@@ -27,6 +27,7 @@ export class Scene {
   textSize: {width:number, height:number};
   nodeWidth: number;
   nodeHeight: number;
+  minLinkLength: number = 100;
   public disregardLeafChange: boolean = false;
   public terminated: boolean;
   public nodesMap: Map<string,Node> = new Map<string,Node>();
@@ -313,6 +314,10 @@ export class Scene {
     this.ea.registerThisAsViewEA();
     this.ea.targetView.semaphores.saving = true; //disable saving by setting this Excalidraw flag (not published API)
     api.setMobileModeAllowed(false); //disable mobile view https://github.com/zsviczian/excalibrain/issues/9
+    ea.style.fontFamily = settings.baseLinkStyle.fontFamily;
+    ea.style.fontSize = settings.baseLinkStyle.fontSize;
+    this.minLinkLength = ea.measureText("m".repeat(18)).width;
+
     ea.style.fontFamily = style.fontFamily;
     ea.style.fontSize = style.fontSize;
     this.textSize = ea.measureText("m".repeat(style.maxLabelLength));
@@ -387,8 +392,8 @@ export class Scene {
   private getNeighbors(centralPage: Page): {
     parents: Neighbour[],
     children: Neighbour[],
-    friends: Neighbour[],
-    nextFriends: Neighbour[],
+    leftFriends: Neighbour[],
+    rightFriends: Neighbour[],
     siblings: Neighbour[]
   } {
     const settings = this.plugin.settings;
@@ -409,14 +414,14 @@ export class Scene {
         (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
       .slice(0,settings.maxItemCount);
     
-    const friends = centralPage.getLeftFriends().concat(centralPage.getPreviousFriends())
+    const leftFriends = centralPage.getLeftFriends().concat(centralPage.getPreviousFriends())
       .filter(x => 
         (x.page.path !== centralPage.path) &&
         !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
         (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
       .slice(0,settings.maxItemCount);
 
-    const nextFriends = centralPage.getRightFriends().concat(centralPage.getNextFriends())
+    const rightFriends = centralPage.getRightFriends().concat(centralPage.getNextFriends())
       .filter(x => 
         (x.page.path !== centralPage.path) &&
         !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
@@ -429,8 +434,8 @@ export class Scene {
         //the node is not included already as a parent, child, or friend
         !(parents.some(p=>p.page.path === s.page.path)  ||
           children.some(c=>c.page.path === s.page.path) ||
-          friends.some(f=>f.page.path === s.page.path)  ||
-          nextFriends.some(f=>f.page.path === s.page.path)  ||
+          leftFriends.some(f=>f.page.path === s.page.path)  ||
+          rightFriends.some(f=>f.page.path === s.page.path)  ||
           //or not exluded via folder path in settings
           settings.excludeFilepaths.some(p => s.page.path.startsWith(p))
         ) && 
@@ -445,25 +450,25 @@ export class Scene {
         //filter based on primary tag
         (!s.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(s.page.primaryStyleTag)))
       .slice(0,settings.maxItemCount);
-    return {parents,children,friends,nextFriends,siblings};
+    return {parents,children,leftFriends,rightFriends,siblings};
   }
 
   private calculateAreas({
     parents,     parentCols,     parentWidth,
     children,    childrenCols,   childWidth,
-    friends,     friendCols,     friendWidth,
-    nextFriends, nextFriendCols, nextFriendWidth,
+    leftFriends,     leftFriendCols,     leftFriendWidth,
+    rightFriends, rightFriendCols, rightFriendWidth,
     siblings,    siblingsCols,   siblingsNodeWidth, siblingsNodeHeight
   }:{
     parents: Neighbour[],
     children: Neighbour[],
-    friends: Neighbour[],
-    nextFriends: Neighbour[],
+    leftFriends: Neighbour[],
+    rightFriends: Neighbour[],
     siblings: Neighbour[],
-    friendCols: number,
-    friendWidth: number,
-    nextFriendCols: number,
-    nextFriendWidth: number,
+    leftFriendCols: number,
+    leftFriendWidth: number,
+    rightFriendCols: number,
+    rightFriendWidth: number,
     parentCols: number,
     parentWidth: number,
     childrenCols: number,
@@ -473,13 +478,13 @@ export class Scene {
     siblingsNodeHeight: number
   }) {
     // layout areas
-    const friendsArea = {
-      width:  friends.length>0? friendCols*friendWidth:0, 
-      height: friends.length>0? Math.ceil(friends.length/friendCols)*this.nodeHeight:0
+    const leftFriendsArea = {
+      width:  leftFriends.length>0? leftFriendCols*leftFriendWidth:0, 
+      height: leftFriends.length>0? Math.ceil(leftFriends.length/leftFriendCols)*this.nodeHeight:0
     }
-    const nextFriendsArea = {
-      width:  nextFriends.length>0? nextFriendCols*nextFriendWidth:0, 
-      height: nextFriends.length>0? Math.ceil(nextFriends.length/nextFriendCols)*this.nodeHeight:0
+    const rightFriendsArea = {
+      width:  rightFriends.length>0? rightFriendCols*rightFriendWidth:0, 
+      height: rightFriends.length>0? Math.ceil(rightFriends.length/rightFriendCols)*this.nodeHeight:0
     }
     const parentsArea = {
       width:  parents.length>0? parentCols*parentWidth:0, 
@@ -493,15 +498,15 @@ export class Scene {
       width:  siblings.length>0? siblingsNodeWidth*siblingsCols:0, 
       height: siblings.length>0? Math.ceil(siblings.length/siblingsCols)*siblingsNodeHeight:0
     }
-    return {friendsArea,nextFriendsArea,parentsArea,childrenArea,siblingsArea};
+    return {leftFriendsArea,rightFriendsArea,parentsArea,childrenArea,siblingsArea};
   }
   
   private calculateLayoutParams({
     centralPage,
     parents,
     children,
-    friends,
-    nextFriends,
+    leftFriends,
+    rightFriends,
     siblings,
     isCenterEmbedded,
     centerEmbedHeight,
@@ -512,8 +517,8 @@ export class Scene {
     centralPage: Page, 
     parents: Neighbour[],
     children: Neighbour[],
-    friends: Neighbour[],
-    nextFriends: Neighbour[],
+    leftFriends: Neighbour[],
+    rightFriends: Neighbour[],
     siblings: Neighbour[],
     isCenterEmbedded: boolean,
     centerEmbedHeight: number,
@@ -528,9 +533,10 @@ export class Scene {
     const isCompactView = settings.compactView;
     const compactFactor = 1.166 * settings.compactingFactor;
     const horizontalFactor = 0.833 * settings.compactingFactor;
+    const minLinkLength = this.minLinkLength * horizontalFactor * 2;
 
-    const manyFriends = friends.length >= 10;
-    const manyNextFriends = nextFriends.length >= 10;
+    const manyFriends = leftFriends.length >= 10;
+    const manyNextFriends = rightFriends.length >= 10;
     const minLabelLength = 7;
     
     const baseChar4x = this.ea.measureText("mi3L".repeat(1));
@@ -575,14 +581,14 @@ export class Scene {
         ? [1, 1, 2, 3, 2][parents.length]
         : 3;;
 
-    const friendCols = isCenterEmbedded
-      ? Math.ceil((friends.length*this.nodeHeight)/centerEmbedHeight)
+    const leftFriendCols = isCenterEmbedded
+      ? Math.ceil((leftFriends.length*this.nodeHeight)/centerEmbedHeight)
       : manyFriends
         ? 2
         : 1;
   
-    const nextFriendCols = isCenterEmbedded
-      ? Math.ceil((nextFriends.length*this.nodeHeight)/centerEmbedHeight)
+    const rightFriendCols = isCenterEmbedded
+      ? Math.ceil((rightFriends.length*this.nodeHeight)/centerEmbedHeight)
       : manyNextFriends
         ? 2
         : 1;
@@ -605,13 +611,13 @@ export class Scene {
     const childLength = Math.min(this.longestTitle(children,20) + prefixLength, correctedMinLabelLength);
     const childWidth = horizontalFactor * (childLength * baseChar.width + padding);
 
-    // friends
-    const friendLength = Math.min(this.longestTitle(friends) + prefixLength,correctedMinLabelLength);
-    const friendWidth = horizontalFactor * (friendLength * baseChar.width + padding);
+    // leftFriends
+    const leftFriendLength = Math.min(this.longestTitle(leftFriends) + prefixLength,correctedMinLabelLength);
+    const leftFriendWidth = horizontalFactor * (leftFriendLength * baseChar.width + padding);
 
-    // nextfriends
-    const nextFriendLength = Math.min(this.longestTitle(nextFriends) + prefixLength, correctedMinLabelLength);
-    const nextFriendWidth = horizontalFactor * (nextFriendLength * baseChar.width + padding);
+    // nextFriends
+    const rightFriendLength = Math.min(this.longestTitle(rightFriends) + prefixLength, correctedMinLabelLength);
+    const rightFriendWidth = horizontalFactor * (rightFriendLength * baseChar.width + padding);
 
     //siblings
     const siblingsStyle = settings.siblingNodeStyle;
@@ -624,28 +630,28 @@ export class Scene {
     const siblingsNodeHeight = compactFactor * (siblingsTextSize.height + 2 * siblingsPadding);
 
     // layout areas
-    const {parentsArea,childrenArea,friendsArea,nextFriendsArea,siblingsArea} = this.calculateAreas({
-      parents,     parentCols,     parentWidth,
-      children,    childrenCols,   childWidth,
-      friends,     friendCols,     friendWidth,
-      nextFriends, nextFriendCols, nextFriendWidth,
-      siblings,    siblingsCols,   siblingsNodeWidth, siblingsNodeHeight
+    const {parentsArea,childrenArea,leftFriendsArea,rightFriendsArea,siblingsArea} = this.calculateAreas({
+      parents,      parentCols,      parentWidth,
+      children,     childrenCols,    childWidth,
+      leftFriends,  leftFriendCols,  leftFriendWidth,
+      rightFriends, rightFriendCols, rightFriendWidth,
+      siblings,     siblingsCols,    siblingsNodeWidth, siblingsNodeHeight
     });
     
     // Origos
-    const parentsOrigoY = (parentsArea.height + Math.max(friendsArea.height,nextFriendsArea.height,heightInCenter))*0.5 + padding;
-    const childrenOrigoY = (childrenArea.height + Math.max(friendsArea.height,nextFriendsArea.height,heightInCenter))*0.5 + padding;
+    const parentsOrigoY = (parentsArea.height + Math.max(leftFriendsArea.height,rightFriendsArea.height,heightInCenter))*0.5 + padding;
+    const childrenOrigoY = (childrenArea.height + Math.max(leftFriendsArea.height,rightFriendsArea.height,heightInCenter))*0.5 + padding;
 
-    const friendOrigoX = Math.max(
-        (isCenterEmbedded?centerEmbedWidth:rootWidth) + friendsArea.width, 
-        childrenArea.width-friendsArea.width, 
-        parentsArea.width-friendsArea.width
+    const leftFriendOrigoX = Math.max(
+        (isCenterEmbedded?centerEmbedWidth:rootWidth) + Math.max(minLinkLength, leftFriendsArea.width), 
+        childrenArea.width - leftFriendsArea.width, 
+        parentsArea.width + Math.max(minLinkLength, leftFriendsArea.width)
       )/2 + padding;
         
-    const nextFriendOrigoX = Math.max(
-        (isCenterEmbedded?centerEmbedWidth:rootWidth) + nextFriendsArea.width, 
-        childrenArea.width-nextFriendsArea.width, 
-        parentsArea.width-nextFriendsArea.width
+    const rightFriendOrigoX = Math.max(
+        (isCenterEmbedded?centerEmbedWidth:rootWidth) + Math.max(minLinkLength, rightFriendsArea.width), 
+        childrenArea.width - rightFriendsArea.width, 
+        parentsArea.width + Math.max(minLinkLength, rightFriendsArea.width)
       )/2 + padding;
     
     const siblingsOrigoX = (
@@ -657,15 +663,15 @@ export class Scene {
     const siblingsOrigoY = 
       Math.max(
         parentsOrigoY, 
-        (siblingsArea.height + nextFriendsArea.height)/2
+        (siblingsArea.height + rightFriendsArea.height)/2
       ) + this.nodeHeight;
 
     return {
       rootNodeDimensions,               rootWidth,                             rootNodeLength,
       childrenOrigoY,                   childWidth,                            childLength,         childrenCols,
       parentsOrigoY,                    parentWidth,                           parentLabelLength,   parentCols,
-      friendOrigoX,                     friendWidth,                           friendLength,        friendCols,
-      nextFriendOrigoX,                 nextFriendWidth,                       nextFriendLength,    nextFriendCols,
+      leftFriendOrigoX,                 leftFriendWidth,                       leftFriendLength,    leftFriendCols,
+      rightFriendOrigoX,                rightFriendWidth,                      rightFriendLength,   rightFriendCols,
       siblingsOrigoX,   siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength, siblingsCols,
     };
   }
@@ -710,7 +716,7 @@ export class Scene {
       .forEach((el: Mutable<ExcalidrawElement>)=>el.isDeleted=true);
     ea.style.verticalAlign = "middle";
 
-    const {parents,children,friends,nextFriends,siblings} = this.getNeighbors(centralPage);
+    const {parents,children,leftFriends,rightFriends,siblings} = this.getNeighbors(centralPage);
 
     //-------------------------------------------------------
     // Generate layout and nodes
@@ -746,15 +752,15 @@ export class Scene {
     });
 
     const {
-      rootNodeDimensions, rootWidth, rootNodeLength,
-      childrenOrigoY, childWidth, childLength, childrenCols,
-      parentsOrigoY, parentWidth, parentLabelLength, parentCols,
-      friendOrigoX, friendWidth, friendLength, friendCols,
-      nextFriendOrigoX, nextFriendWidth, nextFriendLength, nextFriendCols,
+      rootNodeDimensions,rootWidth,       rootNodeLength,
+      childrenOrigoY,    childWidth,      childLength,      childrenCols,
+      parentsOrigoY,     parentWidth,     parentLabelLength,parentCols,
+      leftFriendOrigoX,  leftFriendWidth, leftFriendLength, leftFriendCols,
+      rightFriendOrigoX, rightFriendWidth,rightFriendLength,rightFriendCols,
       siblingsOrigoX, siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength, siblingsCols,
     } = this.calculateLayoutParams({
       centralPage,
-      parents, children, friends, nextFriends, siblings,
+      parents, children, leftFriends, rightFriends, siblings,
       isCenterEmbedded, centerEmbedHeight, centerEmbedWidth,
       style, rootNode: this.rootNode
     });
@@ -791,26 +797,26 @@ export class Scene {
     this.layouts.push(lChildren);
     
     const lFriends = new Layout({
-      origoX: -friendOrigoX,
+      origoX: -leftFriendOrigoX,
       origoY: 0,
       top: null,
       bottom: null,
-      columns: friendCols,
-      columnWidth: friendWidth,
+      columns: leftFriendCols,
+      columnWidth: leftFriendWidth,
       rowHeight: this.nodeHeight,
-      maxLabelLength: friendLength
+      maxLabelLength: leftFriendLength
     });
     this.layouts.push(lFriends);
 
     const lNextFriends = new Layout({
-      origoX: nextFriendOrigoX,
+      origoX: rightFriendOrigoX,
       origoY: 0,
       top: null,
       bottom: null,
-      columns: nextFriendCols,
-      columnWidth: nextFriendWidth,
+      columns: rightFriendCols,
+      columnWidth: rightFriendWidth,
       rowHeight: this.nodeHeight,
-      maxLabelLength: nextFriendLength
+      maxLabelLength: rightFriendLength
     });
     this.layouts.push(lNextFriends);
     
@@ -861,7 +867,7 @@ export class Scene {
     });
   
     this.addNodes({
-      neighbours: friends,
+      neighbours: leftFriends,
       layout: lFriends,
       isCentral: false,
       isSibling: false,
@@ -869,7 +875,7 @@ export class Scene {
     });
 
     this.addNodes({
-      neighbours: nextFriends,
+      neighbours: rightFriends,
       layout: lNextFriends,
       isCentral: false,
       isSibling: false,
