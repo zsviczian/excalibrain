@@ -361,10 +361,36 @@ export default class ExcaliBrain extends Plugin {
     
     const addFieldToOntology = (checking: boolean, direction: Ontology | "select"):boolean => {
       const activeView = app.workspace.activeLeaf?.view;
-      if(!activeView || !(activeView instanceof MarkdownView) || activeView.getMode() !== "source") {
+      let editor: Editor;
+
+      if(!activeView) {
         return false;
       }
-      const field = this.getFieldName(activeView.editor);
+  
+      const viewType = activeView.getViewType();
+      if(viewType === "excalidraw") {
+        const leafOrNode = this.EA.getActiveEmbeddableViewOrEditor(activeView);
+        
+        if(!leafOrNode) {
+          return false;
+        }
+
+        if("view" in leafOrNode && "editor" in leafOrNode.view) {
+          editor = leafOrNode.view.editor;
+        } else if ("editor" in leafOrNode) {
+          editor = leafOrNode.editor;
+        }
+      }
+
+      if(activeView instanceof MarkdownView && activeView.getMode() === "source") {
+        editor = activeView.editor;
+      }
+
+      if(!editor) {
+        return false;
+      }
+
+      const field = this.getFieldName(editor);
       if(!field) {
         return false;
       }
