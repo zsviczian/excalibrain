@@ -150,7 +150,6 @@ export class Scene {
     return Math.max(...lengths);
   }
 
-
   /**
    * Renders the ExcaliBrain graph for the file provided by its path
    * @param path 
@@ -318,9 +317,6 @@ export class Scene {
     ea.style.fontSize = style.fontSize;
     this.textSize = ea.measureText("m".repeat(style.maxLabelLength));
     this.nodeWidth = this.textSize.width + 2 * style.padding;
-    if(this.plugin.settings.compactView) {
-      this.nodeWidth = this.nodeWidth * 0.6;
-    }
     this.nodeHeight = 2 * (this.textSize.height + 2 * style.padding);
 
     const frame1 = () => {
@@ -546,8 +542,8 @@ export class Scene {
 
     this.nodeHeight = compactFactor * (baseChar.height + 2 * basestyle.padding);
     const padding = 6 * basestyle.padding;
-    const prefixLength = Math.max(rootNode.prefix.length,1);
-
+    const prefixLength = Math.max(rootNode.prefix.length,2);
+    
     // container
     const container = ea.targetView.containerEl;
     const h = container.innerHeight-150;
@@ -890,6 +886,7 @@ export class Scene {
       });
     }
 
+    
     //-------------------------------------------------------
     // Generate links for all displayed nodes
     const addLinks = (nodeA: Node, neighbours:Neighbour[],role: Role) => {
@@ -1187,7 +1184,7 @@ export class Scene {
     this.toolsPanel?.terminate();
     this.toolsPanel = undefined;
     this.historyPanel?.terminate();
-    this.historyPanel = undefined;
+    this.historyPanel = undefined;  
     this.ea.targetView = undefined;
     this.leaf = undefined;
     this.centralLeaf = undefined;
