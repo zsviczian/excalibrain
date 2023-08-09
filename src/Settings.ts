@@ -1814,7 +1814,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       containerEl,
       t("MINLINKLENGTH_NAME"),
       t("MINLINKLENGTH_DESC"),
-      {min:0,max:30,step:1},
+      {min:-10,max:50,step:1},
       () => this.plugin.settings.minLinkLength,
       (val) => {
         this.plugin.settings.minLinkLength = val;
