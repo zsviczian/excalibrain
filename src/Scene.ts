@@ -288,11 +288,6 @@ export class Scene {
     this.disregardLeafChange = false;
     const ea = this.ea;
     const settings = this.plugin.settings;
-    const style = {
-      ...settings.baseNodeStyle,
-      ...settings.centralNodeStyle,
-    };
-    style.textColor = settings.baseNodeStyle.textColor;
     
     let counter = 0;
     ea.clear();    
@@ -314,15 +309,7 @@ export class Scene {
     this.ea.registerThisAsViewEA();
     this.ea.targetView.semaphores.saving = true; //disable saving by setting this Excalidraw flag (not published API)
     api.setMobileModeAllowed(false); //disable mobile view https://github.com/zsviczian/excalibrain/issues/9
-    ea.style.fontFamily = settings.baseLinkStyle.fontFamily;
-    ea.style.fontSize = settings.baseLinkStyle.fontSize;
-    this.minLinkLength = ea.measureText("m".repeat(18)).width;
-
-    ea.style.fontFamily = style.fontFamily;
-    ea.style.fontSize = style.fontSize;
-    this.textSize = ea.measureText("m".repeat(style.maxLabelLength));
-    this.nodeWidth = this.textSize.width + 2 * style.padding;
-    this.nodeHeight = 2 * (this.textSize.height + 2 * style.padding);
+    this.setBaseLayoutParams();
 
     const frame1 = () => {
       api.updateScene({
@@ -339,7 +326,7 @@ export class Scene {
       });
     }
     const frame2 = () => {
-      ea.style.strokeColor = style.textColor;
+      ea.style.strokeColor = settings.baseNodeStyle.textColor;
       ea.addText(0,0,"🚀 To get started\nselect a document using the search in the top left or\n" +
         "open a document in another pane.\n\n" +
         "✨ For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
@@ -362,6 +349,26 @@ export class Scene {
     frame1();
     frame2();
     frame3();
+  }
+
+  public setBaseLayoutParams() {
+    const ea = this.ea;
+    const settings = this.plugin.settings;
+    const style = {
+      ...settings.baseNodeStyle,
+      ...settings.centralNodeStyle,
+    };
+
+    ea.style.fontFamily = settings.baseLinkStyle.fontFamily;
+    ea.style.fontSize = settings.baseLinkStyle.fontSize;
+    this.minLinkLength = ea.measureText("m".repeat(settings.minLinkLength)).width;
+
+    ea.style.fontFamily = style.fontFamily;
+    ea.style.fontSize = style.fontSize;
+    this.textSize = ea.measureText("m".repeat(style.maxLabelLength));
+    this.nodeWidth = this.textSize.width + 2 * style.padding;
+    this.nodeHeight = 2 * (this.textSize.height + 2 * style.padding);
+
   }
 
   addNodes(x:{
@@ -500,7 +507,7 @@ export class Scene {
     }
     return {leftFriendsArea,rightFriendsArea,parentsArea,childrenArea,siblingsArea};
   }
-  
+
   private calculateLayoutParams({
     centralPage,
     parents,
@@ -643,15 +650,19 @@ export class Scene {
     const childrenOrigoY = (childrenArea.height + Math.max(leftFriendsArea.height,rightFriendsArea.height,heightInCenter))*0.5 + padding;
 
     const leftFriendOrigoX = Math.max(
-        (isCenterEmbedded?centerEmbedWidth:rootWidth) + Math.max(minLinkLength, leftFriendsArea.width), 
+        (isCenterEmbedded
+          ? centerEmbedWidth + minLabelLength * 1.2 //the normal central nodes witdh seems to be a bit over estimated, thus applying a slight increase to the minLinkLength if the center is embedded
+          : rootWidth + minLinkLength) + leftFriendsArea.width, 
         childrenArea.width - leftFriendsArea.width, 
-        parentsArea.width + Math.max(minLinkLength, leftFriendsArea.width)
+        parentsArea.width - leftFriendsArea.width
       )/2 + padding;
         
     const rightFriendOrigoX = Math.max(
-        (isCenterEmbedded?centerEmbedWidth:rootWidth) + Math.max(minLinkLength, rightFriendsArea.width), 
+        (isCenterEmbedded
+          ? centerEmbedWidth + minLabelLength * 1.2 //the normal central nodes witdh seems to be a bit over estimated, thus applying a slight increase to the minLinkLength if the center is embedded
+          : rootWidth + minLinkLength) + rightFriendsArea.width, 
         childrenArea.width - rightFriendsArea.width, 
-        parentsArea.width + Math.max(minLinkLength, rightFriendsArea.width)
+        parentsArea.width - rightFriendsArea.width
       )/2 + padding;
     
     const siblingsOrigoX = (
@@ -769,8 +780,8 @@ export class Scene {
     const lCenter = new Layout({
       origoX: 0,
       origoY: isCenterEmbedded
-        ? centerEmbedHeight/2 - this.nodeHeight/2
-        : 0,
+        ? centerEmbedHeight/2 // -this.nodeHeight/2 (would move friends exactly in alignment with the center)
+        : 0, // because this is set to zero friends are just slightly off center
       top: null,
       bottom: null,
       columns: 1,
