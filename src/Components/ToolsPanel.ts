@@ -160,7 +160,7 @@ export class ToolsPanel {
           icon: getIcon("lucide-refresh-cw").outerHTML,
           tooltip: t("REFRESH_VIEW"),
         },
-        updateIndex: false,
+        updateIndex: true,
       })
     );
 

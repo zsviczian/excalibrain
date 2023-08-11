@@ -23,6 +23,7 @@ import { DEFAULT_HIERARCHY_DEFINITION, DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, P
 export interface ExcaliBrainSettings {
   compactView: boolean;
   compactingFactor: number;
+  minLinkLength: number;
   excalibrainFilepath: string;
   indexUpdateInterval: number;
   hierarchy: Hierarchy;
@@ -85,12 +86,13 @@ export interface ExcaliBrainSettings {
 export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   compactView: false,
   compactingFactor: 1.5,
+  minLinkLength: 18,
   excalibrainFilepath: "excalibrain.md",
   indexUpdateInterval: 5000,
   hierarchy: DEFAULT_HIERARCHY_DEFINITION,
   inferAllLinksAsFriends: false,
   inverseInfer: false,
-  inverseArrowDirection: false,
+  inverseArrowDirection: true,
   renderAlias: true,
   nodeTitleScript: "",
   backgroundColor: "#0c3e6aff",
@@ -378,11 +380,15 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     this.plugin.settings.tagStyleList = Object.keys(this.plugin.settings.tagNodeStyles);
     this.plugin.loadCustomNodeLabelFunction();
     this.plugin.saveSettings();
-    if(this.updateTimer && this.plugin.scene && !this.plugin.scene.terminated) {
-      this.plugin.scene.setTimer();
+    if(this.plugin.scene && !this.plugin.scene.terminated) {
+      this.plugin.scene.setBaseLayoutParams();
+
+      if(this.updateTimer) {
+        this.plugin.scene.setTimer();
+      }
+        
+      this.plugin.scene.reRender();
     }
-      
-    this.plugin.scene?.reRender();
   }
 
   colorpicker(
@@ -1791,11 +1797,27 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     this.numberslider(
       containerEl,
       t("COMPACTING_FACTOR_NAME"),
-      t("COMPACTING_FACTOR_NAME"),
+      t("COMPACTING_FACTOR_DESC"),
       {min:1,max:2,step:0.1},
       () => this.plugin.settings.compactingFactor,
       (val) => {
         this.plugin.settings.compactingFactor = val;
+        this.dirty = true;
+      },
+      ()=> {
+      },
+      false,
+      1,
+    )
+    
+    this.numberslider(
+      containerEl,
+      t("MINLINKLENGTH_NAME"),
+      t("MINLINKLENGTH_DESC"),
+      {min:0,max:50,step:1},
+      () => this.plugin.settings.minLinkLength,
+      (val) => {
+        this.plugin.settings.minLinkLength = val;
         this.dirty = true;
       },
       ()=> {

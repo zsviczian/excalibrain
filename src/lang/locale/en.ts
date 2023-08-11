@@ -66,6 +66,9 @@ export default {
   COMPACT_VIEW_DESC: "Controls the width of the graph by setting the maximum number of columns that are displayed for children and parent nodes.<br><b>Toggle ON:</b>The max number of child columns is 3, and the max number of parent columns is 2<br><b>Toggle OFF:</b>The max number of child columns is 5, max number of parent columns is 3",
   COMPACTING_FACTOR_NAME: "Compacting factor",
   COMPACTING_FACTOR_DESC: "The higher the number the more compact the graph will be. The lower the number the more spread out the graph will be.",
+  MINLINKLENGTH_NAME: "Minimum center-friend distance",
+  MINLINKLENGTH_DESC: "The minimum distance betweeen the central node and the friend nodes. The higher the number the furhter away the friends will be from the parent, " +
+    "leaving more space for the link ontology labels.",
   /*RENDERALIAS_NAME: "Display alias if available",
   RENDERALIAS_DESC: "Displays the page alias instead of the filename if it is specified in the page's front matter.",*/
   NODETITLE_SCRIPT_NAME: "Javascript for rendering node names",

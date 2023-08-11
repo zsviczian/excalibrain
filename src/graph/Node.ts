@@ -79,11 +79,11 @@ export class Node {
   }
 
   private displayText(): string {
-    const label = this.prefix + this.title;
-    const segmentedLength = [...new Intl.Segmenter().segment(label)].length; //'Unicode-proof' https://stackoverflow.com/questions/54369513/how-to-count-the-correct-length-of-a-string-with-emojis-in-javascript
-    const lengthCorrection = label.length-segmentedLength;
-    return segmentedLength > this.page.maxLabelLength 
-      ? label.substring(0,this.page.maxLabelLength+lengthCorrection-3) + "..."
+    const label = (this.style.prefix??"") + this.title;    
+    const segmentedLabel = new Intl.Segmenter().segment(label); // a tough problem string const str = "❤️😊👨‍👩‍👦"; developed from hint here: https://stackoverflow.com/questions/73145508/how-to-truncate-utf8-string-in-javascript-without-breaking-multibyte-characters/73145642#73145642
+    const segArr = Array.from(segmentedLabel, ({segment}) => segment);
+    return segArr.length > this.page.maxLabelLength
+      ? segArr.slice(0,this.page.maxLabelLength-3).join('') + "..."
       : label;
   }
 
@@ -177,7 +177,7 @@ export class Node {
       this.center.y - labelSize.height / 2,
       label,
       {
-        wrapAt: this.style.maxLabelLength+50,
+        wrapAt: this.page.maxLabelLength+50,
         textAlign: "center",
         box: true,
         boxPadding: this.style.padding,
