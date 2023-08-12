@@ -7,10 +7,11 @@ import { PageSuggest } from "../Suggesters/PageSuggester";
 import { LinkTagFilter } from "./LinkTagFilter";
 import { EditableFileView, getIcon, TextFileView, WorkspaceLeaf } from "obsidian";
 import { addVerticalDivider } from "./VerticalDivider";
+import { RangeSlider } from "./RangeSlider";
 
 export class ToolsPanel {
   private wrapperDiv: HTMLDivElement;
-  private buttons: (ToggleButton|HTMLElement)[] = [];
+  private buttons: (ToggleButton|RangeSlider|HTMLElement)[] = [];
   public linkTagFilter: LinkTagFilter;
   public searchElement: HTMLInputElement;
 
@@ -449,8 +450,10 @@ export class ToolsPanel {
       })
     );
 
+    addVerticalDivider(buttonsWrapperDiv);
+
     // ------------
-    // Display Compact Buttion
+    // Display Compact Button
     // ------------
     this.buttons.push(
       new ToggleButton({
@@ -469,6 +472,25 @@ export class ToolsPanel {
         updateIndex: false,
       })
     );    
+    // ------------
+    // Display Compact factor
+    // ------------
+    this.buttons.push(
+      new RangeSlider({
+        plugin: this.plugin,
+        setVal: (val) => {
+          this.plugin.settings.compactingFactor = val;
+          return true;
+        },
+        wrapper: buttonsWrapperDiv,
+        range: { 
+          min: 1, 
+          max: 2, 
+          step: 0.1,
+          defalutValue:this.plugin.settings.compactingFactor },
+        updateIndex: false,
+      })
+    )
 
     this.contentEl.appendChild(this.wrapperDiv);
   }
