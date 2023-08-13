@@ -483,11 +483,12 @@ export class ToolsPanel {
           return true;
         },
         wrapper: buttonsWrapperDiv,
-        range: { 
-          min: 1, 
-          max: 2, 
+        range: {
+          min: 1,
+          max: 2,
           step: 0.1,
-          defalutValue:this.plugin.settings.compactingFactor },
+          defalutValue: this.plugin.settings.compactingFactor
+        },
         updateIndex: false,
       })
     )

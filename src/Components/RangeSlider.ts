@@ -3,7 +3,7 @@ import ExcaliBrain from "src/excalibrain-main";
 
 export class RangeSlider {
     private slider: HTMLInputElement
-    constructor({ plugin, setVal, isEnabled, range, wrapper, updateIndex }:
+    constructor({ plugin, setVal, range, wrapper, updateIndex }:
         {
             plugin: ExcaliBrain,
             setVal: (val: number) => boolean,
@@ -20,7 +20,7 @@ export class RangeSlider {
 
         this.slider = wrapper.createEl('input', { type: 'range', cls: "excalibrain-slider" });
         this.SetRange(range);
-        this.slider.onchange = (ev) => {
+        this.slider.oninput = (ev) => {
             const value = (ev.target as HTMLInputElement).value;
             const shouldSaveSettings = setVal(parseFloat(value));
             if (shouldSaveSettings) plugin.saveSettings();

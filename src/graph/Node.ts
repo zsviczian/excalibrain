@@ -15,7 +15,7 @@ export class Node {
   style: NodeStyle = {};
   private center: {x:number, y:number} = {x:0,y:0};
   private displayText:string;
-  private labelSize:{width:number,height:number};
+  private labelSize:Dimensions;
   public id: string;
   public friendGateId: string;
   public nextFriendGateId: string; // for central nodes
@@ -83,33 +83,33 @@ export class Node {
 
   public getDisplayText(limitLength?: number, refresh: boolean = false): string {
     if (this.displayText && !refresh) {
-      console.log(`displayTextExist: ${this.displayText}`);
       return this.displayText;
     }
     else {
       const label = (this.style.prefix ?? "") + this.title;
       const segmentedLabel = new Intl.Segmenter().segment(label); // a tough problem string const str = "❤️😊👨‍👩‍👦"; developed from hint here: https://stackoverflow.com/questions/73145508/how-to-truncate-utf8-string-in-javascript-without-breaking-multibyte-characters/73145642#73145642
       const segArr = Array.from(segmentedLabel, ({ segment }) => segment);
-      const limit = limitLength??this.style.maxLabelLength??0;
+      const limit = limitLength ?? this.style.maxLabelLength ?? 0;
       return this.displayText = segArr.length > limit
         ? segArr.slice(0, limit - 3).join('') + "..."
         : label;
     }
 
   }
-  public getLabelSize(limitLength:number): Dimensions {
-    const ea = this.setEA();
-    const text = this.getDisplayText(limitLength)
-    const size = ea.measureText(text);
-    console.log("In get Label Size");
-    console.log(`page text: ${text}`);
-    console.log(`width: ${size.width}`);
-    return this.labelSize = this.labelSize ?? {
-      height:size.height,
-      width:size.width,
-    };
+  public getLabelSize(limitLength: number, refresh: boolean = false): Dimensions {
+    if (this.labelSize && !refresh) {
+      return this.labelSize;
+    }
+    else {
+      const ea = this.setEA();
+      const text = this.getDisplayText(limitLength)
+      const size = ea.measureText(text);
 
-
+      return this.labelSize = this.labelSize ?? {
+        height: size.height + 2 * this.style.padding + 2 * this.style.gateRadius,
+        width: size.width + 2 * this.style.padding + 2 * this.style.gateRadius,
+      };
+    }
   }
 
   setCenter(center:{x:number, y:number}) {
@@ -208,20 +208,17 @@ export class Node {
         boxPadding: this.style.padding,
       }
     );
-    console.log("In render Text");
-    console.log(`page text: ${label}`)
-    console.log(`width: ${labelSize.width}`);
+
     const box = ea.getElement(this.id) as any;
     
     box.link = this.page.isURL ? this.page.url : `[[${this.page.file?.path??this.page.path}]]`;
     box.backgroundColor = this.style.backgroundColor;
     box.strokeColor = this.style.borderColor;
     box.strokeStyle = this.style.strokeStyle;
-    console.log(`box width: ${box.width}`);
     return labelSize;
   }
 
-  private setEA(){
+  private setEA() {
     const ea = getEA();
     ea.style.fontSize = this.style.fontSize;
     ea.style.fontFamily = this.style.fontFamily;

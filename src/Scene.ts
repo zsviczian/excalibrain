@@ -494,7 +494,6 @@ export class Scene {
       width:  parents.length>0? parentCols*parentWidth:0, 
       height: parents.length>0? Math.ceil(parents.length/parentCols)*this.nodeHeight:0
     }
-    console.log(`childeAreaWidth:${childrenCols*childWidth}`);
     const childrenArea = {
       width:  children.length>0? childrenCols*childWidth:0, 
       height: children.length>0? Math.ceil(children.length/childrenCols)*this.nodeHeight:0
@@ -554,16 +553,7 @@ export class Scene {
     this.nodeHeight = compactFactor * (baseChar.height + 2 * basestyle.padding);
     const padding = 6 * basestyle.padding;
     const prefixLength = Math.max(rootNode.prefix.length,2);
-    
-    // container
-    const container = ea.targetView.containerEl;
-    const h = container.innerHeight-150;
-    const w = container.innerWidth;
-    const rf = 1/(h/w);
-    const rfCorr = Math.min(rf,1);
-    
-    const correctedMaxLabelLength = Math.round(style.maxLabelLength*rfCorr);
-    const correctedMinLabelLength = Math.max(minLabelLength, correctedMaxLabelLength); 
+     
 
     //columns
     const siblingsCols = siblings.length >= 20
@@ -608,29 +598,28 @@ export class Scene {
       ? centerEmbedHeight + 2 * this.nodeHeight
       : 4 *this.nodeHeight;
     
+
+    let limitedLabelSize = this.plugin.settings.defaultMaxLabelLength? basestyle.maxLabelLength:null;
     //parents
-    const parentLabelLength = (await this.longestLabel(parents)).width;
+    const parentLabelLength = (await this.longestLabel(parents,limitedLabelSize)).width;
     const parentWidth = horizontalFactor * parentLabelLength;
 
     //children
-    const childLength = (await this.longestLabel(children)).width;
+    const childLength = (await this.longestLabel(children,limitedLabelSize)).width;
     const childWidth = horizontalFactor * childLength ;
-    console.log(`labelSize:${childLength}`);
-    console.log(`factor:${horizontalFactor}`);
-    console.log(`childWidth${childWidth}`);
 
     // leftFriends
-    const leftFriendLength =(await this.longestLabel(leftFriends)).width;
+    const leftFriendLength =(await this.longestLabel(leftFriends,limitedLabelSize)).width;
     const leftFriendWidth = horizontalFactor * leftFriendLength;
 
     // nextFriends
-    const rightFriendLength =(await this.longestLabel(rightFriends)).width;
+    const rightFriendLength =(await this.longestLabel(rightFriends,limitedLabelSize)).width;
     const rightFriendWidth = horizontalFactor *rightFriendLength;
 
     //siblings
     const siblingsStyle = settings.siblingNodeStyle;
     const siblingsPadding = siblingsStyle.padding??settings.baseNodeStyle.padding;
-    const siblingsLabelSize = await this.longestLabel(siblings);
+    const siblingsLabelSize = await this.longestLabel(siblings,limitedLabelSize);
     // ea.style.fontFamily = siblingsStyle.fontFamily;
     // ea.style.fontSize = siblingsStyle.fontSize;
     // const siblingsTextSize = ea.measureText("m".repeat(siblingsLabelLength+3));
