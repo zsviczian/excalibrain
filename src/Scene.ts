@@ -7,7 +7,7 @@ import { Node } from "./graph/Node";
 import ExcaliBrain from "./excalibrain-main";
 import { ExcaliBrainSettings } from "./Settings";
 import { ToolsPanel } from "./Components/ToolsPanel";
-import { Mutable, Neighbour, NodeStyle, RelationType, Role } from "./types";
+import { Dimensions, Mutable, Neighbour, NodeStyle, RelationType, Role } from "./types";
 import { HistoryPanel } from "./Components/HistoryPanel";
 import { WarningPrompt } from "./utils/Prompts";
 import { keepOnTop } from "./utils/utils";
@@ -150,7 +150,19 @@ export class Scene {
     }
     return Math.max(...lengths);
   }
+  private async longestLabel(nodes: Node[], limitLength?: number): Promise<Dimensions> {
+    const sizes = await Promise.all(nodes.map(node => new Promise<Dimensions>(res => {
+      let size = node.getLabelSize(limitLength);
+      res(size)
+    })));
 
+    return nodes.length == 0
+      ? { width: 0, height: 0 }
+      : {
+        width: Math.max(...sizes.map(s => s.width)),
+        height: Math.max(...sizes.map(s => s.height)),
+      }
+  }
   /**
    * Renders the ExcaliBrain graph for the file provided by its path
    * @param path 
@@ -372,27 +384,12 @@ export class Scene {
   }
 
   addNodes(x:{
-    neighbours:Neighbour[],
+    nodes:Node[],
     layout:Layout,
-    isCentral:boolean,
-    isSibling:boolean,
-    friendGateOnLeft: boolean
   }) {
-    x.neighbours.forEach(n => {
-      if(n.page.path === this.ea.targetView.file.path) {
-        return; 
-      }
-      n.page.maxLabelLength = x.layout.spec.maxLabelLength;
-      const node = new Node({
-        ea: this.ea,
-        page: n.page,
-        isInferred: n.relationType === RelationType.INFERRED,
-        isCentral: x.isCentral,
-        isSibling: x.isSibling,
-        friendGateOnLeft: x.friendGateOnLeft
-      });
-      this.nodesMap.set(n.page.path,node);
-      x.layout.nodes.push(node);
+    x.nodes.forEach(n => {
+      this.nodesMap.set(n.page.path,n);
+      x.layout.nodes.push(n);
     });
   }
 
@@ -467,11 +464,11 @@ export class Scene {
     rightFriends, rightFriendCols, rightFriendWidth,
     siblings,    siblingsCols,   siblingsNodeWidth, siblingsNodeHeight
   }:{
-    parents: Neighbour[],
-    children: Neighbour[],
-    leftFriends: Neighbour[],
-    rightFriends: Neighbour[],
-    siblings: Neighbour[],
+    parents: Node[],
+    children: Node[],
+    leftFriends: Node[],
+    rightFriends: Node[],
+    siblings: Node[],
     leftFriendCols: number,
     leftFriendWidth: number,
     rightFriendCols: number,
@@ -497,6 +494,7 @@ export class Scene {
       width:  parents.length>0? parentCols*parentWidth:0, 
       height: parents.length>0? Math.ceil(parents.length/parentCols)*this.nodeHeight:0
     }
+    console.log(`childeAreaWidth:${childrenCols*childWidth}`);
     const childrenArea = {
       width:  children.length>0? childrenCols*childWidth:0, 
       height: children.length>0? Math.ceil(children.length/childrenCols)*this.nodeHeight:0
@@ -508,7 +506,7 @@ export class Scene {
     return {leftFriendsArea,rightFriendsArea,parentsArea,childrenArea,siblingsArea};
   }
 
-  private calculateLayoutParams({
+  private async calculateLayoutParams({
     centralPage,
     parents,
     children,
@@ -522,11 +520,11 @@ export class Scene {
     rootNode,
   }:{
     centralPage: Page, 
-    parents: Neighbour[],
-    children: Neighbour[],
-    leftFriends: Neighbour[],
-    rightFriends: Neighbour[],
-    siblings: Neighbour[],
+    parents: Node[],
+    children: Node[],
+    leftFriends: Node[],
+    rightFriends: Node[],
+    siblings: Node[],
     isCenterEmbedded: boolean,
     centerEmbedHeight: number,
     centerEmbedWidth: number,
@@ -611,30 +609,33 @@ export class Scene {
       : 4 *this.nodeHeight;
     
     //parents
-    const parentLabelLength = Math.min(this.longestTitle(parents) + prefixLength, correctedMinLabelLength);
-    const parentWidth = horizontalFactor * (parentLabelLength * baseChar.width + padding);
+    const parentLabelLength = (await this.longestLabel(parents)).width;
+    const parentWidth = horizontalFactor * parentLabelLength;
 
     //children
-    const childLength = Math.min(this.longestTitle(children,20) + prefixLength, correctedMinLabelLength);
-    const childWidth = horizontalFactor * (childLength * baseChar.width + padding);
+    const childLength = (await this.longestLabel(children)).width;
+    const childWidth = horizontalFactor * childLength ;
+    console.log(`labelSize:${childLength}`);
+    console.log(`factor:${horizontalFactor}`);
+    console.log(`childWidth${childWidth}`);
 
     // leftFriends
-    const leftFriendLength = Math.min(this.longestTitle(leftFriends) + prefixLength,correctedMinLabelLength);
-    const leftFriendWidth = horizontalFactor * (leftFriendLength * baseChar.width + padding);
+    const leftFriendLength =(await this.longestLabel(leftFriends)).width;
+    const leftFriendWidth = horizontalFactor * leftFriendLength;
 
     // nextFriends
-    const rightFriendLength = Math.min(this.longestTitle(rightFriends) + prefixLength, correctedMinLabelLength);
-    const rightFriendWidth = horizontalFactor * (rightFriendLength * baseChar.width + padding);
+    const rightFriendLength =(await this.longestLabel(rightFriends)).width;
+    const rightFriendWidth = horizontalFactor *rightFriendLength;
 
     //siblings
     const siblingsStyle = settings.siblingNodeStyle;
     const siblingsPadding = siblingsStyle.padding??settings.baseNodeStyle.padding;
-    const siblingsLabelLength = Math.min(this.longestTitle(siblings,20) + prefixLength, correctedMinLabelLength);
-    ea.style.fontFamily = siblingsStyle.fontFamily;
-    ea.style.fontSize = siblingsStyle.fontSize;
-    const siblingsTextSize = ea.measureText("m".repeat(siblingsLabelLength+3));
-    const siblingsNodeWidth =  horizontalFactor * (siblingsTextSize.width + 3 * siblingsPadding);
-    const siblingsNodeHeight = compactFactor * (siblingsTextSize.height + 2 * siblingsPadding);
+    const siblingsLabelSize = await this.longestLabel(siblings);
+    // ea.style.fontFamily = siblingsStyle.fontFamily;
+    // ea.style.fontSize = siblingsStyle.fontSize;
+    // const siblingsTextSize = ea.measureText("m".repeat(siblingsLabelLength+3));
+    const siblingsNodeWidth =  horizontalFactor * siblingsLabelSize.width// (siblingsTextSize.width + 3 * siblingsPadding);
+    const siblingsNodeHeight = compactFactor * siblingsLabelSize.height//(siblingsTextSize.height + 2 * siblingsPadding);
 
     // layout areas
     const {parentsArea,childrenArea,leftFriendsArea,rightFriendsArea,siblingsArea} = this.calculateAreas({
@@ -683,10 +684,28 @@ export class Scene {
       parentsOrigoY,                    parentWidth,                           parentLabelLength,   parentCols,
       leftFriendOrigoX,                 leftFriendWidth,                       leftFriendLength,    leftFriendCols,
       rightFriendOrigoX,                rightFriendWidth,                      rightFriendLength,   rightFriendCols,
-      siblingsOrigoX,   siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength, siblingsCols,
+      siblingsOrigoX,   siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength: siblingsLabelSize.width, siblingsCols,
     };
   }
-
+  private parseToNode(x: {
+    neighbours: Neighbour[],
+    isCentral: boolean,
+    isSibling: boolean,
+    friendGateOnLeft: boolean
+  }): Node[] {
+    return x.neighbours
+      .filter(n => n.page.path !== this.ea.targetView.file.path)
+      .map(n => {
+        return new Node({
+          ea: this.ea,
+          page: n.page,
+          isInferred: n.relationType === RelationType.INFERRED,
+          isCentral: x.isCentral,
+          isSibling: x.isSibling,
+          friendGateOnLeft: x.friendGateOnLeft
+        });
+      });
+  }
   /**
    * if retainCentralNode is true, the central node is not removed from the scene when the scene is rendered
    * this will ensure that the embedded frame in the center is not reloaded
@@ -729,6 +748,47 @@ export class Scene {
 
     const {parents,children,leftFriends,rightFriends,siblings} = this.getNeighbors(centralPage);
 
+    const parentNodes = this.parseToNode(
+      {
+        neighbours: parents,
+        isCentral: false,
+        isSibling: false,
+        friendGateOnLeft: true
+      }
+    );
+      
+    const childreNodes = this.parseToNode(
+      {
+        neighbours: children,
+        isCentral: false,
+        isSibling: false,
+        friendGateOnLeft: true
+      }
+    );
+    const leftFriendNodes = this.parseToNode(
+      {
+        neighbours: leftFriends,
+        isCentral: false,
+        isSibling: false,
+        friendGateOnLeft: false
+      }
+    );
+    const rightFriendNodes = this.parseToNode(
+      {
+        neighbours: rightFriends,
+        isCentral: false,
+        isSibling: false,
+        friendGateOnLeft: true
+      }
+    );
+    const siblingNodes = this.parseToNode(
+      {
+        neighbours: siblings,
+        isCentral: false,
+        isSibling: true,
+        friendGateOnLeft: true
+      }
+    );
     //-------------------------------------------------------
     // Generate layout and nodes
     this.nodesMap = new Map<string,Node>();
@@ -769,9 +829,13 @@ export class Scene {
       leftFriendOrigoX,  leftFriendWidth, leftFriendLength, leftFriendCols,
       rightFriendOrigoX, rightFriendWidth,rightFriendLength,rightFriendCols,
       siblingsOrigoX, siblingsOrigoY, siblingsNodeWidth, siblingsNodeHeight, siblingsLabelLength, siblingsCols,
-    } = this.calculateLayoutParams({
+    } = await this.calculateLayoutParams({
       centralPage,
-      parents, children, leftFriends, rightFriends, siblings,
+      parents:parentNodes,
+      children: childreNodes,
+      leftFriends:leftFriendNodes,
+      rightFriends:rightFriendNodes,
+      siblings: siblingNodes,
       isCenterEmbedded, centerEmbedHeight, centerEmbedWidth,
       style, rootNode: this.rootNode
     });
@@ -862,44 +926,29 @@ export class Scene {
     lCenter.nodes.push(this.rootNode);
   
     this.addNodes({
-      neighbours: parents,
+      nodes: parentNodes,
       layout: lParents,
-      isCentral: false,
-      isSibling: false,
-      friendGateOnLeft: true
     });
   
     this.addNodes({
-      neighbours: children,
+      nodes: childreNodes,
       layout: lChildren,
-      isCentral: false,
-      isSibling: false,
-      friendGateOnLeft: true
     });
   
     this.addNodes({
-      neighbours: leftFriends,
+      nodes: leftFriendNodes,
       layout: lFriends,
-      isCentral: false,
-      isSibling: false,
-      friendGateOnLeft: false
     });
 
     this.addNodes({
-      neighbours: rightFriends,
+      nodes: rightFriendNodes,
       layout: lNextFriends,
-      isCentral: false,
-      isSibling: false,
-      friendGateOnLeft: true
     });
 
     if(settings.renderSiblings) {
       this.addNodes({
-        neighbours: siblings,
+        nodes: siblingNodes,
         layout: lSiblings,
-        isCentral: false,
-        isSibling: true,
-        friendGateOnLeft: true
       });
     }
 
