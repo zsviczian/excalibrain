@@ -47,6 +47,7 @@ export class URLParser {
   }
 
   private async parseFileURLs(file: TFile): Promise<void> {
+	if(!file || !(file instanceof TFile)) return;
     const content = await this.app.vault.cachedRead(file);
     const links = new Map<string,FileURL>();
 
