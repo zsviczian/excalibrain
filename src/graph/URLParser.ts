@@ -48,7 +48,14 @@ export class URLParser {
 
   private async parseFileURLs(file: TFile): Promise<void> {
 	if(!file || !(file instanceof TFile)) return;
-    const content = await this.app.vault.cachedRead(file);
+    let content = "";
+    try {
+      content = await this.app.vault.cachedRead(file);
+    }
+    catch (e) {
+      console.log(`ExcaliBrain URLParser: Failed to read file ${file.path}`, e);
+      return;
+    }
     const links = new Map<string,FileURL>();
 
     let match;

@@ -11,6 +11,7 @@ export enum FileSuggestMode {
 }
 
 export class PageSuggest extends TextInputSuggest<Page> {
+    private inputStr: string = "";
     constructor(
         app: App,
         inputEl: HTMLInputElement,
@@ -22,9 +23,11 @@ export class PageSuggest extends TextInputSuggest<Page> {
 
     getSuggestions(inputStr: string): Page[] {
       //if now query string is provided, show the favorits
+      this.inputStr = inputStr.trim();
       if(inputStr==="") {
         return this.plugin.starred;
       }
+      
       const lowerInputStr = inputStr.toLowerCase();
       //first filter on the name of the file
       const exactMatchesBasename = this.plugin.pages?.getPages().filter(p=>
@@ -76,13 +79,49 @@ export class PageSuggest extends TextInputSuggest<Page> {
     }
 
     renderSuggestion(page: Page, el: HTMLElement): void {
+        const inputReg = this.inputStr === "" ? null : new RegExp(`(${this.inputStr})`, "gi");
         el.ariaLabel = page.path;
-        el.setText(
+        const data = 
           (page.isFolder || page.isTag)
             ? page.path.replace(/^folder:/,this.plugin.settings.folderNodeStyle.prefix??"📂").replace(/^tag:/,this.plugin.settings.tagNodeStyle.prefix??"🏷️")
-            : page.name
-        );
+            : inputReg
+              ? page.name.match(inputReg) ? page.name : page.path
+              : page.name;
+
+        const pathParts = data.split("/");
+        const fileName = pathParts.pop();
+        const folderPath = pathParts.join("/") + (pathParts.length > 0 ? "/" : "");
+
+        const [highlightedFolderPath, highlightedFileName] = this.highlightSequence(folderPath, fileName);
+
+        el.innerHTML = `<span style="font-size: 0.8em; opacity: 0.8;">${highlightedFolderPath}</span>${highlightedFileName}`;
     }
+
+    highlightSequence(folderName: string, fileName: string): [string, string] {
+      let lastInputStringSegment = -1;
+      const processSegment = (segment: string, inputStr: string) => {
+          let lastIndex = 0;
+          let result = "";
+          inputStr.split(" ").forEach((char,i) => {
+              const index = segment.toLowerCase().indexOf(char.toLowerCase(), lastIndex);
+              if (index !== -1) {
+                  result += segment.substring(lastIndex, index) + `<b>${char}</b>`;
+                  lastIndex = index + char.length;
+                  lastInputStringSegment = i;
+              }
+          });
+          result += segment.substring(lastIndex);
+          return result;
+      };
+
+      let inputStr = this.inputStr;
+      const highlightedFolderName = processSegment(folderName, inputStr);
+      inputStr = inputStr.split(" ").slice(lastInputStringSegment + 1).join(" ");
+      const highlightedFileName = processSegment(fileName, inputStr);
+
+      return [highlightedFolderName, highlightedFileName];
+  }
+
 
     selectSuggestion(page: Page): void {
         this.inputEl.value = page.path;

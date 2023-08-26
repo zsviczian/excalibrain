@@ -1088,7 +1088,7 @@ export class Scene {
     if(leaves.length>0) {
       const lastFilePath = app.workspace.getLastOpenFiles()[0];
       if(lastFilePath && lastFilePath !== "") {
-        const leaf = leaves.filter(l=>(l.view as FileView)?.file.path === lastFilePath);
+        const leaf = leaves.filter(l=>(l.view as FileView)?.file?.path === lastFilePath);
         if(leaf.length>0) {
           leafToOpen = leaf[0];
         }
