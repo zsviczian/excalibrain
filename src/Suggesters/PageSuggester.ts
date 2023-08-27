@@ -75,7 +75,7 @@ export class PageSuggest extends TextInputSuggest<Page> {
           (this.plugin.settings.showFolderNodes || !p.path.startsWith("folder:")) &&
           (this.plugin.settings.showTagNodes || !p.path.startsWith("tag:"))
         ) && !exactMatches.contains(p) && query(p.path)
-      ))
+      ).sort((a,b)=>query(b.path).score - query(a.path).score))
     }
 
     renderSuggestion(page: Page, el: HTMLElement): void {
@@ -118,9 +118,10 @@ export class PageSuggest extends TextInputSuggest<Page> {
       const highlightedFolderName = processSegment(folderName, inputStr);
       inputStr = inputStr.split(" ").slice(lastInputStringSegment + 1).join(" ");
       const highlightedFileName = processSegment(fileName, inputStr);
+      inputStr = inputStr.split(" ").slice(lastInputStringSegment + 1).join(" ");
 
       return [highlightedFolderName, highlightedFileName];
-  }
+    }
 
 
     selectSuggestion(page: Page): void {
