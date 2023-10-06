@@ -54,6 +54,7 @@ export class Page {
   public neighbours: Map<string,Relation>;
   public dvPage: Record<string, Literal>;
   public primaryStyleTag: string;
+  public styleTags: string[]; //other style tags beyond primary
   public dvIndexReady: boolean = false;
   public maxLabelLength: number;
   
@@ -112,7 +113,7 @@ export class Page {
     }
     this.dvPage = dvPage;
     if(!dvPage) return;
-    this.primaryStyleTag = getPrimaryTag(this.dvPage,this.plugin.settings);
+    [this.primaryStyleTag, this.styleTags] = getPrimaryTag(this.dvPage,this.plugin.settings);
 
     (dvPage.file?.etags?.values??[]).forEach((tag:string)=>{
       tag = "tag:" + tag.substring(1);

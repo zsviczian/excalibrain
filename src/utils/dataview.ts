@@ -109,20 +109,45 @@ export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<strin
 export const getPrimaryTag = (
   dvPage: Record<string, Literal>,
   settings: ExcaliBrainSettings
-):string => {
-  if(!dvPage) return null;
-  return (dvPage.file?.tags?.values??[])
-    .filter((t:string)=>settings.tagStyleList.some(x=>t.startsWith(x)))[0];
+):[string, string[]] => {
+  const pageTags = getPageTags(dvPage,settings);
+  if(!pageTags) return [null, null];
+  if(dvPage[settings.primaryTagFieldLowerCase]) {
+    const tags = dvPage[settings.primaryTagFieldLowerCase]
+      .match(/#([^\s\])$"'\\]*)(?:$|\s)/g)
+      .map((match:string) => match.trim())
+      .filter((t:string)=>settings.tagStyleList.some(x=>t.startsWith(x)));
+    const styleTag = (tags.length > 0) ? tags[0] : pageTags[0];
+    return [styleTag, pageTags.filter(t=>t!=styleTag)];
+  }
+  return [pageTags[0], pageTags.slice(1)];
 }
 
-
+const getPageTags = (
+  dvPage: Record<string, Literal>,
+  settings: ExcaliBrainSettings
+):string[] => {
+  if(!dvPage) return null;
+  return (dvPage.file?.tags?.values??[])
+    .filter((t:string)=>settings.tagStyleList.some(x=>t.startsWith(x)));
+}
 
 export const getTagStyle = (
-  tag:string,
+  tags: [string, string[]],
   settings: ExcaliBrainSettings
 ):NodeStyle => {
+  const [tag, otherTags] = tags;
   if(!tag) {
     return {};
   }
-  return settings.tagNodeStyles[settings.tagStyleList.filter(x=>tag.startsWith(x))[0]];
+  const style = settings.tagNodeStyles[settings.tagStyleList.filter(x=>tag.startsWith(x))[0]];
+  if(style && settings.displayAllStylePrefixes) {
+    const keys = Object.keys(settings.tagNodeStyles).filter(key => otherTags.includes(key));
+    const prefix = (style.prefix??"") + keys.map(key=>settings.tagNodeStyles[key].prefix).filter(x=>Boolean(x)).join("");
+    return {
+      ...style,
+      ...{prefix}
+    }
+  }
+  return style;
 }

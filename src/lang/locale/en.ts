@@ -121,9 +121,16 @@ export default {
   EMBEDDED_FRAME_WIDTH_NAME: "Embedded frame width",
   EMBEDDED_FRAME_HEIGHT_NAME: "Embedded frame height",
   TAGLIST_NAME: "Formatted tags",
-  TAGLIST_DESC: "You can specify special formatting rules for Nodes based on tags. If multiple tags are present on the page the first matching a specification " +
+  TAGLIST_DESC: "You can specify special formatting rules for Nodes based on tags. If there are multiple tags present in a note, and 'note type::' is not defined, the page the first matching a specification " +
     "will be used. <br>Tagnames should start with <mark>#</mark> and may be incomplete. i.e. <code>#book</code> will match #books, #book/fiction, etc.<br>" +
+    "tAg NaMeS are CaSE sensiTIve<br>" +
     "Enter a comma separated list of tags here, then select from the dropdown list to change the formatting.",
+  NOTE_STYLE_TAG_NAME: "Note style tag field",
+  NOTE_STYLE_TAG_DESC: "The dataview field to designate the primary tag for styling the page. This tag will be used as the base style. " +
+    "If other tags on the page also have defined styles and those style definitions include a prefix character " +
+    "those prefixes will be also added to the note title.",
+  ALL_STYLE_PREFIXES_NAME: "Display all tags styles",
+  ALL_STYLE_PREFIXES_DESC: "Display tag prefixes for all tags included in the note",
   MAX_ITEMCOUNT_DESC: "Maximum node count",
   MAX_ITEMCOUNT_NAME: "Maximum number of nodes to display in a given area of the layout." + 
     "i.e. the maximum number of parents, the maximum number of children, the maximum number of friends, and " +

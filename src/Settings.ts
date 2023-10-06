@@ -58,6 +58,9 @@ export interface ExcaliBrainSettings {
   tagNodeStyle: NodeStyle;
   tagNodeStyles: {[key: string]: NodeStyle};
   tagStyleList: string[];
+  primaryTagField: string;
+  primaryTagFieldLowerCase: string; //automatically populated
+  displayAllStylePrefixes: boolean;
   baseLinkStyle: LinkStyle;
   inferredLinkStyle: LinkStyle;
   folderLinkStyle: LinkStyle;
@@ -148,6 +151,9 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   },
   tagNodeStyles: {},
   tagStyleList: [],
+  primaryTagField: "Note type",
+  primaryTagFieldLowerCase: "note-type",
+  displayAllStylePrefixes: true,  
   baseLinkStyle: DEFAULT_LINK_STYLE,
   inferredLinkStyle: {
     strokeStyle: "dashed",
@@ -2068,8 +2074,34 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
         })
       })
 
+    new Setting(containerEl)
+      .setName(t("NOTE_STYLE_TAG_NAME"))
+      .setDesc(t("NOTE_STYLE_TAG_DESC"))
+      .addText(text=>
+        text
+          .setValue(this.plugin.settings.primaryTagField)
+          .onChange(value => {
+            this.plugin.settings.primaryTagField = value;
+            this.plugin.settings.primaryTagFieldLowerCase = value.toLocaleLowerCase().replaceAll(" ","-");
+            this.dirty = true;
+          })  
+      )
+
+    new Setting(containerEl)
+      .setName(t("ALL_STYLE_PREFIXES_NAME"))
+      .setDesc(t("ALL_STYLE_PREFIXES_DESC"))
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.displayAllStylePrefixes)
+          .onChange(value=>{
+            this.plugin.settings.displayAllStylePrefixes = value;
+            this.dirty = true;
+          })
+      )
+
     taglist.descEl.style.width="90%";
     taglist.controlEl.style.width="90%";
+
     const nodeStylesWrapper = containerEl.createDiv({cls:"setting-item"});
     const nodeStylesDropdownWrapper = nodeStylesWrapper.createDiv({cls:"setting-item-info"});
     nodeStylesDropdown = new DropdownComponent(nodeStylesDropdownWrapper);

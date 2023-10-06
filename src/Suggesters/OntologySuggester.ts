@@ -98,7 +98,7 @@ export class FieldSuggester extends EditorSuggest<string> {
     const h = this.plugin.settings.hierarchy;
     const t = this.suggestType;
     return t === "all"
-      ? [...h.parents,...h.children,...h.leftFriends,...h.rightFriends,...h.previous,...h.next].sort((a,b)=>a.toLowerCase()>b.toLowerCase()?1:-1)
+      ? [...h.parents,...h.children,...h.leftFriends,...h.rightFriends,...h.previous,...h.next, this.plugin.settings.primaryTagField].sort((a,b)=>a.toLowerCase()>b.toLowerCase()?1:-1)
       : t === "parent"
         ? h.parents
         : t === "child"

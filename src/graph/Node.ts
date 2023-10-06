@@ -65,7 +65,7 @@ export class Node {
         ...x.isCentral?this.settings.centralNodeStyle:{},
         ...x.isSibling?this.settings.siblingNodeStyle:{},
         ...x.page.isAttachment?this.settings.attachmentNodeStyle:{},
-        ...getTagStyle(this.page.primaryStyleTag,this.settings),
+        ...getTagStyle([this.page.primaryStyleTag, this.page.styleTags],this.settings),
         embedHeight: this.settings.centerEmbedHeight,
         embedWidth: this.settings.centerEmbedWidth,
       };
