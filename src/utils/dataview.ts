@@ -143,7 +143,12 @@ export const getTagStyle = (
   const style = settings.tagNodeStyles[settings.tagStyleList.filter(x=>tag.startsWith(x))[0]];
   if(style && settings.displayAllStylePrefixes) {
     const keys = Object.keys(settings.tagNodeStyles).filter(key => otherTags.includes(key));
-    const prefix = (style.prefix??"") + keys.map(key=>settings.tagNodeStyles[key].prefix).filter(x=>Boolean(x)).join("");
+    const prefixSet = new Set<string>();
+    if(style.prefix) prefixSet.add(style.prefix);
+    keys
+      .map(key=>settings.tagNodeStyles[key].prefix).filter(x=>Boolean(x))
+      .forEach(x=>prefixSet.add(x));
+    const prefix = Array.from(prefixSet).join("");
     return {
       ...style,
       ...{prefix}
