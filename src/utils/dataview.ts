@@ -72,9 +72,10 @@ const readDVField = (app: App, field: any, file:TFile):string[] => {
     //! currently there is an issue with case sensitivity. DataView retains case sensitivity of links for the front matter, but not the others
     const objectLinks:string[] = values
       .filter((l:any) => l?.values && typeof l === "object" && typeof l.values[0] === "string")
-      .map((l:any)=>getPathOrSelf(app,l.values[0],file.path))
+      ?.map((l:any)=>getPathOrSelf(app,l.values[0],file.path))
 
-    return Array.from(res).concat(stringLinks).concat(objectLinks);
+    if(!objectLinks) console.log({error: "objectLinks is undefined which is unexpected",errorLocation:"readDVField", field, file});
+    return Array.from(res).concat(stringLinks).concat(objectLinks??[]);
   }
 
   //the field is a single link
@@ -115,9 +116,9 @@ export const getPrimaryTag = (
   if(dvPage[settings.primaryTagFieldLowerCase]) {
     const tags = dvPage[settings.primaryTagFieldLowerCase]
       .match(/#([^\s\])$"'\\]*)(?:$|\s)/g)
-      .map((match:string) => match.trim())
+      ?.map((match:string) => match.trim())
       .filter((t:string)=>settings.tagStyleList.some(x=>t.startsWith(x)));
-    const styleTag = (tags.length > 0) ? tags[0] : pageTags[0];
+    const styleTag = tags && (tags.length > 0) ? tags[0] : pageTags[0];
     return [styleTag, pageTags.filter(t=>t!=styleTag)];
   }
   return [pageTags[0], pageTags.slice(1)];
@@ -146,7 +147,7 @@ export const getTagStyle = (
     const prefixSet = new Set<string>();
     if(style.prefix) prefixSet.add(style.prefix);
     keys
-      .map(key=>settings.tagNodeStyles[key].prefix).filter(x=>Boolean(x))
+      ?.map(key=>settings.tagNodeStyles[key].prefix).filter(x=>Boolean(x))
       .forEach(x=>prefixSet.add(x));
     const prefix = Array.from(prefixSet).join("");
     return {
