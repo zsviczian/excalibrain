@@ -45,7 +45,7 @@ export const DEFAULT_HIERARCHY_DEFINITION = {
     "excalidraw-link-brackets","excalidraw-link-prefix","excalidraw-border-color","excalidraw-default-mode",
     "excalidraw-export-dark","excalidraw-export-transparent","excalidraw-export-svgpadding","excalidraw-export-pngscale",
     "excalidraw-url-prefix", "excalidraw-linkbutton-opacity", "excalidraw-onload-script", "kanban-plugin"],
-  parents: ["Parent", "Parents", "up", "u", "North", "origin", "inception", "source", "parnet domain"],
+  parents: ["Parent", "Parents", "up", "u", "North", "origin", "inception", "source", "parent domain"],
   children: ["Children", "Child", "down", "d", "South", "leads to", "contributes to", "nurtures"],
   leftFriends: ["Friends", "Friend", "Jump", "Jumps", "j", "similar", "supports", "alternatives", "advantages", "pros"],
   rightFriends: ["opposes", "disadvantages", "missing", "cons"],

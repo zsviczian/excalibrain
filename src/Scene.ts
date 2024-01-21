@@ -452,7 +452,7 @@ export class Scene {
     const siblings = rawSiblings
       .filter(s => 
         //Only display siblings for which the parents are actually displayed.
-        //There might be siblings whose parnets have been filtered from view
+        //There might be siblings whose parents have been filtered from view
         s.page.getParents().map(x=>x.page.path).some(y=>parentPaths.includes(y)) &&
         //filter based on primary tag
         (!s.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(s.page.primaryStyleTag)))
