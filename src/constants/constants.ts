@@ -51,4 +51,5 @@ export const DEFAULT_HIERARCHY_DEFINITION = {
   rightFriends: ["opposes", "disadvantages", "missing", "cons"],
   previous: ["Previous", "Prev", "West", "w", "Before"],
   next: ["Next", "n", "East", "e", "After"],
+  hidden: ["hidden"],
 }

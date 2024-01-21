@@ -228,6 +228,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
 
   get hierarchyStyleList(): string[] {
     return PREDEFINED_LINK_STYLES
+      .concat(Array.from(this.plugin.settings.hierarchy.hidden))
       .concat(Array.from(this.plugin.settings.hierarchy.parents))
       .concat(Array.from(this.plugin.settings.hierarchy.children))
       .concat(Array.from(this.plugin.settings.hierarchy.leftFriends))
@@ -1268,6 +1269,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       fieldNameMap.set(f,f.toLowerCase().replaceAll(" ","-"))
     });
     const assigned = new Set();
+    this.plugin.settings.hierarchy.hidden.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
     this.plugin.settings.hierarchy.parents.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
     this.plugin.settings.hierarchy.children.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
     this.plugin.settings.hierarchy.leftFriends.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
@@ -1393,6 +1395,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     hierarchyDesc.innerHTML =  t("HIERARCHY_DESC");
 
     let onHierarchyChange: Function = ()=>{};
+
     const hierarchyParentSetting = new Setting(containerEl)
       .setName(t("PARENTS_NAME"))
       .addTextArea((text)=> {
@@ -1525,6 +1528,29 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     hierarchyNextSetting.nameEl.addClass("excalibrain-setting-nameEl");
     hierarchyNextSetting.descEl.addClass("excalibrain-setting-descEl");
     hierarchyNextSetting.controlEl.addClass("excalibrain-setting-controlEl");
+
+    const hierarchyHiddenSetting = new Setting(containerEl)
+      .setName(t("HIDDEN_NAME"))
+      .setDesc(t("HIDDEN_DESC"))
+      .addTextArea((text)=> {
+        text.inputEl.style.height = "90px";
+        text.inputEl.style.width = "100%";
+        text
+          .setValue(this.plugin.settings.hierarchy.hidden.join(", "))
+          .onChange(value => {
+            this.plugin.settings.hierarchy.hidden = value
+              .split(",")
+              .map(s=>s.trim())
+              .sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
+            this.plugin.hierarchyLowerCase.hidden = [];
+            this.plugin.settings.hierarchy.hidden.forEach(f=>this.plugin.hierarchyLowerCase.hidden.push(f.toLowerCase().replaceAll(" ","-")))
+            onHierarchyChange();
+            this.dirty = true;
+          })
+      })
+    hierarchyHiddenSetting.nameEl.addClass("excalibrain-setting-nameEl");
+    hierarchyHiddenSetting.descEl.addClass("excalibrain-setting-descEl");
+    hierarchyHiddenSetting.controlEl.addClass("excalibrain-setting-controlEl");
 
     const hierarchyExclusionSetting = new Setting(containerEl)
       .setName(t("EXCLUSIONS_NAME"))

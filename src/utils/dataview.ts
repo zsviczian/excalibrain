@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import { App, TFile, moment } from "obsidian";
 import { Literal } from "obsidian-dataview/lib/data-model/value";
 import ExcaliBrain from "src/excalibrain-main";
 import { linkRegex } from "src/graph/URLParser";
@@ -39,29 +39,50 @@ const readLinksFromString = (data: string, file:TFile):string[] => {
   return Array.from(res);
 }
 
-const readDVField = (app: App, field: any, file:TFile):string[] => {
+const readDailyNoteLinks = (plugin: ExcaliBrain, data: any[], file:TFile):string[] => {
+  const res = new Set<string>();
+  data.forEach((l:any)=>{
+    if(l?.hasOwnProperty?.("ts")) {
+      res.add(moment(l.ts).format(plugin.dailyNoteSettings.format))
+    }
+  });
+  return Array.from(res);
+}
+
+const readDVField = (plugin: ExcaliBrain, field: any, file:TFile):string[] => {
   const res = new Set<string>();
 
   //the field is a list of links
-  
   if(field.values) {
+    if(field.hasOwnProperty("conversionAccuracy")) {
+      return []; //ignore duration data
+    }
     const values =  Array.from(field.values())
     //List of links
-    values
-      .filter((l:any)=>l?.type && (l.type === "file" || l.type === "header" || l.type=="block"))
-      .forEach((l:any)=>{
-        const path = getPathOrSelf(app, l.path,file.path);
-        if(path) {
-          res.add(path);
-        }
-      });
-
-    values
-      .filter((l:any)=>Boolean(l?.values))
-      .forEach((l:any)=>{
-        const values = Array.from(l.values());
-        readDVField(app,values,file).forEach(p=>res.add(p))
-      });
+    let tmp: any;
+    try {
+      values
+        .filter((l:any)=>l?.type && (l.type === "file" || l.type === "header" || l.type=="block"))
+        .forEach((l:any)=>{
+          const path = getPathOrSelf(plugin.app, l.path,file.path);
+          if(path) {
+            res.add(path);
+          }
+        });
+      
+      values
+        .filter((l:any)=>Boolean(l?.values))
+        .forEach((l:any)=>{
+          tmp = l;
+          const values = Array.from(l.values());
+          readDVField(plugin,values,file).forEach(p=>res.add(p))
+        });
+    } catch(e) {
+      console.log(e);
+      console.log(values);
+      console.log(tmp);
+      console.log(tmp?.values);
+    }
 
     //string: e.g. list of virtual links
     const stringLinks:string[] = readLinksFromString(values
@@ -72,15 +93,16 @@ const readDVField = (app: App, field: any, file:TFile):string[] => {
     //! currently there is an issue with case sensitivity. DataView retains case sensitivity of links for the front matter, but not the others
     const objectLinks:string[] = values
       .filter((l:any) => l?.values && typeof l === "object" && typeof l.values[0] === "string")
-      ?.map((l:any)=>getPathOrSelf(app,l.values[0],file.path))
-
+      ?.map((l:any)=>getPathOrSelf(plugin.app,l.values[0],file.path))
     if(!objectLinks) console.log({error: "objectLinks is undefined which is unexpected",errorLocation:"readDVField", field, file});
-    return Array.from(res).concat(stringLinks).concat(objectLinks??[]);
+
+    const dateLinks = readDailyNoteLinks(plugin,values,file);
+    return Array.from(res).concat(stringLinks).concat(objectLinks??[]).concat(dateLinks);
   }
 
   //the field is a single link
   if(field.path) {
-    const path = getPathOrSelf(app,field.path,file.path); 
+    const path = getPathOrSelf(plugin.app,field.path,file.path); 
     return path ? [path] : [];
   }
 
@@ -101,7 +123,7 @@ export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<strin
     const fieldvals = dvPage[f];
     if(fieldvals && !processed.has(f)) {
       processed.add(f);
-      readDVField(plugin.app,fieldvals,dvPage.file).forEach(l=>links.push({link:l,field:f}))
+      readDVField(plugin,fieldvals,dvPage.file).forEach(l=>links.push({link:l,field:f}))
     };
   });
   return links;

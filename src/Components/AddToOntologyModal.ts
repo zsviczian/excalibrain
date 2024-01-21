@@ -5,6 +5,7 @@ import ExcaliBrain from "src/excalibrain-main";
 import { t } from "src/lang/helpers";
 
 export enum Ontology {
+  Hidden = "hidden",
   Parent = "parent",
   Child = "child",
   LeftFriend = "leftFriend",
@@ -27,6 +28,9 @@ export class AddToOntologyModal extends Modal {
     const { settings } = this.plugin;
     const field = this.fieldName;
 
+    if(settings.hierarchy.hidden.includes(field)) {
+      return Ontology.Hidden;
+    }
     if(settings.hierarchy.parents.includes(field)) {
       return Ontology.Parent;
     }
@@ -56,6 +60,11 @@ export class AddToOntologyModal extends Modal {
 
     //remove from current ontology
     switch(this.ontology) {
+      case Ontology.Hidden:
+        settings.hierarchy.hidden = settings.hierarchy.hidden.filter(f=>f!==this.fieldName);
+        plugin.hierarchyLowerCase.hidden = [];
+        settings.hierarchy.hidden.forEach(f=>plugin.hierarchyLowerCase.hidden.push(f.toLowerCase().replaceAll(" ","-")));  
+        break;
       case Ontology.Parent:
         settings.hierarchy.parents = settings.hierarchy.parents.filter(f=>f!==this.fieldName);
         plugin.hierarchyLowerCase.parents = [];
@@ -90,6 +99,12 @@ export class AddToOntologyModal extends Modal {
     
     //add to new ontology
     switch(ontology) {
+      case Ontology.Hidden:
+        settings.hierarchy.hidden.push(this.fieldName);
+        settings.hierarchy.hidden = settings.hierarchy.hidden.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
+        plugin.hierarchyLowerCase.hidden = [];
+        settings.hierarchy.hidden.forEach(f=>plugin.hierarchyLowerCase.hidden.push(f.toLowerCase().replaceAll(" ","-")));
+        break;
       case Ontology.Parent:
         settings.hierarchy.parents.push(this.fieldName);
         settings.hierarchy.parents = settings.hierarchy.parents.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
@@ -157,6 +172,12 @@ export class AddToOntologyModal extends Modal {
     titleEl.setText(this.fieldName);
     contentEl.createEl("p", {text: t("ADD_TO_ONTOLOGY_MODAL_DESC")});
     const setting = new Setting(contentEl)
+      .addButton((b) => {
+        b.buttonEl.style.flex = "1 0 calc(33.33% - var(--size-4-2))";
+        b.setButtonText(t("HIDDEN_NAME"))
+        if(this.ontology === Ontology.Hidden) b.setCta();
+        b.onClick(()=>this.setOntology(Ontology.Hidden))
+      })
       .addButton((b) => {
         b.buttonEl.style.flex = "1 0 calc(33.33% - var(--size-4-2))";
         b.setButtonText(t("PARENTS_NAME"))

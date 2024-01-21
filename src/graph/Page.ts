@@ -9,6 +9,7 @@ import { Pages, addUnresolvedPage } from "./Pages";
 
 const DEFAULT_RELATION:Relation = {
   target: null,
+  isHidden: false,
   isParent: false,
   isChild: false,
   isLeftFriend: false,
@@ -121,7 +122,18 @@ export class Page {
       if(!parent) return;
       this.addParent(parent,RelationType.DEFINED,LinkDirection.FROM,"tag-tree");
       parent.addChild(this,RelationType.DEFINED,LinkDirection.TO,"tag-tree");
-    })    
+    })
+
+    const hidden = this.plugin.hierarchyLowerCase.hidden;
+    getDVFieldLinksForPage(this.plugin,dvPage,hidden).forEach(item=>{
+      let referencedPage = this.pages.get(item.link);
+      if(!referencedPage) {
+        referencedPage = addUnresolvedPage(item.link, this, this.plugin, this.plugin.pages)
+        //log(`Unexpected: ${this.file.path} references ${item.link} in DV, but it was not found in app.metadataCache. The page was skipped.`);
+        //return;
+      }
+      this.addHidden(referencedPage);
+    });
 
     const parentFields = this.plugin.hierarchyLowerCase.parents;
     getDVFieldLinksForPage(this.plugin,dvPage,parentFields).forEach(item=>{
@@ -270,7 +282,8 @@ export class Page {
 
     const { showVirtualNodes, showAttachments, showFolderNodes, showTagNodes, showPageNodes, showURLNodes } = this.plugin.settings
     return Array.from(this.neighbours)
-      .filter(x=> (showVirtualNodes || !x[1].target.isVirtual) && 
+      .filter(x=> !x[1].isHidden &&
+        (showVirtualNodes || !x[1].target.isVirtual) && 
         (showAttachments || !x[1].target.isAttachment) &&
         (showFolderNodes || !x[1].target.isFolder) &&
         (showTagNodes || !x[1].target.isTag) &&
@@ -299,6 +312,23 @@ export class Page {
   //-----------------------------------------------
   // add relationships
   //-----------------------------------------------
+  addHidden(page: Page) {
+    if(page.path === this.plugin.settings.excalibrainFilepath || page.path === this.path) {
+      return;
+    };
+    const neighbour = this.neighbours.get(page.path);
+    if(neighbour) {
+      neighbour.isHidden = true;
+      return;
+    }
+    this.neighbours.set(page.path, {
+      ...DEFAULT_RELATION,
+      target: page,
+      isHidden: true,
+      parentType: RelationType.DEFINED,
+    });
+  }
+
   addParent(page: Page, relationType:RelationType,  direction: LinkDirection, definition?: string) {
     if(page.path === this.plugin.settings.excalibrainFilepath || page.path === this.path) {
       return;

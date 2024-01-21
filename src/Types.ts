@@ -25,6 +25,7 @@ export type Arrowhead = ExcalidrawArrowHead | "none";
 export type Relation = {
   target: Page;
   direction: LinkDirection;
+  isHidden: boolean;
   isParent: boolean;
   parentType?: RelationType;
   parentTypeDefinition?: string;
@@ -46,6 +47,7 @@ export type Relation = {
 }
 
 export type Hierarchy = {
+  hidden: string[],
   parents: string[],
   children: string[],
   leftFriends: string[],

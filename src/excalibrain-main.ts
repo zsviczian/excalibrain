@@ -18,6 +18,7 @@ import { isEmbedFileType } from './utils/fileUtils';
 import { URLParser } from './graph/URLParser';
 import { AddToOntologyModal, Ontology } from './Components/AddToOntologyModal';
 import { NavigationHistory } from './Components/NavigationHistory';
+import { getDailyNoteSettings, IPeriodicNoteSettings } from './utils/datehelpers';
 
 declare module "obsidian" {
   interface App {
@@ -39,17 +40,19 @@ declare global {
 }
 
 export default class ExcaliBrain extends Plugin {
+  public dailyNoteSettings: IPeriodicNoteSettings;
   public settings:ExcaliBrainSettings;
   public nodeStyles: NodeStyles;
   public linkStyles: LinkStyles;
   public hierarchyLowerCase: {
+    hidden: string[],
     parents: string[],
     children: string[],
     leftFriends: string[],
     rightFriends: string[],
     previous: string[],
     next: string[],
-  } = {parents: [], children: [], leftFriends: [], rightFriends: [], previous: [], next: []};
+  } = {hidden: [], parents: [], children: [], leftFriends: [], rightFriends: [], previous: [], next: []};
   public hierarchyLinkStylesExtended: {[key: string]: LinkStyle}; //including datafields lowercase and "-" instead of " "
   public pages: Pages;
   public DVAPI: DvAPIInterface;
@@ -79,6 +82,7 @@ export default class ExcaliBrain extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+    this.dailyNoteSettings = getDailyNoteSettings();
     this.navigationHistory = new NavigationHistory(this.settings.navigationHistory);
 		this.addSettingTab(new ExcaliBrainSettingTab(this.app, this));
     this.registerEditorSuggest(new FieldSuggester(this));
@@ -115,7 +119,7 @@ export default class ExcaliBrain extends Plugin {
       this.EA = getEA();
       if(!this.EA) {
         (new WarningPrompt(
-          app,
+          this.app,
           "⚠ ExcaliBrain Disabled: Excalidraw Plugin not found",
           t("EXCALIDRAW_NOT_FOUND"))
         ).show(async (result: boolean) => {
@@ -128,7 +132,7 @@ export default class ExcaliBrain extends Plugin {
 
       if(!this.EA.verifyMinimumPluginVersion(MINEXCALIDRAWVERSION)) {
         (new WarningPrompt(
-          app,
+          this.app,
           "⚠ ExcaliBrain Disabled: Please upgrade Excalidraw and try again",
           t("EXCALIDRAW_MINAPP_VERSION"))
         ).show(async (result: boolean) => {
@@ -404,6 +408,12 @@ export default class ExcaliBrain extends Plugin {
       this.addFieldToOntology(field,direction);
       return true;
     }
+
+    this.addCommand({
+      id: "excalibrain-addHiddenField",
+      name: t("COMMAND_ADD_HIDDEN_FIELD"),
+      checkCallback: (checking: boolean) => addFieldToOntology(checking, Ontology.Hidden),
+    });
 
     this.addCommand({
       id: "excalibrain-addParentField",
@@ -752,10 +762,19 @@ export default class ExcaliBrain extends Plugin {
       ...this.settings.baseNodeStyle,
     };
     
+    this.hierarchyLowerCase.hidden = [];
+    if(!this.settings.hierarchy.hidden) {
+      this.settings.hierarchy.hidden = [""];
+    }
+    this.settings.hierarchy.hidden = this.settings.hierarchy.hidden.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
+    this.settings.hierarchy.hidden.forEach(f=>this.hierarchyLowerCase.hidden.push(f.toLowerCase().replaceAll(" ","-")));
+    let masterHierarchyList:string[] = [...this.hierarchyLowerCase.hidden];    
+
+
     this.hierarchyLowerCase.parents = [];
     this.settings.hierarchy.parents = this.settings.hierarchy.parents.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1);
     this.settings.hierarchy.parents.forEach(f=>this.hierarchyLowerCase.parents.push(f.toLowerCase().replaceAll(" ","-")));
-    let masterHierarchyList:string[] = [...this.hierarchyLowerCase.parents];    
+    masterHierarchyList = [...masterHierarchyList, ...this.hierarchyLowerCase.parents];    
 
     this.hierarchyLowerCase.children = [];
     this.settings.hierarchy.children = this.settings.hierarchy.children
@@ -946,6 +965,7 @@ export default class ExcaliBrain extends Plugin {
   }
 
   public async start(leaf: WorkspaceLeaf) {
+    this.dailyNoteSettings = getDailyNoteSettings();
     if(!leaf.view) {
       return;
     }
