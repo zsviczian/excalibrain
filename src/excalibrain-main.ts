@@ -639,13 +639,10 @@ export default class ExcaliBrain extends Plugin {
           (async()=>{
             const source = page.getParents()[0] ?? page.getLeftFriends()[0] ?? page.getRightFriends()[0] ?? page.getChildren()[0];
             const f = await ea.newFilePrompt(page.path, false, undefined, source?.page.file);
+            if(!f) return;
             page.file = f;
-            if(isEmbedFileType(f,ea)) {
-              this.scene.renderGraphForPath(path);
-            } else {
-              this.scene.renderGraphForPath(path,false);
-              return true;
-            }
+            await this.scene.renderGraphForPath(path);
+            await this.scene.reRender(true);
           })();
         }
         return false;
