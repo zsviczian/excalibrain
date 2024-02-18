@@ -695,6 +695,10 @@ export default class ExcaliBrain extends Plugin {
         return true; //true if file should be opened because central node is not embedded;
       }
 
+      if((this.scene.centralPagePath === page.path) && page.isURL) {
+        return true; //let Excalidraw open the webpage
+      }
+
       //the page is a folder or a tag
       this.scene.renderGraphForPath(path);
       return false;
