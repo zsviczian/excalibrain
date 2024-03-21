@@ -47,6 +47,7 @@ export interface ExcaliBrainSettings {
   showFullTagName: boolean;
   maxItemCount: number;
   renderSiblings: boolean;
+  applyPowerFilter: boolean;
   baseNodeStyle: NodeStyle;
   centralNodeStyle: NodeStyle;
   inferredNodeStyle: NodeStyle;
@@ -112,7 +113,8 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   showNeighborCount: true,
   showFullTagName: false,
   maxItemCount: 30,
-  renderSiblings: true,
+  renderSiblings: false,
+  applyPowerFilter: false,
   baseNodeStyle: DEFAULT_NODE_STYLE,
   centralNodeStyle: {
     fontSize: 30,

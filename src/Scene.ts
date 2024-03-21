@@ -410,6 +410,7 @@ export class Scene {
       .filter(x => 
         (x.page.path !== centralPage.path) &&
         !settings.excludeFilepaths.some(p => x.page.path.startsWith(p)) &&
+        //tha node either has no primary tag or the tag is not filtered out
         (!x.page.primaryStyleTag || !this.toolsPanel.linkTagFilter.selectedTags.has(x.page.primaryStyleTag)))
       .slice(0,settings.maxItemCount);
     const parentPaths = parents.map(x=>x.page.path);

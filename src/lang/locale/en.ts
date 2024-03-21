@@ -210,6 +210,7 @@ export default {
   SHOW_HIDE_INFERRED: "Show/Hide inferred relationships",
   SHOW_HIDE_ALIAS: "Show/Hide document alias",
   SHOW_HIDE_SIBLINGS: "Show/Hide siblings",
+  SHOW_HIDE_POWERFILTER: "Enable/Disable Power Filter",
   SHOW_HIDE_EMBEDDEDCENTRAL: "Display central node as embedded frame",
   SHOW_HIDE_URLS: "Show/Hide URLs in central notes as graph nodes",
   SHOW_HIDE_FOLDER: "Show/Hide folder nodes",

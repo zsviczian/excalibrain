@@ -426,6 +426,27 @@ export class ToolsPanel {
     );
 
     // ------------
+    // Power Filter
+    // ------------
+    /*this.buttons.push(
+      new ToggleButton({
+        plugin: this.plugin,
+        getVal: () => this.plugin.settings.applyPowerFilter,
+        setVal: (val: boolean) => {
+          this.plugin.settings.applyPowerFilter = val;
+          return true;
+        },
+        wrapper: buttonsWrapperDiv,
+        options: {
+          display: "V",
+          icon: getIcon("lucide-filter").outerHTML,
+          tooltip: t("SHOW_HIDE_POWERFILTER"),
+        },
+        updateIndex: false,
+      })
+    );*/
+
+    // ------------
     // Central node as interactive frame
     // ------------
     this.buttons.push(

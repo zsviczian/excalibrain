@@ -92,7 +92,7 @@ export class Page {
       if(!invMap) {
         return;
       }
-      invMap.forEach(path=>{
+      invMap.forEach((path: any)=>{
         const child = this.pages.get(path);
         if(!child) {
           return;

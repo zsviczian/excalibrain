@@ -5,7 +5,6 @@ import { errorlog, keepOnTop } from './utils/utils';
 import { getAPI } from "obsidian-dataview"
 import { t } from './lang/helpers';
 import { DEFAULT_HIERARCHY_DEFINITION, DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, MINEXCALIDRAWVERSION, PLUGIN_NAME, PREDEFINED_LINK_STYLES } from './constants/constants';
-import { DvAPIInterface } from 'obsidian-dataview/lib/typings/api';
 import { Pages } from './graph/Pages';
 import { getEA } from "obsidian-excalidraw-plugin";
 import { ExcalidrawAutomate, search } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
@@ -55,7 +54,7 @@ export default class ExcaliBrain extends Plugin {
   } = {hidden: [], parents: [], children: [], leftFriends: [], rightFriends: [], previous: [], next: []};
   public hierarchyLinkStylesExtended: {[key: string]: LinkStyle}; //including datafields lowercase and "-" instead of " "
   public pages: Pages;
-  public DVAPI: DvAPIInterface;
+  public DVAPI: any;
   public EA: ExcalidrawAutomate;
   public scene: Scene = null;
   private disregardLeafChangeTimer: NodeJS.Timeout;
@@ -103,7 +102,7 @@ export default class ExcaliBrain extends Plugin {
         });
         return;
       }
-      if(!this.DVAPI.version.compare('>=', '0.5.31')) {
+      /*if(!this.DVAPI.version.compare('>=', '0.5.31')) {
         (new WarningPrompt(
           this.app,
           "⚠ ExcaliBrain Disabled: Dataview upgrade requried",
@@ -114,7 +113,7 @@ export default class ExcaliBrain extends Plugin {
           this.app.plugins.disablePlugin(PLUGIN_NAME)  
         });
         return;
-      }
+      }*/
       
       this.EA = getEA();
       if(!this.EA) {

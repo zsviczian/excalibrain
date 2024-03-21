@@ -16,7 +16,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "obsidian-dataview": "^0.5.56",
+    "obsidian-dataview": "^0.5.65",
     "@popperjs/core": "^2.11.6"
   },
   "devDependencies": {
