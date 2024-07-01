@@ -1,6 +1,6 @@
 import { create } from "domain";
 import { App, Modal, Notice, Setting } from "obsidian";
-import { createBinaryOps } from "obsidian-dataview/lib/expression/binaryop";
+import { createBinaryOps } from "obsidian-dataview/src/expression/binaryop";
 import ExcaliBrain from "src/excalibrain-main";
 import { t } from "src/lang/helpers";
 
@@ -148,7 +148,7 @@ export class AddToOntologyModal extends Modal {
     }
     new Notice(`Added ${this.fieldName} as ${ontology}`);
     this.fieldName = null;
-    this.close();
+    this.onClose();
   }
 
   async show( fieldName:string ) {
