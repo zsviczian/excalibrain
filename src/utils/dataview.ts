@@ -43,7 +43,7 @@ const readDailyNoteLinks = (plugin: ExcaliBrain, data: any[], file:TFile):string
   const res = new Set<string>();
   data.forEach((l:any)=>{
     if(l?.hasOwnProperty?.("ts")) {
-      res.add(moment(l.ts).format(plugin.dailyNoteSettings.format))
+      res.add(moment.default(l.ts).format(plugin.dailyNoteSettings.format))
     }
   });
   return Array.from(res);
