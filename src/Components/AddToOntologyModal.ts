@@ -148,7 +148,7 @@ export class AddToOntologyModal extends Modal {
     }
     new Notice(`Added ${this.fieldName} as ${ontology}`);
     this.fieldName = null;
-    this.close();
+    this.onClose();
   }
 
   async show( fieldName:string ) {

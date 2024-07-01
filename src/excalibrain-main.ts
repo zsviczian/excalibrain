@@ -2,7 +2,7 @@ import { App, Editor, MarkdownView, Menu, MenuItem, Notice, Plugin, PluginManife
 import { Page } from './graph/Page';
 import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './Settings';
 import { errorlog, keepOnTop } from './utils/utils';
-import { getAPI } from "obsidian-dataview"
+import { getAPI } from "obsidian-dataview";
 import { t } from './lang/helpers';
 import { DEFAULT_HIERARCHY_DEFINITION, DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, MINEXCALIDRAWVERSION, PLUGIN_NAME, PREDEFINED_LINK_STYLES } from './constants/constants';
 import { Pages } from './graph/Pages';
