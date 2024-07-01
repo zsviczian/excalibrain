@@ -16,8 +16,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "obsidian-dataview": "^0.5.65",
-    "@popperjs/core": "^2.11.6"
+    "@popperjs/core": "^2.11.6",
+    "obsidian-dataview": "^0.5.67"
   },
   "devDependencies": {
     "@babel/core": "^7.20.12",
@@ -29,13 +29,13 @@
     "@rollup/plugin-commonjs": "^24.0.0",
     "@rollup/plugin-node-resolve": "^15.0.1",
     "@rollup/plugin-replace": "^5.0.2",
-    "@rollup/plugin-terser": "0.4.4",
+    "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^11.0.0",
     "@types/node": "^20.4.8",
     "cross-env": "^7.0.3",
     "eslint-config-prettier": "^8.10.0",
     "eslint-plugin-prettier": "^4.2.1",
-    "obsidian": "^1.4.0",
+    "obsidian": "^1.5.7-1",
     "obsidian-excalidraw-plugin": "1.9.14",
     "prettier": "^2.8.2",
     "rollup": "^2.79.1",
