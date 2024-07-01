@@ -1,5 +1,5 @@
 import { App, TFile, moment } from "obsidian";
-import { Literal } from "obsidian-dataview/src/data-model/value";
+import { Literal } from "obsidian-dataview/lib/data-model/value";
 import ExcaliBrain from "src/excalibrain-main";
 import { linkRegex } from "src/graph/URLParser";
 import { ExcaliBrainSettings } from "src/Settings";

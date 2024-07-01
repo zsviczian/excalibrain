@@ -1,5 +1,5 @@
 import { TFile } from "obsidian";
-import { Literal } from "obsidian-dataview/src/data-model/value";
+import { Literal } from "obsidian-dataview/lib/data-model/value";
 import ExcaliBrain from "src/excalibrain-main";
 import { LinkDirection, Neighbour, Relation, RelationType } from "src/types";
 import { getDVFieldLinksForPage, getPrimaryTag } from "src/utils/dataview";

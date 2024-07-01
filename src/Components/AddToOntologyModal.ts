@@ -1,6 +1,6 @@
 import { create } from "domain";
 import { App, Modal, Notice, Setting } from "obsidian";
-import { createBinaryOps } from "obsidian-dataview/src/expression/binaryop";
+import { createBinaryOps } from "obsidian-dataview/lib/expression/binaryop";
 import ExcaliBrain from "src/excalibrain-main";
 import { t } from "src/lang/helpers";
 
