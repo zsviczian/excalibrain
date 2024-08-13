@@ -52,7 +52,7 @@ export class Scene {
     this.ea = plugin.EA;
     this.plugin = plugin;
     this.app = plugin.app;
-    this.leaf = leaf ?? app.workspace.getLeaf(newLeaf);
+    this.leaf = leaf ?? this.app.workspace.getLeaf(newLeaf);
     this.terminated = false;
     this.links = new Links(plugin);
   }
@@ -85,7 +85,7 @@ export class Scene {
    */
   public isActive() {
     //@ts-ignore
-    return !this.terminated && app.workspace.getLeafById(this.leaf?.id)
+    return !this.terminated && this.app.workspace.getLeafById(this.leaf?.id)
   }
 
   /**
@@ -236,6 +236,7 @@ export class Scene {
 
   public static async openExcalidrawLeaf(ea: ExcalidrawAutomate, settings: ExcaliBrainSettings, leaf: WorkspaceLeaf) {
     let counter = 0;
+    const app = ea.plugin.app;
 
     let file = app.vault.getAbstractFileByPath(settings.excalibrainFilepath);
     if(file && !(file instanceof TFile)) {
@@ -368,7 +369,6 @@ export class Scene {
     this.textSize = ea.measureText("m".repeat(style.maxLabelLength));
     this.nodeWidth = this.textSize.width + 2 * style.padding;
     this.nodeHeight = 2 * (this.textSize.height + 2 * style.padding);
-
   }
 
   addNodes(x:{
@@ -975,7 +975,7 @@ export class Scene {
   public isCentralLeafStillThere():boolean {
     const settings = this.plugin.settings;
     //@ts-ignore
-    const noCentralLeaf = app.workspace.getLeafById(this.centralLeaf?.id) === null ;
+    const noCentralLeaf = this.app.workspace.getLeafById(this.centralLeaf?.id) === null ;
     if(noCentralLeaf) {
       return false;
     }
@@ -1065,19 +1065,19 @@ export class Scene {
 
     const beh = (leaf:WorkspaceLeaf)=>this.brainEventHandler(leaf);
     this.app.workspace.on("active-leaf-change", beh);
-    this.removeEH = () => app.workspace.off("active-leaf-change",beh);
+    this.removeEH = () => this.app.workspace.off("active-leaf-change",beh);
     this.setTimer();
     this.app.vault.on("rename",fileChangeHandler);
-    this.removeOnRename = () => app.vault.off("rename",fileChangeHandler)
+    this.removeOnRename = () => this.app.vault.off("rename",fileChangeHandler)
     this.app.vault.on("modify",fileChangeHandler);
-    this.removeOnModify = () => app.vault.off("modify",fileChangeHandler)
+    this.removeOnModify = () => this.app.vault.off("modify",fileChangeHandler)
     this.app.vault.on("create",fileChangeHandler);
-    this.removeOnCreate = () => app.vault.off("create",fileChangeHandler)
+    this.removeOnCreate = () => this.app.vault.off("create",fileChangeHandler)
     this.app.vault.on("delete",fileChangeHandler);
-    this.removeOnDelete = () => app.vault.off("delete",fileChangeHandler)
+    this.removeOnDelete = () => this.app.vault.off("delete",fileChangeHandler)
 
     const leaves: WorkspaceLeaf[] = [];
-    app.workspace.iterateAllLeaves(l=>{
+    this.app.workspace.iterateAllLeaves(l=>{
       if( (l.view instanceof FileView) && l.view.file && l.view.file.path !== this.ea.targetView.file.path) {
         leaves.push(l);
       }
@@ -1087,7 +1087,7 @@ export class Scene {
     
     let leafToOpen = leaves[0];
     if(leaves.length>0) {
-      const lastFilePath = app.workspace.getLastOpenFiles()[0];
+      const lastFilePath = this.app.workspace.getLastOpenFiles()[0];
       if(lastFilePath && lastFilePath !== "") {
         const leaf = leaves.filter(l=>(l.view as FileView)?.file?.path === lastFilePath);
         if(leaf.length>0) {

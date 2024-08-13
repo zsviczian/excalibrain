@@ -10,7 +10,7 @@ const getPathOrSelf = (app: App, link:string, hostPath:string):string => {
   return f ? f.path : link;
 }
 
-const readLinksFromString = (data: string, file:TFile):string[] => {
+const readLinksFromString = (app: App, data: string, file:TFile):string[] => {
   const res = new Set<string>();
   //               wiki link                    markdown link 
   const linkReg = /[^[]*\[\[(?<wikiLink>[^#\]\|]*)[^\]]*]]|\[[^\]]*]\((?<mdLink>[^)]*)\)/g;
@@ -43,7 +43,7 @@ const readDailyNoteLinks = (plugin: ExcaliBrain, data: any[], file:TFile):string
   const res = new Set<string>();
   data.forEach((l:any)=>{
     if(l?.hasOwnProperty?.("ts")) {
-      res.add(moment(l.ts).format(plugin.dailyNoteSettings.format))
+      res.add(moment.default(l.ts).format(plugin.dailyNoteSettings.format))
     }
   });
   return Array.from(res);
@@ -85,9 +85,11 @@ const readDVField = (plugin: ExcaliBrain, field: any, file:TFile):string[] => {
     }
 
     //string: e.g. list of virtual links
-    const stringLinks:string[] = readLinksFromString(values
-      .filter((l:any)=>typeof l === "string")
-      .join(" "),file)
+    const stringLinks:string[] = readLinksFromString(
+      plugin.app,
+      values.filter((l:any)=>typeof l === "string").join(" "),
+      file
+    )
 
     //links in the frontmatter
     //! currently there is an issue with case sensitivity. DataView retains case sensitivity of links for the front matter, but not the others
@@ -108,7 +110,7 @@ const readDVField = (plugin: ExcaliBrain, field: any, file:TFile):string[] => {
 
   if(typeof field === "string") {
     //the field is a string that may contain a link
-    return readLinksFromString(field,file);
+    return readLinksFromString(plugin.app,field,file);
   }
 
   //other type of field, e.g. Datetime field

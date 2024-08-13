@@ -29,7 +29,7 @@ export const keepOnTop = (ea: ExcalidrawAutomate, ownerWindow?: Window) => {
   if(!ownerWindow) {
     const view = ea.targetView;
     if(!view) return;
-    keepontop = (app.workspace.activeLeaf === view.leaf);
+    keepontop = (ea.plugin.app.workspace.activeLeaf === view.leaf);
     ownerWindow = view.ownerWindow;
   }
 

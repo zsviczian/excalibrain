@@ -2,7 +2,7 @@ import { App, Editor, MarkdownView, Menu, MenuItem, Notice, Plugin, PluginManife
 import { Page } from './graph/Page';
 import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './Settings';
 import { errorlog, keepOnTop } from './utils/utils';
-import { getAPI } from "obsidian-dataview"
+import { getAPI } from "obsidian-dataview";
 import { t } from './lang/helpers';
 import { DEFAULT_HIERARCHY_DEFINITION, DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, MINEXCALIDRAWVERSION, PLUGIN_NAME, PREDEFINED_LINK_STYLES } from './constants/constants';
 import { Pages } from './graph/Pages';
@@ -81,7 +81,7 @@ export default class ExcaliBrain extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-    this.dailyNoteSettings = getDailyNoteSettings();
+    this.dailyNoteSettings = getDailyNoteSettings(this.app);
     this.navigationHistory = new NavigationHistory(this.settings.navigationHistory);
 		this.addSettingTab(new ExcaliBrainSettingTab(this.app, this));
     this.registerEditorSuggest(new FieldSuggester(this));
@@ -240,14 +240,14 @@ export default class ExcaliBrain extends Plugin {
         }
       })
     }
-    const rootFolder = app.vault.getRoot();
+    const rootFolder = this.app.vault.getRoot();
     const rootFolderPage = new Page(this.pages,"folder:/", null, this, true, false, "/");
     this.pages.add("folder:/",rootFolderPage);
     addFolderChildren(rootFolder, rootFolderPage);
 
     //Add all tags
     //@ts-ignore
-    const tags = Object.keys(app.metadataCache.getTags()).map(t=>t.substring(1).split("/"))
+    const tags = Object.keys(this.app.metadataCache.getTags()).map(t=>t.substring(1).split("/"))
     tags.forEach(tag => {
       const tagPages: Page[] = [];
       tag.forEach((el,idx,t)=> {
@@ -341,9 +341,9 @@ export default class ExcaliBrain extends Plugin {
     if(!this.scene || this.scene.terminated) {
       return;
     }
-    app.workspace.revealLeaf(this.scene.leaf);
+    this.app.workspace.revealLeaf(this.scene.leaf);
     //@ts-ignore
-    const hoverEditor = app.plugins.getPlugin("obsidian-hover-editor");
+    const hoverEditor = this.app.plugins.getPlugin("obsidian-hover-editor");
     if(hoverEditor) {
       const activeEditor = hoverEditor.activePopovers.filter((he:any) => he.leaves()[0] === this.scene.leaf)[0];
       if(activeEditor) {
@@ -363,7 +363,7 @@ export default class ExcaliBrain extends Plugin {
   private registerCommands() {
     
     const addFieldToOntology = (checking: boolean, direction: Ontology | "select"):boolean => {
-      const activeView = app.workspace.activeLeaf?.view;
+      const activeView = this.app.workspace.activeLeaf?.view;
       let editor: Editor;
 
       if(!activeView) {
@@ -509,7 +509,7 @@ export default class ExcaliBrain extends Plugin {
         }
         this.focusSearchAfterInitiation = true;
         //@ts-ignore
-        Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,app.workspace.openPopoutLeaf());
+        Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,this.app.workspace.openPopoutLeaf());
       },
     });
 
@@ -539,7 +539,7 @@ export default class ExcaliBrain extends Plugin {
           if(brainLeaf) {
             const activeEditor = hoverEditor.activePopovers.filter((he:any) => he.leaves()[0] === brainLeaf)[0];
             if(activeEditor) {
-              app.workspace.revealLeaf(brainLeaf);
+              this.app.workspace.revealLeaf(brainLeaf);
               if(brainLeaf.view.containerEl.offsetHeight === 0) { //if hover editor is minimized
                 activeEditor.titleEl.querySelector("a.popover-action.mod-maximize").click();
               }
@@ -556,7 +556,7 @@ export default class ExcaliBrain extends Plugin {
               return false;
             }
             //@ts-ignore
-            setTimeout(()=>app.commands.executeCommandById("obsidian-hover-editor:snap-active-popover-to-viewport"));
+            setTimeout(()=>this.app.commands.executeCommandById("obsidian-hover-editor:snap-active-popover-to-viewport"));
             this.focusSearchAfterInitiation = true;
             Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,leaf);
           });
@@ -677,7 +677,7 @@ export default class ExcaliBrain extends Plugin {
         }
 
         if(this.scene.isCentralLeafStillThere()) {
-          const f = app.vault.getAbstractFileByPath(path.split("#")[0]);
+          const f = this.app.vault.getAbstractFileByPath(path.split("#")[0]);
           if(f && f instanceof TFile) {
             centralLeaf.openFile(f,{active:false});
             this.scene.renderGraphForPath(path, false);
@@ -965,7 +965,7 @@ export default class ExcaliBrain extends Plugin {
   }
 
   public async start(leaf: WorkspaceLeaf) {
-    this.dailyNoteSettings = getDailyNoteSettings();
+    this.dailyNoteSettings = getDailyNoteSettings(this.app);
     if(!leaf.view) {
       return;
     }
