@@ -24,9 +24,13 @@ const readLinksFromString = (app: App, data: string, file:TFile):string[] => {
       }
     }
     if(r?.value?.groups?.mdLink) {
-      const path = getPathOrSelf(app, decodeURIComponent(r.value.groups.mdLink),file.path);
-      if(path) { 
-        res.add(path);
+      try {
+        const path = getPathOrSelf(app, decodeURIComponent(r.value.groups.mdLink),file.path);
+        if(path) { 
+          res.add(path);
+        }
+      } catch(e) {
+        console.log({error: "Error decoding link in readLinksFromString", errorLocation:"readLinksFromString", link:r.value.groups.mdLink, file});
       }
     }
   }
