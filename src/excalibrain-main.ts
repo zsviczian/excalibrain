@@ -7,13 +7,12 @@ import { t } from './lang/helpers';
 import { DEFAULT_HIERARCHY_DEFINITION, DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, MINEXCALIDRAWVERSION, PLUGIN_NAME, PREDEFINED_LINK_STYLES } from './constants/constants';
 import { Pages } from './graph/Pages';
 import { getEA } from "obsidian-excalidraw-plugin";
-import { ExcalidrawAutomate, search } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
+import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
 import { Scene } from './Scene';
 import { LinkStyles, NodeStyles, LinkStyle, RelationType, LinkDirection } from './types';
 import { WarningPrompt } from './utils/Prompts';
 import { FieldSuggester } from './Suggesters/OntologySuggester';
 import { Literal } from 'obsidian-dataview/lib/data-model/value';
-import { isEmbedFileType } from './utils/fileUtils';
 import { URLParser } from './graph/URLParser';
 import { AddToOntologyModal, Ontology } from './Components/AddToOntologyModal';
 import { NavigationHistory } from './Components/NavigationHistory';
@@ -58,9 +57,9 @@ export default class ExcaliBrain extends Plugin {
   public EA: ExcalidrawAutomate;
   public scene: Scene = null;
   private disregardLeafChangeTimer: NodeJS.Timeout;
-  private pluginLoaded: boolean = false;
+  private pluginLoaded = false;
   public starred: Page[] = [];
-  private focusSearchAfterInitiation:boolean = false;
+  private focusSearchAfterInitiation = false;
   public customNodeLabel: (dvPage: Literal, defaultName:string) => string
   public navigationHistory: NavigationHistory
   public urlParser: URLParser;
@@ -156,7 +155,7 @@ export default class ExcaliBrain extends Plugin {
 
   private getFieldName(editor: Editor): string {
     let line = editor.getLine(editor.getCursor().line).substring(0,editor.getCursor().ch);
-    const regex = /(?:^|[(\[])(?:==|\*\*|~~|\*|_|__)?([^\:\]\()]*?)(?:==|\*\*|~~|\*|_|__)?::/g;
+    const regex = /(?:^|[([])(?:==|\*\*|~~|\*|_|__)?([^:\]()]*?)(?:==|\*\*|~~|\*|_|__)?::/g;
     let lastMatch = null;
     let match;
   
@@ -279,6 +278,7 @@ export default class ExcaliBrain extends Plugin {
     //and inferred children of their origins
     this.pages.addPageURLs();
 
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     setTimeout(async()=>{
       //@ts-ignore
@@ -508,8 +508,14 @@ export default class ExcaliBrain extends Plugin {
           return;
         }
         this.focusSearchAfterInitiation = true;
-        //@ts-ignore
-        Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,this.app.workspace.openPopoutLeaf());
+        (async()=>{
+          const popoutLeaf = this.app.workspace.openPopoutLeaf();
+          let watchdog = 0;
+          while (popoutLeaf?.view?.containerEl?.ownerDocument === document && watchdog++ < 5) {
+            await sleep(10);
+          }
+          Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,popoutLeaf);
+        })();
       },
     });
 
@@ -700,6 +706,9 @@ export default class ExcaliBrain extends Plugin {
       return false;
     }
 
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!
+    //I am checking for this in EA forceSave
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!
     this.EA.onViewUnloadHook = (view) => {    
       if(this.scene && this.scene.leaf === view.leaf) {
         this.stop();

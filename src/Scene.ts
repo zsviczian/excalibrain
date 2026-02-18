@@ -27,8 +27,8 @@ export class Scene {
   textSize: {width:number, height:number};
   nodeWidth: number;
   nodeHeight: number;
-  minLinkLength: number = 100;
-  public disregardLeafChange: boolean = false;
+  minLinkLength = 100;
+  public disregardLeafChange = false;
   public terminated: boolean;
   public nodesMap: Map<string,Node> = new Map<string,Node>();
   public links: Links;
@@ -142,7 +142,7 @@ export class Scene {
    * @returns number
    * @description: Possibly time consuming - are there other options? 
   */ 
-  private longestTitle(neighbours: Neighbour[], checkMax:number=20): number {
+  private longestTitle(neighbours: Neighbour[], checkMax=20): number {
     const lengths:number[] = [0];
     for (let index = 0; (index<neighbours.length) && (index<=checkMax); index++) {
       const item = neighbours[index];

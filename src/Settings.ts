@@ -92,7 +92,7 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
   compactingFactor: 1.5,
   minLinkLength: 18,
   excalibrainFilepath: "excalibrain.md",
-  indexUpdateInterval: 5000,
+  indexUpdateInterval: 60000,
   hierarchy: DEFAULT_HIERARCHY_DEFINITION,
   inferAllLinksAsFriends: false,
   inverseInfer: false,
@@ -1378,7 +1378,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
         containerEl,
         t("INDEX_REFRESH_FREQ_NAME"),
         t("INDEX_REFRESH_FREQ_DESC"),
-        {min:5,max:120, step:5},
+        {min:5,max:600, step:5},
         ()=>this.plugin.settings.indexUpdateInterval/1000,
         (val)=>{
           this.plugin.settings.indexUpdateInterval = val*1000;
