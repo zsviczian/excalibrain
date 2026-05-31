@@ -39,7 +39,7 @@ declare global {
 
 export default class ExcaliBrain extends Plugin {
   public dailyNoteSettings: IPeriodicNoteSettings;
-  public settings:ExcaliBrainSettings;
+  declare settings:ExcaliBrainSettings;
   public nodeStyles: NodeStyles;
   public linkStyles: LinkStyles;
   public hierarchyLowerCase: {
@@ -55,8 +55,8 @@ export default class ExcaliBrain extends Plugin {
   public pages: Pages;
   public DVAPI: any;
   public EA: ExcalidrawAutomate;
-  public scene: Scene = null;
-  private disregardLeafChangeTimer: NodeJS.Timeout;
+  public scene: Scene|null = null;
+  private disregardLeafChangeTimer: number|null = null;
   private pluginLoaded = false;
   public starred: Page[] = [];
   private focusSearchAfterInitiation = false;
@@ -610,9 +610,9 @@ export default class ExcaliBrain extends Plugin {
       }
       this.scene.disregardLeafChange = true;
       if(this.disregardLeafChangeTimer) {
-        clearTimeout(this.disregardLeafChangeTimer);
+        window.clearTimeout(this.disregardLeafChangeTimer);
       }
-      this.disregardLeafChangeTimer = setTimeout(()=>{
+      this.disregardLeafChangeTimer = window.setTimeout(()=>{
         this.disregardLeafChangeTimer = null;
         if(!this.scene) {
           return;

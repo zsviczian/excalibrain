@@ -47,7 +47,8 @@ const readDailyNoteLinks = (plugin: ExcaliBrain, data: any[], file:TFile):string
   const res = new Set<string>();
   data.forEach((l:any)=>{
     if(l?.hasOwnProperty?.("ts")) {
-      res.add(moment.default(l.ts).format(plugin.dailyNoteSettings.format))
+      //@ts-ignore
+      res.add(moment(l.ts).format(plugin.dailyNoteSettings.format))
     }
   });
   return Array.from(res);
@@ -138,7 +139,7 @@ export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<strin
 export const getPrimaryTag = (
   dvPage: Record<string, Literal>,
   settings: ExcaliBrainSettings
-):[string, string[]] => {
+):[string, string[]]|[null, null] => {
   const pageTags = getPageTags(dvPage,settings);
   if(!pageTags) return [null, null];
   if(dvPage[settings.primaryTagFieldLowerCase]) {
@@ -155,7 +156,7 @@ export const getPrimaryTag = (
 const getPageTags = (
   dvPage: Record<string, Literal>,
   settings: ExcaliBrainSettings
-):string[] => {
+):string[]|null => {
   if(!dvPage) return null;
   return (dvPage.file?.tags?.values??[])
     .filter((t:string)=>settings.tagStyleList.some(x=>t.startsWith(x)));
@@ -176,7 +177,7 @@ export const getTagStyle = (
     if(style.prefix) prefixSet.add(style.prefix);
     keys
       ?.map(key=>settings.tagNodeStyles[key].prefix).filter(x=>Boolean(x))
-      .forEach(x=>prefixSet.add(x));
+      .forEach(x=>prefixSet.add(x??""));
     const prefix = Array.from(prefixSet).join("");
     return {
       ...style,

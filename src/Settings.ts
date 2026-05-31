@@ -213,6 +213,8 @@ const addStylesheet = (stylesheet: string, classname: string) => {
 }
 
 export class ExcaliBrainSettingTab extends PluginSettingTab {
+  private isPersistingSettings: boolean = false;
+  private settingsFocusoutHandler: ((event: FocusEvent) => void) | null = null;
   plugin: ExcaliBrain;
   ea: ExcalidrawAutomate;
   private dirty:boolean = false;
@@ -355,48 +357,116 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     this.demoLinkImg.setAttribute("src", svgToBase64(svg.outerHTML));
   };
 
-
-  async hide() {
-    if(!this.dirty) {
-      return;
-    }
-    if(this.plugin.settings.ontologySuggesterParentTrigger === "") {
+private normalizeSettings() {
+    if (this.plugin.settings.ontologySuggesterParentTrigger === "") {
       this.plugin.settings.ontologySuggesterParentTrigger = "::p";
     }
-    if(this.plugin.settings.ontologySuggesterChildTrigger === "") {
+    if (this.plugin.settings.ontologySuggesterChildTrigger === "") {
       this.plugin.settings.ontologySuggesterChildTrigger = "::c";
     }
-    if(this.plugin.settings.ontologySuggesterLeftFriendTrigger === "") {
+    if (this.plugin.settings.ontologySuggesterLeftFriendTrigger === "") {
       this.plugin.settings.ontologySuggesterLeftFriendTrigger = "::l";
     }
-    if(this.plugin.settings.ontologySuggesterRightFriendTrigger === "") {
+    if (this.plugin.settings.ontologySuggesterRightFriendTrigger === "") {
       this.plugin.settings.ontologySuggesterRightFriendTrigger = "::r";
     }
-    if(this.plugin.settings.ontologySuggesterPreviousTrigger === "") {
+    if (this.plugin.settings.ontologySuggesterPreviousTrigger === "") {
       this.plugin.settings.ontologySuggesterPreviousTrigger = "::e";
     }
-    if(this.plugin.settings.ontologySuggesterNextTrigger === "") {
+    if (this.plugin.settings.ontologySuggesterNextTrigger === "") {
       this.plugin.settings.ontologySuggesterNextTrigger = "::n";
     }
-    if(this.plugin.settings.ontologySuggesterTrigger === "") {
+    if (this.plugin.settings.ontologySuggesterTrigger === "") {
       this.plugin.settings.ontologySuggesterTrigger = ":::";
     }
-    if(this.plugin.settings.ontologySuggesterMidSentenceTrigger === "") {
+    if (this.plugin.settings.ontologySuggesterMidSentenceTrigger === "") {
       this.plugin.settings.ontologySuggesterMidSentenceTrigger = "(";
     }
 
-    this.plugin.setHierarchyLinkStylesExtended();
     this.plugin.settings.tagStyleList = Object.keys(this.plugin.settings.tagNodeStyles);
+  }
+
+  private applyPendingActions() {
+    this.plugin.setHierarchyLinkStylesExtended();
     this.plugin.loadCustomNodeLabelFunction();
-    this.plugin.saveSettings();
-    if(this.plugin.scene && !this.plugin.scene.terminated) {
+    if (this.plugin.scene && !this.plugin.scene.terminated) {
       this.plugin.scene.setBaseLayoutParams();
 
-      if(this.updateTimer) {
+      if (this.updateTimer) {
         this.plugin.scene.setTimer();
+        this.updateTimer = false;
       }
         
       this.plugin.scene.reRender();
+    }
+  }
+
+  private async executeSaveAndApply() {
+    if (!this.dirty || this.isPersistingSettings) {
+      return;
+    }
+
+    this.isPersistingSettings = true;
+    try {
+      // Loop allows us to capture settings dirtied concurrently during the async save
+      while (this.dirty) {
+        this.dirty = false;
+        
+        this.normalizeSettings();
+        
+        // Apply actions synchronously before the file write starts. 
+        // This mirrors the original logic and prevents race conditions if the modal is closing.
+        this.applyPendingActions();
+        
+        await this.plugin.saveSettings();
+      }
+    } finally {
+      this.isPersistingSettings = false;
+    }
+  }
+
+  private detachSettingsFocusoutHandler() {
+    if (!this.settingsFocusoutHandler) {
+      return;
+    }
+    this.containerEl.removeEventListener(
+      "focusout",
+      this.settingsFocusoutHandler,
+    );
+    this.settingsFocusoutHandler = null;
+  }
+
+  private attachSettingsFocusoutHandler() {
+    this.detachSettingsFocusoutHandler();
+    this.settingsFocusoutHandler = (event: FocusEvent) => {
+      window.setTimeout(() => {
+        if (!this.containerEl?.isConnected) {
+          return;
+        }
+
+        const doc = this.containerEl.ownerDocument;
+        const nextFocusTarget =
+          (event.relatedTarget as globalThis.Node | null) ??
+          doc.activeElement;
+        
+        // If the new focus is still inside the settings container AND the document still has focus, do nothing
+        if (doc.hasFocus() && nextFocusTarget && this.containerEl.contains(nextFocusTarget)) {
+          return;
+        }
+
+        // Execute pending actions if settings are dirty
+        if (this.dirty) {
+          void this.executeSaveAndApply();
+        }
+      }, 0);
+    };
+    this.containerEl.addEventListener("focusout", this.settingsFocusoutHandler);
+  }
+
+  async hide() {
+    this.detachSettingsFocusoutHandler();
+    if (this.dirty) {
+      await this.executeSaveAndApply();
     }
   }
 
@@ -2326,5 +2396,6 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       }
     }
     onHierarchyChange();
+    this.attachSettingsFocusoutHandler();
   }
 }

@@ -51,11 +51,11 @@ const relationTypeToSet = (currentType: RelationType, newType: RelationType):Rel
 }
 
 export class Page {
-  public mtime: number;
+  public mtime: number|null;
   public neighbours: Map<string,Relation>;
   public dvPage: Record<string, Literal>;
-  public primaryStyleTag: string;
-  public styleTags: string[]; //other style tags beyond primary
+  public primaryStyleTag: string|null;
+  public styleTags: string[]|null; //other style tags beyond primary
   public dvIndexReady: boolean = false;
   public maxLabelLength: number;
   
@@ -66,8 +66,8 @@ export class Page {
     public plugin: ExcaliBrain,
     public isFolder: boolean=false,
     public isTag: boolean=false,
-    public name?: string,
-    public url:string = null
+    public name?: string|null,
+    public url:string|null = null
   ) {
     if(!name) {
       this.name = file 
@@ -213,7 +213,7 @@ export class Page {
       if(this.plugin.settings.renderAlias && this.name && this.name !== "") {
         return this.name;
       }
-      return this.url;
+      return this.url ?? "";
     }
     const aliases = (this.file && this.plugin.settings.renderAlias)
       ? (this.dvPage?.file?.aliases?.values??[])
@@ -240,7 +240,7 @@ export class Page {
           message: "Error executing cutomer node label function. The script is: " + this.plugin.settings.nodeTitleScript,
           data: this.dvPage,
           where: "Page.getTitle()",
-          error: e
+          error: e as Error
         })
       }
     }
