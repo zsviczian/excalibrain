@@ -1,7 +1,7 @@
 import { TFile } from "obsidian";
-import { Literal } from "obsidian-dataview/lib/data-model/value";
+import { Literal } from "src/utils/ExcalidrawAutomateCompatibility";
 import ExcaliBrain from "src/excalibrain-main";
-import { LinkDirection, Neighbour, Relation, RelationType } from "src/types";
+import { LinkDirection, Neighbour, Relation, RelationType } from "src/Types";
 import { getDVFieldLinksForPage, getPrimaryTag } from "src/utils/dataview";
 import { getFilenameFromPath } from "src/utils/fileUtils";
 import { errorlog, log } from "src/utils/utils";

@@ -1,4 +1,4 @@
-import { LayoutSpecification } from "src/types";
+import { LayoutSpecification } from "src/Types";
 import {Node} from "./Node";
 
 export class Layout {

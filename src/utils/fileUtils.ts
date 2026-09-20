@@ -1,6 +1,6 @@
 import { App, normalizePath, TAbstractFile, TFile, TFolder, Vault } from "obsidian";
 import { errorlog } from "./utils";
-import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
+import { ExcalidrawAutomate } from "./ExcalidrawAutomateCompatibility";
 
 export const getFilenameFromPath = (path:string):string => {
   const mdFile = path.endsWith(".md");

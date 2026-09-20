@@ -1,11 +1,11 @@
-import { ExcalidrawElement } from "obsidian-excalidraw-plugin";
+import { ExcalidrawElement } from "src/utils/ExcalidrawAutomateCompatibility";
 import { ToggleButton } from "src/Components/ToggleButton";
 import { t } from "src/lang/helpers";
 import ExcaliBrain from "src/excalibrain-main";
 import { splitFolderAndFilename } from "src/utils/fileUtils";
 import { PageSuggest } from "../Suggesters/PageSuggester";
 import { LinkTagFilter } from "./LinkTagFilter";
-import { EditableFileView, getIcon, TextFileView, WorkspaceLeaf } from "obsidian";
+import { EditableFileView, TextFileView, WorkspaceLeaf } from "obsidian";
 import { addVerticalDivider } from "./VerticalDivider";
 
 export class ToolsPanel {
@@ -89,7 +89,7 @@ export class ToolsPanel {
         wrapper: buttonsWrapperDiv,
         options: {
           display: "✏",
-          icon: getIcon("lucide-pencil").outerHTML,
+          icon: "lucide-pencil",
           tooltip: t("OPEN_DRAWING"),
         },
         updateIndex: true,
@@ -113,7 +113,7 @@ export class ToolsPanel {
       wrapper: buttonsWrapperDiv,
       options: {
         display: "<",
-        icon: getIcon("lucide-arrow-big-left").outerHTML,
+        icon: "lucide-arrow-big-left",
         tooltip: t("NAVIGATE_BACK"),
       },
       updateIndex: false,
@@ -136,7 +136,7 @@ export class ToolsPanel {
       wrapper: buttonsWrapperDiv,
       options: {
         display: ">",
-        icon: getIcon("lucide-arrow-big-right").outerHTML,
+        icon: "lucide-arrow-big-right",
         tooltip: t("NAVIGATE_FORWARD"),
       },
       updateIndex: false,
@@ -157,7 +157,7 @@ export class ToolsPanel {
         wrapper: buttonsWrapperDiv,
         options: {
           display: "🔄",
-          icon: getIcon("lucide-refresh-cw").outerHTML,
+          icon: "lucide-refresh-cw",
           tooltip: t("REFRESH_VIEW"),
         },
         updateIndex: true,
@@ -200,8 +200,8 @@ export class ToolsPanel {
       options: {
         display: "📌",
         icon: {
-          on: getIcon("lucide-pin").outerHTML,
-          off: getIcon("lucide-pin-off").outerHTML,
+          on: "lucide-pin",
+          off: "lucide-pin-off",
         },
         tooltip: t("PIN_LEAF"),
       },
@@ -225,8 +225,8 @@ export class ToolsPanel {
         options: {
           display: "🔌",
           icon: {
-            on: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 256 256"><path d="M237.66,18.34a8,8,0,0,0-11.32,0l-52.4,52.41-5.37-5.38a32.05,32.05,0,0,0-45.26,0L100,88.69l-6.34-6.35A8,8,0,0,0,82.34,93.66L88.69,100,65.37,123.31a32,32,0,0,0,0,45.26l5.38,5.37-52.41,52.4a8,8,0,0,0,11.32,11.32l52.4-52.41,5.37,5.38a32,32,0,0,0,45.26,0L156,167.31l6.34,6.35a8,8,0,0,0,11.32-11.32L167.31,156l23.32-23.31a32,32,0,0,0,0-45.26l-5.38-5.37,52.41-52.4A8,8,0,0,0,237.66,18.34Zm-116.29,161a16,16,0,0,1-22.62,0L76.69,157.25a16,16,0,0,1,0-22.62L100,111.31,144.69,156Zm57.94-57.94L156,144.69,111.31,100l23.32-23.31a16,16,0,0,1,22.62,0l22.06,22A16,16,0,0,1,179.31,121.37ZM88.41,34.53a8,8,0,0,1,15.18-5.06l8,24a8,8,0,0,1-15.18,5.06Zm-64,58.94a8,8,0,0,1,10.12-5.06l24,8a8,8,0,0,1-5.06,15.18l-24-8A8,8,0,0,1,24.41,93.47Zm207.18,69.06a8,8,0,0,1-10.12,5.06l-24-8a8,8,0,0,1,5.06-15.18l24,8A8,8,0,0,1,231.59,162.53Zm-64,58.94a8,8,0,0,1-15.18,5.06l-8-24a8,8,0,0,1,15.18-5.06Z"></path></svg>`,
-            off:`<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 256 256"><path d="M149.66,138.34a8,8,0,0,0-11.32,0L120,156.69,99.31,136l18.35-18.34a8,8,0,0,0-11.32-11.32L88,124.69,69.66,106.34a8,8,0,0,0-11.32,11.32L64.69,124,41.37,147.31a32,32,0,0,0,0,45.26l5.38,5.37-28.41,28.4a8,8,0,0,0,11.32,11.32l28.4-28.41,5.37,5.38a32,32,0,0,0,45.26,0L132,191.31l6.34,6.35a8,8,0,0,0,11.32-11.32L131.31,168l18.35-18.34A8,8,0,0,0,149.66,138.34Zm-52.29,65a16,16,0,0,1-22.62,0L52.69,181.25a16,16,0,0,1,0-22.62L76,135.31,120.69,180Zm140.29-185a8,8,0,0,0-11.32,0l-28.4,28.41-5.37-5.38a32.05,32.05,0,0,0-45.26,0L124,64.69l-6.34-6.35a8,8,0,0,0-11.32,11.32l80,80a8,8,0,0,0,11.32-11.32L191.31,132l23.32-23.31a32,32,0,0,0,0-45.26l-5.38-5.37,28.41-28.4A8,8,0,0,0,237.66,18.34Zm-34.35,79L180,120.69,135.31,76l23.32-23.31a16,16,0,0,1,22.62,0l22.06,22A16,16,0,0,1,203.31,97.37Z"></path></svg>`,
+            on: "lucide-link",
+            off: "lucide-unlink",
           },
           tooltip: t("AUTO_OPEN_DOCUMENT"),
         },
@@ -250,7 +250,7 @@ export class ToolsPanel {
         wrapper: buttonsWrapperDiv,
         options: {
           display: "📎",
-          icon: getIcon("lucide-paperclip").outerHTML,
+          icon: "lucide-paperclip",
           tooltip: t("SHOW_HIDE_ATTACHMENTS"),
         },
         updateIndex: true,
@@ -271,7 +271,7 @@ export class ToolsPanel {
         wrapper: buttonsWrapperDiv,
         options: {
           display: "∅",
-          icon: getIcon("lucide-minus-circle").outerHTML,
+          icon: "lucide-minus-circle",
           tooltip: t("SHOW_HIDE_VIRTUAL"),
         },
         updateIndex: false,
@@ -292,7 +292,7 @@ export class ToolsPanel {
         wrapper: buttonsWrapperDiv,
         options: {
           display: "🤔",
-          icon: getIcon("lucide-git-pull-request-draft").outerHTML,
+          icon: "lucide-git-pull-request-draft",
           tooltip: t("SHOW_HIDE_INFERRED"),
         },
         updateIndex: true,
@@ -313,7 +313,7 @@ export class ToolsPanel {
         wrapper: buttonsWrapperDiv,
         options: {
           display: "📄",
-          icon: getIcon("lucide-file-text").outerHTML,
+          icon: "lucide-file-text",
           tooltip: t("SHOW_HIDE_PAGES"),
         },
         updateIndex: true,
@@ -334,7 +334,7 @@ export class ToolsPanel {
         wrapper: buttonsWrapperDiv,
         options: {
           display: "🧥",
-          icon: getIcon("lucide-venetian-mask").outerHTML,
+          icon: "lucide-venetian-mask",
           tooltip: t("SHOW_HIDE_ALIAS"),
         },
         updateIndex: false,
@@ -355,7 +355,7 @@ export class ToolsPanel {
         wrapper: buttonsWrapperDiv,
         options: {
           display: "📂",
-          icon: getIcon("lucide-folder").outerHTML,
+          icon: "lucide-folder",
           tooltip: t("SHOW_HIDE_FOLDER"),
         },
         updateIndex: true,
@@ -376,7 +376,7 @@ export class ToolsPanel {
         wrapper: buttonsWrapperDiv,
         options: {
           display: "#",
-          icon: getIcon("lucide-tag").outerHTML,
+          icon: "lucide-tag",
           tooltip: t("SHOW_HIDE_TAG"),
         },
         updateIndex: false,
@@ -397,7 +397,7 @@ export class ToolsPanel {
         wrapper: buttonsWrapperDiv,
         options: {
           display: "🌐",
-          icon: getIcon("lucide-globe").outerHTML,
+          icon: "lucide-globe",
           tooltip: t("SHOW_HIDE_URLS"),
         },
         updateIndex: false,
@@ -418,7 +418,7 @@ export class ToolsPanel {
         wrapper: buttonsWrapperDiv,
         options: {
           display: "👨‍👩‍👧‍👦",
-          icon: getIcon("lucide-grip").outerHTML,
+          icon: "lucide-grip",
           tooltip: t("SHOW_HIDE_SIBLINGS"),
         },
         updateIndex: false,
@@ -439,7 +439,7 @@ export class ToolsPanel {
         wrapper: buttonsWrapperDiv,
         options: {
           display: "V",
-          icon: getIcon("lucide-filter").outerHTML,
+          icon: "lucide-filter",
           tooltip: t("SHOW_HIDE_POWERFILTER"),
         },
         updateIndex: false,
@@ -463,7 +463,7 @@ export class ToolsPanel {
         wrapper: buttonsWrapperDiv,
         options: {
           display: "⏹️",
-          icon: getIcon("lucide-code").outerHTML,
+          icon: "lucide-code",
           tooltip: t("SHOW_HIDE_EMBEDDEDCENTRAL"),
         },
         updateIndex: false,

@@ -76,7 +76,7 @@ export class Multiselect {
 	}
 
 	public hide() {
-		this.origin.innerHTML = '';
+		this.origin.replaceChildren();
 		this.rendered = false;
 	}
 

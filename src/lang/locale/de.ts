@@ -57,17 +57,8 @@ export default {
   EXCLUDE_PATHLIST_DESC: "Geben Sie eine kommagetrennte Liste von Dateipfaden ein, die vom Index ausgeschlossen werden sollen.",
   RENDERALIAS_NAME: "Alias anzeigen, wenn verfügbar",
   RENDERALIAS_DESC: "Zeigt den Seitennamen anstelle des Dateinamens an, wenn dieser in den Metadaten der Seite angegeben ist.",
-  NODETITLE_SCRIPT_NAME: "Javascript zum Rendern von Knotennamen",
-  NODETITLE_SCRIPT_DESC: "Javascript-Code zum Rendern des Knotentitels. Wenn Sie es nicht benötigen, lassen Sie dieses Feld einfach leer.<br>" +
-    "Funktionsdefinition: <code>customNodeLabel: (dvPage: Literal, defaultName:string) => string</code><br>" +
-    "In Ihrem Skript können Sie auf das Dataview-Objekt der Seite über die Variable <code>dvPage</code> und den Standardseitennamen (Dateiname oder Alias, sofern vorhanden) über die Variable <code>defaultName</code> zugreifen. " +
-    "Verwenden Sie die folgende Ausdruckssyntax:<br><code>dvPage['Feld 1']??defaultName</code> - dieses Beispiel zeigt den Wert von 'Feld 1', falls verfügbar, andernfalls den Standardnamen.<br>" +
-    "⚠ Ihr Code wird wie eingegeben ausgeführt, stellen Sie sicher, dass Sie eine ordnungsgemäße Fehlerbehandlung hinzufügen. Neben <code>defaultName</code> und Dataview-Feldnamen haben Sie auch die Freiheit, " +
-    "beliebige JavaScript-Funktionen zu verwenden (z.B. <code>defaultName.toLowerCase()</code>) und beliebige Werte, die im <code>dvPage</code>-Objekt erscheinen, z.B. <code>dvPage.file.path</code>, etc.<br> " +
-    "Um das Dataview-Objekt der Seite zu erkunden, öffnen Sie die Entwicklerkonsole und geben Sie folgenden Code ein:<br>" +
-    "<code>DataviewAPI.page('vollständiger Dateipfad einschließlich Erweiterung')</code><br>" +
-    "Hier ist ein Beispielcode, der den Wert des Titelfelds anzeigt, sofern verfügbar, gefolgt vom Dateinamen und dem Status (sofern verfügbar): <br>" +
-    "<code>dvPage.title??defaultName & (dvPage.state ? ' - ' & dvPage.state : '')</code>",
+  NODETITLE_SCRIPT_NAME: 'Dataview-Ausdruck für Knotennamen',
+  NODETITLE_SCRIPT_DESC: 'Dataview-Ausdruck zum Rendern des Knotentitels. Leer lassen, wenn Sie diese Funktion nicht benötigen.<br>Der Ausdruck erhält die Dataview-Seite als <code>dvPage</code> und die normale ExcaliBrain-Beschriftung als <code>defaultName</code>.<br>Beispiele:<br><code>default(dvPage.title, defaultName)</code><br><code>lower(defaultName)</code><br><code>dvPage.file.path</code>',
   SHOWINFERRED_NAME: "Implizite Beziehungen anzeigen",
   SHOWINFERRED_DESC: "<b>Ein:</b> Zeigt sowohl explizit definierte als auch implizierte Verknüpfungen an. Vorwärtsverknüpfungen sind Kinder, Rückverknüpfungen sind Eltern, " +
     "wenn sich zwei Seiten gegenseitig beziehen, wird die Beziehung als Freundschaft interpretiert. Explizit definierte Beziehungen haben immer Vorrang.<br><b>Aus:</b> Zeigt nur explizit definierte Beziehungen an.",

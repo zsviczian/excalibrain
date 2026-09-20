@@ -73,17 +73,8 @@ export default {
     "оставляя больше места для меток онтологии связей.",
   /*RENDERALIAS_NAME: "Отобразите псевдоним, если он доступен",
   RENDERALIAS_DESC: "Отображает псевдоним страницы вместо имени файла, если он указан во frontmetter страницы.",*/
-  NODETITLE_SCRIPT_NAME: "Javascript для отображения имен узлов",
-  NODETITLE_SCRIPT_DESC: "Javascript-код для отображения заголовка узла. Если он вам не нужен, просто оставьте это поле пустым.<br>" +
-    "Определение функци: <code>customNodeLabel: (dvPage: Literal, defaultName:string) => string</code><br>" +
-    "В своем сценарии вы можете ссылаться на объект страницы dataview через <code>dvPage</code> переменную; и имя страницы по умолчанию (имя файла или псевдоним, если он доступен) через <code>defaultName</code> переменную. " +
-    "Используйте следующий синтаксис выражения:<br><code>dvPage['field 1']??defaultName</code> - В этом примере будет выведено значение 'field 1' если оно доступно, иначе defaultName<br>" +
-    "⚠ Ваша строка кода будет выполнена как есть, убедитесь, что вы добавили правильную обработку исключений. Помимо <code>defaultName</code> и полей dataview, вы также можете использовать любую функцию javascript " + 
-    "(например, <code>defaultName.toLowerCase()</code>) и любое значение, которое появляется на <code>dvPage</code> объекте, например, <code>dvPage.file.path</code>, и т.д. <br> " +
-    "Чтобы изучить объект страницы dataview, откройте консоль разработчика и введите следующий код:<br>" + 
-    "<code>DataviewAPI.page('full filepath including extension')</code><br>" + 
-    "Вот пример кода, который отобразит значение поля заголовка, если оно доступно, иначе имя файла, а затем состояние (если оно доступно): <br>" +
-    "<code>dvPage.title??defaultName & (dvPage.state ? ' - ' & dvPage.state : '')</code>",
+  NODETITLE_SCRIPT_NAME: 'Выражение Dataview для названий узлов',
+  NODETITLE_SCRIPT_DESC: 'Выражение Dataview для отображения заголовка узла. Если оно не нужно, оставьте поле пустым.<br>Выражение получает страницу Dataview как <code>dvPage</code>, а обычную подпись ExcaliBrain как <code>defaultName</code>.<br>Примеры:<br><code>default(dvPage.title, defaultName)</code><br><code>lower(defaultName)</code><br><code>dvPage.file.path</code>',
   /*SHOWINFERRED_NAME: "Отображение предполагаемых отношений (взаимосвязей)",
   SHOWINFERRED_DESC: "<b>Включить</b>: Отображение как явно определенных, так и предполагаемых ссылок. Прямые ссылки - это дети, обратные ссылки - родители, если две страницы взаимно ссылаются " +
     "друг на друга, то отношения считаются дружескими. Явно выраженные отношения всегда имеют приоритет." +

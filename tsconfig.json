@@ -1,26 +1,16 @@
 {
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "baseUrl": ".",
-    "inlineSourceMap": true,
-    "inlineSources": true,
-    "module": "es2020",
-    "target": "es2022",
-    "allowJs": true,
-    "noImplicitAny": true,
-    "moduleResolution": "node",
     "esModuleInterop": true,
-    "importHelpers": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": true,
     "strictPropertyInitialization": false,
-    "lib": [
-      "dom",
-      "scripthost",
-      "es2022",
-      "esnext",
-      "DOM.Iterable"
-    ],
-    "jsx": "react"
+    "skipLibCheck": true,
+    "noEmit": true
   },
-  "include": [
-    "**/*.ts",
-  ]
+  "include": ["src/**/*.ts"]
 }

@@ -1,7 +1,6 @@
 // Credits go to Liam's Periodic Notes Plugin: https://github.com/liamcain/obsidian-periodic-notes
 
 import { App, ISuggestOwner, Scope } from "obsidian";
-import { createPopper, Instance as PopperInstance } from "@popperjs/core";
 import { SUGGEST_LIMIT } from "src/constants/constants";
 
 const wrapAround = (value: number, size: number): number => {
@@ -110,7 +109,6 @@ class Suggest<T> {
 }
 
 export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
-    private popper: PopperInstance;
     private scope: Scope;
     private suggestEl: HTMLElement;
     private suggest: Suggest<T>;
@@ -161,33 +159,15 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
     }
 
     open(container: HTMLElement, inputEl: HTMLElement): void {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (<any>this.app).keymap.pushScope(this.scope);
 
         container.appendChild(this.suggestEl);
-        this.popper = createPopper(inputEl, this.suggestEl, {
-            placement: "bottom-start",
-            modifiers: [
-                {
-                    name: "sameWidth",
-                    enabled: true,
-                    fn: ({ state, instance }) => {
-                        // Note: positioning needs to be calculated twice -
-                        // first pass - positioning it according to the width of the popper
-                        // second pass - position it with the width bound to the reference element
-                        // we need to early exit to avoid an infinite loop
-                        const targetWidth = `${state.rects.reference.width}px`;
-                        if (state.styles.popper.width === targetWidth) {
-                            return;
-                        }
-                        state.styles.popper.width = targetWidth;
-                        instance.update();
-                    },
-                    phase: "beforeWrite",
-                    requires: ["computeStyles"],
-                },
-            ],
-        });
+        const rect = inputEl.getBoundingClientRect();
+        this.suggestEl.style.position = "fixed";
+        this.suggestEl.style.left = `${rect.left}px`;
+        this.suggestEl.style.top = `${rect.bottom}px`;
+        this.suggestEl.style.width = `${rect.width}px`;
+        this.suggestEl.style.zIndex = "var(--layer-menu)";
     }
 
     close(): void {
@@ -195,7 +175,6 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
         (<any>this.app).keymap.popScope(this.scope);
 
         this.suggest.setSuggestions([]);
-        if (this.popper) this.popper.destroy();
         this.suggestEl.detach();
     }
 

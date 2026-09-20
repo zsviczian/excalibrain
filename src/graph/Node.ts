@@ -1,9 +1,8 @@
-import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
+import { ExcalidrawAutomate, ExcalidrawImageElement } from "src/utils/ExcalidrawAutomateCompatibility";
 import { ExcaliBrainSettings } from "src/Settings";
-import { Dimensions, Mutable, NodeStyle } from "src/types";
+import { Dimensions, Mutable, NodeStyle } from "src/Types";
 import { getTagStyle } from "src/utils/dataview";
 import { Page } from "./Page";
-import { ExcalidrawImageElement } from "@zsviczian/excalidraw/types/element/types";
 import { isEmbedFileType } from "src/utils/fileUtils";
 import { getEmbeddableDimensions } from "src/utils/embeddableHelper";
 

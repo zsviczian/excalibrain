@@ -1,5 +1,5 @@
 import ExcaliBrain from "src/excalibrain-main";
-import { Neighbour } from "src/types";
+import { Neighbour } from "src/Types";
 
 export class PowerFilter {
 

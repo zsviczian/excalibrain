@@ -1,5 +1,4 @@
-import { FillStyle, StrokeRoundness, StrokeStyle } from "obsidian-excalidraw-plugin";
-import { Arrowhead as ExcalidrawArrowHead } from "@zsviczian/excalidraw/types/element/types";
+import { FillStyle, StrokeRoundness, StrokeStyle, Arrowhead as ExcalidrawArrowHead } from "./utils/ExcalidrawAutomateCompatibility";
 import { Page } from "./graph/Page";
 
 export enum RelationType {

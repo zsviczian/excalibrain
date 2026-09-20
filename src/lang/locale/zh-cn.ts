@@ -58,17 +58,8 @@ export default {
   EXCLUDE_PATHLIST_DESC: "输入要从索引中排除的文件路径，用逗号分隔。",
   RENDERALIAS_NAME: "如果可用，显示别名",
   RENDERALIAS_DESC: "如果页面的 Front Matter 中指定了页面别名，则显示别名而不是文件名。",
-  NODETITLE_SCRIPT_NAME: "用于渲染节点名称的 JavaScript",
-  NODETITLE_SCRIPT_DESC: "用于渲染节点标题的 JavaScript 代码。如果不需要，请将此字段留空。<br>" +
-                         "函数定义：<code>customNodeLabel: (dvPage: Literal, defaultName:string) => string</code><br>" +
-                         "在您的脚本中，您可以通过变量 <code>dvPage</code> 引用 dataview 页面对象；通过变量 <code>defaultName</code> 引用默认页面名称（文件名或别名，如果有）。" +
-                         "使用以下表达式语法：<br><code>dvPage['field 1']??defaultName</code> - 该示例将在可用时显示 'field 1' 的值，否则显示 defaultName。<br>" +
-                         "⚠ 您的代码将按原样执行，请确保添加适当的异常处理。除了 <code>defaultName</code> 和 dataview 字段名称之外，您还可以自由使用任何 JavaScript 函数（例如 <code>defaultName.toLowerCase()</code>）" +
-                         "和出现在 <code>dvPage</code> 对象上的任何值，例如 <code>dvPage.file.path</code> 等。<br>" +
-                         "要查看 dataview 页面对象，请打开开发者控制台并输入以下代码：<br>" + 
-                         "<code>DataviewAPI.page('完整文件路径，包括扩展名')</code><br>" + 
-                         "以下是一个示例代码，如果可用，将显示 title 字段的值，否则显示文件名，后跟状态（如果可用）：<br>" +
-                         "<code>dvPage.title??defaultName & (dvPage.state ? ' - ' & dvPage.state : '')</code>",
+  NODETITLE_SCRIPT_NAME: '用于节点名称的 Dataview 表达式',
+  NODETITLE_SCRIPT_DESC: '用于渲染节点标题的 Dataview 表达式。如果不需要，请留空。<br>表达式可通过 <code>dvPage</code> 访问 Dataview 页面，并通过 <code>defaultName</code> 访问 ExcaliBrain 的默认标签。<br>示例：<br><code>default(dvPage.title, defaultName)</code><br><code>lower(defaultName)</code><br><code>dvPage.file.path</code>',
   SHOWINFERRED_NAME: "显示推断关系",
   SHOWINFERRED_DESC: "<b>打开：</b> 显示显式定义的关系和推断的关系。前向链接为子节点，反向链接为父节点，如果两个页面相互引用，则推断为友好关系。显式定义的关系始终优先。<br>" +
                      "<b>关闭：</b> 仅显示显式定义的关系。",

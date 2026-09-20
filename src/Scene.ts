@@ -1,5 +1,4 @@
 import { App, FileView, Notice, TextFileView, TFile, WorkspaceLeaf } from "obsidian";
-import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 import { EMPTYBRAIN } from "./constants/emptyBrainFile";
 import { Layout } from "./graph/Layout";
 import { Links } from "./graph/Links";
@@ -7,14 +6,13 @@ import { Node } from "./graph/Node";
 import ExcaliBrain from "./excalibrain-main";
 import { ExcaliBrainSettings } from "./Settings";
 import { ToolsPanel } from "./Components/ToolsPanel";
-import { Mutable, Neighbour, NodeStyle, RelationType, Role } from "./types";
+import { Mutable, Neighbour, NodeStyle, RelationType, Role } from "./Types";
 import { HistoryPanel } from "./Components/HistoryPanel";
 import { WarningPrompt } from "./utils/Prompts";
 import { keepOnTop } from "./utils/utils";
-import { ExcalidrawElement } from "obsidian-excalidraw-plugin";
 import { isEmbedFileType } from "./utils/fileUtils";
 import { Page } from "./graph/Page";
-import { ExcalidrawImperativeAPI } from "@zsviczian/excalidraw/types/types"
+import { ExcalidrawAutomate, ExcalidrawElement, ExcalidrawImperativeAPI, addElementsToViewTransient, configureExcaliBrainView, getEA, destroyViewEA, releaseViewEA, updateViewSceneTransient, waitForExcalidrawViewReady } from "./utils/ExcalidrawAutomateCompatibility";
  
 export class Scene {
   ea: ExcalidrawAutomate;
@@ -48,8 +46,10 @@ export class Scene {
   private zoomToFitOnNextBrainLeafActivate: boolean = false; //this addresses the issue caused in Obsidian 0.16.0 when the brain graph is rendered while the leaf is hidden because tab is not active
   private rootNode: Node;
 
-  constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf) {
-    this.ea = plugin.EA;
+  constructor(plugin: ExcaliBrain, newLeaf: boolean, leaf?: WorkspaceLeaf, ea?: ExcalidrawAutomate) {
+    const resolvedEA = ea ?? plugin.EA ?? getEA(leaf?.view);
+    if(!resolvedEA) throw new Error("ExcaliBrain: Excalidraw Automate is not available.");
+    this.ea = resolvedEA;
     this.plugin = plugin;
     this.app = plugin.app;
     this.leaf = leaf ?? this.app.workspace.getLeaf(newLeaf);
@@ -71,12 +71,19 @@ export class Scene {
     return null;
   }
 
-  public async initialize(focusSearchAfterInitiation: boolean) {
+  public async initialize(focusSearchAfterInitiation: boolean): Promise<void> {
     this.focusSearchAfterInitiation = focusSearchAfterInitiation;
     await this.plugin.loadSettings();
-    if(!this.leaf?.view) return;
-    this.toolsPanel = new ToolsPanel((this.leaf.view as TextFileView).contentEl.querySelector(".excalidraw"),this.plugin);
-    this.initializeScene();
+    if(!this.leaf?.view || !this.ea) return;
+    if(!await waitForExcalidrawViewReady(this.ea)) {
+      throw new Error("ExcaliBrain: Excalidraw view did not become ready within 10 seconds.");
+    }
+    const excalidrawEl = (this.leaf.view as TextFileView).contentEl.querySelector<HTMLElement>(".excalidraw");
+    if(!excalidrawEl) {
+      throw new Error("ExcaliBrain: Excalidraw canvas DOM is unavailable after view startup.");
+    }
+    this.toolsPanel = new ToolsPanel(excalidrawEl,this.plugin);
+    await this.initializeScene();
   }
 
   /**
@@ -106,7 +113,7 @@ export class Scene {
       await this.plugin.createIndex(); //temporary
     }
 
-    keepOnTop(this.ea);
+    keepOnTop(this.ea, this.app);
     const centralPage = this.plugin.pages.get(this.centralPagePath);
     if(
       centralPage?.file &&
@@ -188,7 +195,7 @@ export class Scene {
       return; 
     }
   
-    keepOnTop(this.plugin.EA);
+    keepOnTop(this.ea, this.app);
 
     const centralPage = this.getCentralPage();
     const isSameFileAsCurrent = centralPage && 
@@ -234,14 +241,18 @@ export class Scene {
     await this.render(isSameFileAsCurrent);
   }
 
-  public static async openExcalidrawLeaf(ea: ExcalidrawAutomate, settings: ExcaliBrainSettings, leaf: WorkspaceLeaf) {
+  public static async openExcalidrawLeaf(
+    app: App,
+    ea: ExcalidrawAutomate,
+    settings: ExcaliBrainSettings,
+    leaf?: WorkspaceLeaf,
+  ): Promise<WorkspaceLeaf | null> {
     let counter = 0;
-    const app = ea.plugin.app;
 
     let file = app.vault.getAbstractFileByPath(settings.excalibrainFilepath);
     if(file && !(file instanceof TFile)) {
       new Notice(`Please check settings. ExcaliBrain path (${settings.excalibrainFilepath}) points to a folder, not a file`);
-      return;
+      return null;
     }
     if(!file) {
       file = await app.vault.create(settings.excalibrainFilepath,EMPTYBRAIN);
@@ -262,12 +273,12 @@ export class Scene {
           while(file instanceof TFile && !ea.isExcalidrawFile(file) && counter++<10) {
             await sleep(50);
           }
-          Scene.openExcalidrawLeaf(ea, settings, leaf);
+          void Scene.openExcalidrawLeaf(app, ea, settings, leaf);
         } else {
           new Notice(`Could not start ExcaliBrain. Please change the ExcaliBrain file path in plugin settings.`);
         }
       });
-      return;
+      return null;
     }
     if(!leaf) {
       leaf = app.workspace.getLeaf(false);
@@ -283,73 +294,64 @@ export class Scene {
       }
     }
     await leaf.openFile(file as TFile);
+    return leaf;
   }
 
-  public async initializeScene() {
+  public async initializeScene(): Promise<void> {
     this.disregardLeafChange = false;
     const ea = this.ea;
     const settings = this.plugin.settings;
-    
-    let counter = 0;
-    ea.clear();    
-    ea.setView(this.leaf.view as any);
-    //delete existing elements from view. The actual delete will happen when addElementsToView is called
-    //I delete them this way to avoid the splash screen flashing up when the scene is cleared
+
+    ea.clear();
+    ea.setView?.(this.leaf.view as any);
     ea.copyViewElementsToEAforEditing(ea.getViewElements());
-    ea.getElements().forEach((el: Mutable<ExcalidrawElement>)=>el.isDeleted=true); 
+    ea.getElements().forEach((el: Mutable<ExcalidrawElement>)=>el.isDeleted=true);
 
-    while(!ea.targetView.excalidrawAPI && counter++<10) {
-      await sleep(50);
-    }
-    if(!ea.targetView.excalidrawAPI) {
-      new Notice(`Error initializing Excalidraw view`);
-      return;
+    if(!await waitForExcalidrawViewReady(ea)) {
+      throw new Error("ExcaliBrain: Excalidraw API is unavailable during scene initialization.");
     }
 
-    const api = ea.getExcalidrawAPI();
-    this.ea.registerThisAsViewEA();
-    this.ea.targetView.semaphores.saving = true; //disable saving by setting this Excalidraw flag (not published API)
-    api.setMobileModeAllowed(false); //disable mobile view https://github.com/zsviczian/excalibrain/issues/9
+    const api = ea.getExcalidrawAPI?.();
+    if(!api) {
+      throw new Error("ExcaliBrain: Excalidraw API is unavailable.");
+    }
+
+    ea.registerThisAsViewEA?.();
+    configureExcaliBrainView(ea, true);
+    api.setMobileModeAllowed?.(false);
     this.setBaseLayoutParams();
 
-    const frame1 = () => {
-      api.updateScene({
-        appState: {
-          viewModeEnabled:true,
-          activeTool: {
-            lastActiveToolBeforeEraser: null,
-            locked: false,
-            type: "selection"
-          },
-          theme: "light",
-        viewBackgroundColor: this.plugin.settings.backgroundColor
-        }
-      });
+    updateViewSceneTransient(ea, {
+      appState: {
+        viewModeEnabled:true,
+        activeTool: {
+          lastActiveToolBeforeEraser: null,
+          locked: false,
+          type: "selection"
+        },
+        theme: "light",
+        viewBackgroundColor: settings.backgroundColor,
+      },
+    });
+
+    ea.style.strokeColor = settings.baseNodeStyle.textColor;
+    ea.addText(0,0,"🚀 To get started\nselect a document using the search in the top left or\n" +
+      "open a document in another pane.\n\n" +
+      "✨ For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
+      "under 'Links and Transclusion'.\n\n⚠ ExcaliBrain may need to wait for " +
+      "DataView to initialize its index.\nThis can take up to a few minutes after starting Obsidian.", {textAlign:"center"});
+    await addElementsToViewTransient(ea);
+
+    if(settings.allowAutozoom) {
+      window.setTimeout((): void => api.zoomToFit?.(null, settings.maxZoom, 0.15),100);
     }
-    const frame2 = () => {
-      ea.style.strokeColor = settings.baseNodeStyle.textColor;
-      ea.addText(0,0,"🚀 To get started\nselect a document using the search in the top left or\n" +
-        "open a document in another pane.\n\n" +
-        "✨ For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
-        "under 'Links and Transclusion'.\n\n⚠ ExcaliBrain may need to wait for " +
-        "DataView to initialize its index.\nThis can take up to a few minutes after starting Obsidian.", {textAlign:"center"});
-      ea.addElementsToView(false,false).then(()=>{
-        ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
-      });
+    await this.addEventHandler();
+    const excalidrawEl = (this.leaf.view as TextFileView).contentEl.querySelector<HTMLElement>(".excalidraw");
+    if(!excalidrawEl) {
+      throw new Error("ExcaliBrain: Excalidraw canvas DOM disappeared during scene initialization.");
     }
-    const frame3 = async () => {
-      if(this.plugin.settings.allowAutozoom) {
-        setTimeout(()=>api.zoomToFit(null, this.plugin.settings.maxZoom, 0.15),100);
-      }
-      ea.targetView.linksAlwaysOpenInANewPane = true;
-      ea.targetView.allowFrameButtonsInViewMode = true;
-      await this.addEventHandler();
-      this.historyPanel = new HistoryPanel((this.leaf.view as TextFileView).contentEl.querySelector(".excalidraw"),this.plugin);
-      new Notice("ExcaliBrain On");
-    }
-    frame1();
-    frame2();
-    frame3();
+    this.historyPanel = new HistoryPanel(excalidrawEl,this.plugin);
+    new Notice("ExcaliBrain On");
   }
 
   public setBaseLayoutParams() {
@@ -955,10 +957,8 @@ export class Scene {
     ea.elementsDict = newImagesDict;
 
     const excalidrawAPI = ea.getExcalidrawAPI() as ExcalidrawImperativeAPI;
-    ea.addElementsToView(false,false).then(()=>{
-      excalidrawAPI.updateScene({appState: {viewBackgroundColor: settings.backgroundColor}});
-      ea.targetView.clearDirty(); //hack to prevent excalidraw from saving the changes
-    });
+    await addElementsToViewTransient(ea);
+    updateViewSceneTransient(ea, {appState: {viewBackgroundColor: settings.backgroundColor}});
     if(settings.allowAutozoom && !retainCentralNode) {
       setTimeout(()=>excalidrawAPI.zoomToFit(ea.getViewElements(),settings.maxZoom,0.15),100);
     }
@@ -1094,7 +1094,7 @@ export class Scene {
           leafToOpen = leaf[0];
         }
       }
-      keepOnTop(this.plugin.EA);  
+      keepOnTop(this.ea, this.app);  
       this.brainEventHandler(leafToOpen, true);
     } else {
       if(this.plugin.navigationHistory.length>0) {
@@ -1168,27 +1168,14 @@ export class Scene {
       this.removeOnDelete = undefined;
     }
 
-    if(this.ea.targetView && isBoolean(this.ea.targetView.linksAlwaysOpenInANewPane)) {
-      this.ea.targetView.linksAlwaysOpenInANewPane = false;
-    }
-    
-    if(this.ea.targetView && isBoolean(this.ea.targetView.allowFrameButtonsInViewMode)) {
-      this.ea.targetView.allowFrameButtonsInViewMode = false;
-    }
-
-    if(this.ea.targetView && this.ea.targetView.excalidrawAPI) {
+    configureExcaliBrainView(this.ea, false);
+    if(this.ea.targetView?.excalidrawAPI) {
       try {
-        this.ea.targetView.semaphores.saving = false;
-        this.ea.targetView.excalidrawAPI.setMobileModeAllowed(true);
-        this.ea.targetView.excalidrawAPI.updateScene({appState:{viewModeEnabled:false}});
+        this.ea.targetView.excalidrawAPI.setMobileModeAllowed?.(true);
+        updateViewSceneTransient(this.ea, {appState:{viewModeEnabled:false}});
       } catch {}
     }
-    //@ts-ignore
-    if(this.ea.targetView && this.ea.targetView._loaded) {
-      try {
-        this.ea.deregisterThisAsViewEA();
-      } catch {}
-    }
+    releaseViewEA(this.ea);
     // timout is to make sure Obsidian is not being terminated when scene closes,
     // becasue that can lead to crippled settings file
     // if the plugin is still there after 400ms, it is safe to save the settings
@@ -1203,7 +1190,9 @@ export class Scene {
     this.toolsPanel = undefined;
     this.historyPanel?.terminate();
     this.historyPanel = undefined;  
-    this.ea.targetView = undefined;
+    this.ea.setView?.(null);
+    destroyViewEA(this.ea);
+    this.plugin.EA = getEA() ?? this.plugin.EA;
     this.leaf = undefined;
     this.centralLeaf = undefined;
     this.centralPagePath = undefined;

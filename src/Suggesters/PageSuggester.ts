@@ -79,7 +79,8 @@ export class PageSuggest extends TextInputSuggest<Page> {
     }
 
     renderSuggestion(page: Page, el: HTMLElement): void {
-        const inputReg = this.inputStr === "" ? null : new RegExp(`(${this.inputStr})`, "gi");
+        const escapedInput = this.inputStr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const inputReg = this.inputStr === "" ? null : new RegExp(`(${escapedInput})`, "gi");
         el.ariaLabel = page.path;
         const data = 
           (page.isFolder || page.isTag)
@@ -89,28 +90,47 @@ export class PageSuggest extends TextInputSuggest<Page> {
               : page.name;
 
         const pathParts = data.split("/");
-        const fileName = pathParts.pop();
+        const fileName = pathParts.pop() ?? "";
         const folderPath = pathParts.join("/") + (pathParts.length > 0 ? "/" : "");
-
         const [highlightedFolderPath, highlightedFileName] = this.highlightSequence(folderPath, fileName);
 
-        el.innerHTML = `<span style="font-size: 0.8em; opacity: 0.8;">${highlightedFolderPath}</span>${highlightedFileName}`;
+        el.empty();
+        const folderEl = el.createSpan();
+        folderEl.style.fontSize = "0.8em";
+        folderEl.style.opacity = "0.8";
+        this.appendHighlightedParts(folderEl, highlightedFolderPath);
+        this.appendHighlightedParts(el, highlightedFileName);
     }
 
-    highlightSequence(folderName: string, fileName: string): [string, string] {
+    private appendHighlightedParts(
+      container: HTMLElement,
+      parts: Array<{text: string; bold: boolean}>,
+    ): void {
+      parts.forEach(({text, bold}) => {
+        if(!text) return;
+        if(bold) container.createEl("b", {text});
+        else container.appendText(text);
+      });
+    }
+
+    highlightSequence(
+      folderName: string,
+      fileName: string,
+    ): [Array<{text: string; bold: boolean}>, Array<{text: string; bold: boolean}>] {
       let lastInputStringSegment = -1;
-      const processSegment = (segment: string, inputStr: string) => {
+      const processSegment = (segment: string, inputStr: string): Array<{text: string; bold: boolean}> => {
           let lastIndex = 0;
-          let result = "";
-          inputStr.split(" ").forEach((char,i) => {
-              const index = segment.toLowerCase().indexOf(char.toLowerCase(), lastIndex);
+          const result: Array<{text: string; bold: boolean}> = [];
+          inputStr.split(" ").filter(Boolean).forEach((part,i) => {
+              const index = segment.toLowerCase().indexOf(part.toLowerCase(), lastIndex);
               if (index !== -1) {
-                  result += segment.substring(lastIndex, index) + `<b>${char}</b>`;
-                  lastIndex = index + char.length;
+                  result.push({text: segment.substring(lastIndex, index), bold: false});
+                  result.push({text: segment.substring(index, index + part.length), bold: true});
+                  lastIndex = index + part.length;
                   lastInputStringSegment = i;
               }
           });
-          result += segment.substring(lastIndex);
+          result.push({text: segment.substring(lastIndex), bold: false});
           return result;
       };
 
@@ -118,7 +138,6 @@ export class PageSuggest extends TextInputSuggest<Page> {
       const highlightedFolderName = processSegment(folderName, inputStr);
       inputStr = inputStr.split(" ").slice(lastInputStringSegment + 1).join(" ");
       const highlightedFileName = processSegment(fileName, inputStr);
-      inputStr = inputStr.split(" ").slice(lastInputStringSegment + 1).join(" ");
 
       return [highlightedFolderName, highlightedFileName];
     }

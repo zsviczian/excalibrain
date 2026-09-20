@@ -1,9 +1,9 @@
 import { App, TFile, moment } from "obsidian";
-import { Literal } from "obsidian-dataview/lib/data-model/value";
+import { Literal } from "./ExcalidrawAutomateCompatibility";
 import ExcaliBrain from "src/excalibrain-main";
 import { linkRegex } from "src/graph/URLParser";
 import { ExcaliBrainSettings } from "src/Settings";
-import { NodeStyle } from "src/types";
+import { NodeStyle } from "src/Types";
 
 const getPathOrSelf = (app: App, link:string, hostPath:string):string => {
   const f = app.metadataCache.getFirstLinkpathDest(link,hostPath);

@@ -1,5 +1,5 @@
-import { TextFileView } from "obsidian";
-import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
+import { App } from "obsidian";
+import { ExcalidrawAutomate } from "./ExcalidrawAutomateCompatibility";
 
 export interface ErrorLog {
   fn: Function;
@@ -23,13 +23,13 @@ export const svgToBase64 = (svg: string): string => {
   )}`;
 };
 
-export const keepOnTop = (ea: ExcalidrawAutomate, ownerWindow?: Window) => {
-  if(!ea.DEVICE.isDesktop) return;
+export const keepOnTop = (ea: ExcalidrawAutomate, app: App, ownerWindow?: Window) => {
+  if(!ea.DEVICE?.isDesktop) return;
   let keepontop = true;
   if(!ownerWindow) {
     const view = ea.targetView;
     if(!view) return;
-    keepontop = (ea.plugin.app.workspace.activeLeaf === view.leaf);
+    keepontop = (app.workspace.activeLeaf === view.leaf);
     ownerWindow = view.ownerWindow;
   }
 

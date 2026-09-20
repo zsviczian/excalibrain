@@ -1,6 +1,5 @@
-import { type } from "os";
+import { setIcon } from "obsidian";
 import ExcaliBrain from "src/excalibrain-main";
-import { keepOnTop } from "src/utils/utils";
 
 export class ToggleButton {
   private button: HTMLButtonElement;
@@ -29,14 +28,15 @@ export class ToggleButton {
     this.button = wrapper.createEl("button", {
       cls: "excalibrain-button",
     });
-    const getIcon = (state: boolean) => {
-      if(typeof options.icon === "string") return options.icon;
-      if(state) return options.icon?.on;
-      return options.icon?.off;
+    const getIcon = (state: boolean): string => {
+      const icon = options.icon;
+      if(typeof icon === "string") return icon;
+      if(!icon) return "";
+      return state ? icon.on : icon.off;
     }
 
     if(options.icon) {
-      this.button.innerHTML = getIcon(getVal());
+      setIcon(this.button, getIcon(getVal()));
     } else {
       this.button.createSpan({text: options.display??""})
     }
@@ -48,7 +48,10 @@ export class ToggleButton {
       const shouldSaveSettings = setVal(!getVal());
       if(shouldSaveSettings) plugin.saveSettings();
       this.updateButton();
-      if(options.icon) this.button.innerHTML = getIcon(getVal());
+      if(options.icon) {
+        this.button.empty();
+        setIcon(this.button, getIcon(getVal()));
+      }
       if(shouldRerenderOnToggle) plugin.scene?.reRender(updateIndex);
     }
   }

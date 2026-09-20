@@ -347,3 +347,6 @@
 .multiselect-container .multiselect-wrapper.opened .options-wrapper {
   display:flex;
 }
+.excalibrain-hide-disabled .excalibrain-settings-disabled {
+  display: none;
+}

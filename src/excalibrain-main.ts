@@ -2,21 +2,18 @@ import { App, Editor, MarkdownView, Menu, MenuItem, Notice, Plugin, PluginManife
 import { Page } from './graph/Page';
 import { DEFAULT_SETTINGS, ExcaliBrainSettings, ExcaliBrainSettingTab } from './Settings';
 import { errorlog, keepOnTop } from './utils/utils';
-import { getAPI } from "obsidian-dataview";
 import { t } from './lang/helpers';
 import { DEFAULT_HIERARCHY_DEFINITION, DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, MINEXCALIDRAWVERSION, PLUGIN_NAME, PREDEFINED_LINK_STYLES } from './constants/constants';
 import { Pages } from './graph/Pages';
-import { getEA } from "obsidian-excalidraw-plugin";
-import { ExcalidrawAutomate } from 'obsidian-excalidraw-plugin/lib/ExcalidrawAutomate';
 import { Scene } from './Scene';
-import { LinkStyles, NodeStyles, LinkStyle, RelationType, LinkDirection } from './types';
+import { LinkStyles, NodeStyles, LinkStyle, RelationType, LinkDirection } from './Types';
 import { WarningPrompt } from './utils/Prompts';
 import { FieldSuggester } from './Suggesters/OntologySuggester';
-import { Literal } from 'obsidian-dataview/lib/data-model/value';
 import { URLParser } from './graph/URLParser';
 import { AddToOntologyModal, Ontology } from './Components/AddToOntologyModal';
 import { NavigationHistory } from './Components/NavigationHistory';
 import { getDailyNoteSettings, IPeriodicNoteSettings } from './utils/datehelpers';
+import { ExcalidrawAutomate, Literal, destroyViewEA, getEA, temporarilyAllowSamePaneLinkOpen, waitForExcalidrawViewReady } from './utils/ExcalidrawAutomateCompatibility';
 
 declare module "obsidian" {
   interface App {
@@ -28,12 +25,6 @@ declare module "obsidian" {
   interface WorkspaceLeaf {
     id: string;
     activeTime: number;
-  }
-}
-
-declare global {
-  interface Window {
-    ExcalidrawAutomate: ExcalidrawAutomate;
   }
 }
 
@@ -58,6 +49,8 @@ export default class ExcaliBrain extends Plugin {
   public scene: Scene|null = null;
   private disregardLeafChangeTimer: number|null = null;
   private pluginLoaded = false;
+  private startPromise: Promise<void> | null = null;
+  private startLeafId: string | null = null;
   public starred: Page[] = [];
   private focusSearchAfterInitiation = false;
   public customNodeLabel: (dvPage: Literal, defaultName:string) => string
@@ -88,7 +81,7 @@ export default class ExcaliBrain extends Plugin {
     this.urlParser = new URLParser(this);
     this.app.workspace.onLayoutReady(()=>{
       this.urlParser.init();
-      this.DVAPI = getAPI();
+      this.DVAPI = window.DataviewAPI ?? (this.app.plugins.plugins["dataview"] as any)?.api;
       if(!this.DVAPI) {
         (new WarningPrompt(
           this.app,
@@ -142,8 +135,8 @@ export default class ExcaliBrain extends Plugin {
       }
 
       this.registerCommands();
-      this.registerExcalidrawAutomateHooks();
       this.pluginLoaded = true;
+      this.registerBrainLifecycleEvents();
     });
 	}
 
@@ -319,10 +312,6 @@ export default class ExcaliBrain extends Plugin {
   }
 
   private excalidrawAvailable():boolean {
-    if(this.app.plugins.plugins["obsidian-excalidraw-plugin"] === this.EA.plugin) {
-      return true;
-    }
-
     const ea = getEA(this.scene?.leaf?.view);
     if(!ea) {
       this.EA = null;
@@ -332,9 +321,35 @@ export default class ExcaliBrain extends Plugin {
       new Notice("ExcaliBrain: Please start Excalidraw and try again.",4000);
       return false;
     }
+
     this.EA = ea;
-    this.registerExcalidrawAutomateHooks()
+    if(typeof ea.verifyMinimumPluginVersion === "function" && !ea.verifyMinimumPluginVersion(MINEXCALIDRAWVERSION)) {
+      new Notice(`ExcaliBrain requires Excalidraw ${MINEXCALIDRAWVERSION} or newer.`, 5000);
+      return false;
+    }
     return true;
+  }
+
+  /**
+   * Start ExcaliBrain from Obsidian's workspace lifecycle rather than depending
+   * on Excalidraw's file-open/onload-script timing. Existing brain files may
+   * still call start() from their frontmatter; start() is deliberately
+   * idempotent so both paths can race safely.
+   */
+  private registerBrainLifecycleEvents(): void {
+    const schedule = (leaf: WorkspaceLeaf | null | undefined): void => {
+      if(!(leaf?.view instanceof TextFileView)) return;
+      if(leaf.view.file?.path !== this.settings.excalibrainFilepath) return;
+      window.setTimeout((): void => { void this.start(leaf); }, 0);
+    };
+
+    this.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => schedule(leaf)));
+    this.registerEvent(this.app.workspace.on("file-open", (file) => {
+      if(file?.path !== this.settings.excalibrainFilepath) return;
+      schedule(this.getBrainLeaf());
+    }));
+
+    this.app.workspace.iterateAllLeaves((leaf) => schedule(leaf));
   }
 
   private revealBrainLeaf() {
@@ -474,13 +489,17 @@ export default class ExcaliBrain extends Plugin {
         }
         const leaf = this.getBrainLeaf();
         if(leaf) {
-          this.scene = new Scene(this,true,leaf);
-          this.scene.initialize(true);
-          this.revealBrainLeaf();
+          void (async (): Promise<void> => {
+            await this.start(leaf);
+            this.revealBrainLeaf();
+          })();
           return;
         }
         this.focusSearchAfterInitiation = true;
-        Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,leaf);
+        void (async (): Promise<void> => {
+          const openedLeaf = await Scene.openExcalidrawLeaf(this.app, this.EA, this.settings, leaf);
+          if(openedLeaf) await this.start(openedLeaf);
+        })();
       },
     });
     
@@ -502,9 +521,10 @@ export default class ExcaliBrain extends Plugin {
         }
         const leaf = this.getBrainLeaf();
         if(leaf) {
-          this.scene = new Scene(this,true,leaf);
-          this.scene.initialize(true);
-          this.revealBrainLeaf();
+          void (async (): Promise<void> => {
+            await this.start(leaf);
+            this.revealBrainLeaf();
+          })();
           return;
         }
         this.focusSearchAfterInitiation = true;
@@ -514,7 +534,8 @@ export default class ExcaliBrain extends Plugin {
           while (popoutLeaf?.view?.containerEl?.ownerDocument === document && watchdog++ < 5) {
             await sleep(10);
           }
-          Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,popoutLeaf);
+          const openedLeaf = await Scene.openExcalidrawLeaf(this.app, this.EA, this.settings, popoutLeaf);
+          if(openedLeaf) await this.start(openedLeaf);
         })();
       },
     });
@@ -549,8 +570,10 @@ export default class ExcaliBrain extends Plugin {
               if(brainLeaf.view.containerEl.offsetHeight === 0) { //if hover editor is minimized
                 activeEditor.titleEl.querySelector("a.popover-action.mod-maximize").click();
               }
-              this.scene = new Scene(this,true,brainLeaf);
-              this.scene.initialize(true);              
+              void (async (): Promise<void> => {
+                await this.start(brainLeaf);
+                this.revealBrainLeaf();
+              })();
               return;
             }
           }
@@ -564,7 +587,10 @@ export default class ExcaliBrain extends Plugin {
             //@ts-ignore
             setTimeout(()=>this.app.commands.executeCommandById("obsidian-hover-editor:snap-active-popover-to-viewport"));
             this.focusSearchAfterInitiation = true;
-            Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,leaf);
+            void (async (): Promise<void> => {
+              const openedLeaf = await Scene.openExcalidrawLeaf(this.app, this.EA, this.settings, leaf);
+              if(openedLeaf) await this.start(openedLeaf);
+            })();
           });
         } catch(e) {
           new Notice(t("HOVER_EDITOR_ERROR"), 6000);
@@ -575,11 +601,12 @@ export default class ExcaliBrain extends Plugin {
 
   getBrainLeaf():WorkspaceLeaf {
     let brainLeaf: WorkspaceLeaf;
+    const ea = this.EA ?? getEA();
     this.app.workspace.iterateAllLeaves(leaf=>{
       if(
         leaf.view &&
-        this.EA.isExcalidrawView(leaf.view) && 
-        leaf.view instanceof TextFileView && 
+        ea?.isExcalidrawView?.(leaf.view) &&
+        leaf.view instanceof TextFileView &&
         leaf.view.file.path === this.settings.excalibrainFilepath
       ) {
         brainLeaf = leaf;
@@ -588,9 +615,9 @@ export default class ExcaliBrain extends Plugin {
     return brainLeaf;
   }
 
-  registerExcalidrawAutomateHooks() {
-    this.EA.onViewModeChangeHook = (isViewModeEnabled) => {
-      if(!this.EA.targetView || this.EA.targetView.file?.path !== this.settings.excalibrainFilepath) {
+  registerExcalidrawAutomateHooks(ea: ExcalidrawAutomate) {
+    ea.onViewModeChangeHook = (isViewModeEnabled) => {
+      if(!ea.targetView || ea.targetView.file?.path !== this.settings.excalibrainFilepath) {
         return;
       }
       if(!isViewModeEnabled) {
@@ -598,13 +625,13 @@ export default class ExcaliBrain extends Plugin {
       }
     }
 
-    this.EA.onLinkHoverHook = (element,linkText) => {
+    ea.onLinkHoverHook = (element,linkText) => {
       if(
         !this.scene ||
-        !this.EA.targetView ||
-        this.EA.targetView.file?.path !== this.settings.excalibrainFilepath ||
-        !this.EA.targetView.excalidrawAPI ||
-        !this.EA.targetView.excalidrawAPI.getAppState().viewModeEnabled
+        !ea.targetView ||
+        ea.targetView.file?.path !== this.settings.excalibrainFilepath ||
+        !ea.targetView.excalidrawAPI ||
+        !ea.targetView.excalidrawAPI.getAppState().viewModeEnabled
       ) {
         return true;
       }
@@ -622,18 +649,18 @@ export default class ExcaliBrain extends Plugin {
       return true;
     }
 
-    this.EA.onLinkClickHook = (element,linkText,event) => {
+    ea.onLinkClickHook = (element,linkText,event) => {
       const path = linkText.match(/\[\[([^\]]*)/)?.[1] ?? linkText.match(/(http.*)/)?.[1];
       if(!path) return true;
-      const page =  this.pages.get(path);
-      const ea = this.EA;
-      
+      const page = this.pages.get(path);
+      const activeEA = ea;
+
       //this should never happen, but if it does, I will let Excalidraw deal with the link
-      if(!page || !this.scene || !ea) {
+      if(!page || !this.scene || !activeEA) {
         return true;
       }
 
-      keepOnTop(ea);
+      keepOnTop(activeEA, this.app);
 
       //handle click on virtual page
       if (page.isVirtual) {
@@ -643,7 +670,7 @@ export default class ExcaliBrain extends Plugin {
           //shift click will offer to create the page for the unresolved link
           (async()=>{
             const source = page.getParents()[0] ?? page.getLeftFriends()[0] ?? page.getRightFriends()[0] ?? page.getChildren()[0];
-            const f = await ea.newFilePrompt(page.path, false, undefined, source?.page.file);
+            const f = await activeEA.newFilePrompt(page.path, false, undefined, source?.page.file);
             if(!f) return;
             page.file = f;
             await this.scene.renderGraphForPath(path);
@@ -664,8 +691,7 @@ export default class ExcaliBrain extends Plugin {
               this.scene.centralLeaf.openFile(page.file,{active:true});
               return false;
             }
-            ea.targetView.linksAlwaysOpenInANewPane = false;
-            setTimeout(()=>ea.targetView.linksAlwaysOpenInANewPane = true,300);
+            temporarilyAllowSamePaneLinkOpen(activeEA);
           }
           return true;
         }
@@ -706,14 +732,9 @@ export default class ExcaliBrain extends Plugin {
       return false;
     }
 
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!
-    //I am checking for this in EA forceSave
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!
-    this.EA.onViewUnloadHook = (view) => {    
-      if(this.scene && this.scene.leaf === view.leaf) {
-        this.stop();
-      }
-    }
+    // Keep this expression shape intentionally: current Excalidraw retains a
+    // compatibility check for ExcaliBrain's historical unload hook.
+    ea.onViewUnloadHook = e=>{this.scene&&this.scene.leaf===e.leaf&&this.stop()}
   }
 
 	onunload() {
@@ -735,24 +756,35 @@ export default class ExcaliBrain extends Plugin {
   }
 
   loadCustomNodeLabelFunction() {
-    if(!this.settings.nodeTitleScript) {
+    const expression = this.settings.nodeTitleScript?.trim();
+    if(!expression) {
       this.customNodeLabel = null;
       return;
     }
-    try{
-      //@ts-ignore
-      this.customNodeLabel = new Function("dvPage","defaultName","return " + this.settings.nodeTitleScript);
-    } catch(e) {
-      errorlog({
-        fn: this.loadCustomNodeLabelFunction,
-        message: "error processing custom node label script",
-        where: "loadCustomNodeLabelFunction()",
-        data: this.settings.nodeTitleScript,
-        error: e
-      });
-      new Notice("Could not load custom node label function. See Developer console for details");
-      this.customNodeLabel = null;
-    }
+
+    // Obsidian's scanner rejects dynamic JavaScript compilation. Dataview
+    // provides a purpose-built expression evaluator with an explicit context.
+    this.customNodeLabel = (dvPage: Literal, defaultName: string): string => {
+      try {
+        const value = this.DVAPI?.tryEvaluate?.(
+          expression,
+          {dvPage, defaultName},
+          dvPage?.file?.path,
+        );
+        return value === null || typeof value === "undefined"
+          ? defaultName
+          : String(value);
+      } catch(error) {
+        errorlog({
+          fn: this.loadCustomNodeLabelFunction,
+          message: "error evaluating custom node label expression",
+          where: "loadCustomNodeLabelFunction()",
+          data: expression,
+          error,
+        });
+        return defaultName;
+      }
+    };
   }
 
 	async loadSettings() {
@@ -970,38 +1002,88 @@ export default class ExcaliBrain extends Plugin {
     if(this.scene && !this.scene.terminated) {
       this.scene.unloadScene();
       this.scene = null;
-    } 
+    }
   }
 
-  public async start(leaf: WorkspaceLeaf) {
+  public async start(leaf: WorkspaceLeaf): Promise<void> {
+    if(!leaf) return;
+
+    if(this.scene && !this.scene.terminated && this.scene.leaf === leaf) {
+      return;
+    }
+
+    if(this.startPromise && this.startLeafId === leaf.id) {
+      return this.startPromise;
+    }
+
+    this.startLeafId = leaf.id;
+    const startPromise = this.startInternal(leaf).finally(() => {
+      if(this.startPromise === startPromise) {
+        this.startPromise = null;
+        this.startLeafId = null;
+      }
+    });
+    this.startPromise = startPromise;
+    return startPromise;
+  }
+
+  private async startInternal(leaf: WorkspaceLeaf): Promise<void> {
     this.dailyNoteSettings = getDailyNoteSettings(this.app);
-    if(!leaf.view) {
-      return;
-    }
-    if(!(leaf.view instanceof TextFileView)) {
-      new Notice("Wrong view type. Cannot start ExcaliBrain.");
-      return;
-    }
-    if(leaf.view.file.path !== this.settings.excalibrainFilepath) {
-      new Notice(`The brain file is not the one configured in settings!\nThe file in settings is ${this.settings.excalibrainFilepath}.\nThis file is ${leaf.view.file.path}.\nPlease start ExcaliBrain using the Command Palette action.`,5000);
-      return;
-    }
+
     let counter = 0;
-    while(!this.pluginLoaded && counter++<100) await sleep(50);
+    while(!this.pluginLoaded && counter++ < 100) await sleep(50);
     if(!this.pluginLoaded) {
-      new Notice("ExcaliBrain plugin did not load - aborting start()");
       errorlog({where: "ExcaliBrain.start()", fn: this.start, message: "ExcaliBrain did not load. Aborting after 5000ms of trying"});
       return;
     }
-    if(!this.excalidrawAvailable()) return;
-    this.stop();
-    if(!leaf) {
-      await Scene.openExcalidrawLeaf(window.ExcalidrawAutomate,this.settings,this.getBrainLeaf());
+
+    if(!(leaf.view instanceof TextFileView)) return;
+    if(leaf.view.file?.path !== this.settings.excalibrainFilepath) return;
+
+    const ea = getEA(leaf.view);
+    if(!ea) {
+      new Notice("ExcaliBrain: Excalidraw Automate is not available.", 5000);
       return;
     }
-    
-    this.scene = new Scene(this,true,leaf)
-    this.scene.initialize(this.focusSearchAfterInitiation);
-    this.focusSearchAfterInitiation = false;
+    if(typeof ea.isExcalidrawView === "function" && !ea.isExcalidrawView(leaf.view)) {
+      destroyViewEA(ea);
+      return;
+    }
+    if(typeof ea.verifyMinimumPluginVersion === "function" && !ea.verifyMinimumPluginVersion(MINEXCALIDRAWVERSION)) {
+      new Notice(`ExcaliBrain requires Excalidraw ${MINEXCALIDRAWVERSION} or newer.`, 5000);
+      destroyViewEA(ea);
+      return;
+    }
+
+    if(!await waitForExcalidrawViewReady(ea)) {
+      errorlog({where: "ExcaliBrain.start()", fn: this.start, message: "Excalidraw view did not become ready within 10 seconds"});
+      destroyViewEA(ea);
+      return;
+    }
+
+    if(!(leaf.view instanceof TextFileView) || leaf.view.file?.path !== this.settings.excalibrainFilepath) {
+      destroyViewEA(ea);
+      return;
+    }
+    if(this.scene && !this.scene.terminated && this.scene.leaf === leaf) return;
+
+    this.stop();
+    this.EA = ea;
+    this.registerExcalidrawAutomateHooks(ea);
+
+    const scene = new Scene(this, true, leaf, ea);
+    this.scene = scene;
+    try {
+      await scene.initialize(this.focusSearchAfterInitiation);
+      this.focusSearchAfterInitiation = false;
+    } catch(error) {
+      errorlog({where: "ExcaliBrain.start()", fn: this.start, error});
+      if(this.scene === scene) {
+        scene.unloadScene(false, true);
+        this.scene = null;
+      }
+      new Notice("ExcaliBrain failed to initialize. See Developer Console for details.", 8000);
+    }
   }
+
 }

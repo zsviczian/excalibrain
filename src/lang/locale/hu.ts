@@ -57,17 +57,8 @@ export default {
   EXCLUDE_PATHLIST_DESC: "Adja meg a kizárandó fájlok elérési útvonalait vesszővel elválasztva.",
   RENDERALIAS_NAME: "Megjelenítési azonosító ha elérhető",
   RENDERALIAS_DESC: "Megjeleníti az oldal azonosítóját a fájlnév helyett, ha az az oldal előlapján van meghatározva.",
-  NODETITLE_SCRIPT_NAME: "Node nevek megjelenítéséhez JavaScript kód",
-  NODETITLE_SCRIPT_DESC: "JavaScript kód a node nevének megjelenítésére. Ha nem szükséges, hagyja ezt a mezőt üresen.<br>" +
-    "Függvény definíció: <code>customNodeLabel: (dvPage: Literal, defaultName:string) => string</code><br>" +
-    "A szkriptben hivatkozhat a dataview oldal objektumára a <code>dvPage</code> változóval; és az alapértelmezett oldalnévre (fájlnév vagy azonosító, ha elérhető) a <code>defaultName</code> változóval. " +
-    "Használhatod a következő kifejezést: <code>dvPage['mező 1']??defaultName</code> - ez az példa megjeleníti a 'mező 1' értékét, ha elérhető, különben az alapértelmezett névet<br>" +
-    "⚠ A kódodat éppen úgy futtatjuk le, ahogy van, tehát győződj meg róla, hogy megfelelő kivételkezelést adtál hozzá. Az <code>defaultName</code> és a dataview mezőnevek mellett szabadon használhatsz " + 
-    "bármilyen JavaScript függvényt (például <code>defaultName.toLowerCase()</code>) és bármilyen értéket, ami a <code>dvPage</code> objektumon megjelenik, pl. <code>dvPage.file.path</code>, stb. <br> " +
-    "A dataview oldal objektumot felderítheted az Új oldal megnyitásával és a következő kóddal:<br>" + 
-    "<code>DataviewAPI.page('teljes fájlnév kiterjesztéssel')</code><br>" + 
-    "Itt van egy példa kód, ami a cím mező értékét fogja megjeleníteni, ha elérhető, egyébként az alapértelmezett fájlnévet, és mögé fűzi az állapotot (ha elérhető): <br>" +
-    "<code>dvPage.title??defaultName & (dvPage.state ? ' - ' & dvPage.state : '')</code>",
+  NODETITLE_SCRIPT_NAME: 'Dataview-kifejezés a csomópontnevekhez',
+  NODETITLE_SCRIPT_DESC: 'Dataview-kifejezés a csomópont címének megjelenítéséhez. Ha nincs rá szükséged, hagyd üresen.<br>A kifejezés a Dataview-oldalt <code>dvPage</code>, az ExcaliBrain alapértelmezett címkéjét pedig <code>defaultName</code> néven kapja meg.<br>Példák:<br><code>default(dvPage.title, defaultName)</code><br><code>lower(defaultName)</code><br><code>dvPage.file.path</code>',
   SHOWINFERRED_NAME: "Az előállított kapcsolatok megjelenítése",
   SHOWINFERRED_DESC: "<b>Be:</b> Mind az expliciten meghatározott, mind az előállított kapcsolatokat megjeleníti. Az előre mutató linkek gyerekek, a visszamutatók szülők, " +
     "ha két oldal egymásra hivatkozik, akkor barátokként lesznek kezelve. Az expliciten meghatározott kapcsolatok mindig előnyt élveznek.<br><b>Ki:</b> Csak az expliciten meghatározott kapcsolatokat jeleníti meg.",

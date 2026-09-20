@@ -61,17 +61,8 @@ export default {
   EXCLUDE_PATHLIST_DESC: "Ingresa una lista de rutas de archivos separadas por comas que se deben excluir del índice.",
   RENDERALIAS_NAME: "Mostrar alias si está disponible",
   RENDERALIAS_DESC: "Muestra el alias de la página en lugar del nombre de archivo si está especificado en el front matter de la página.",
-  NODETITLE_SCRIPT_NAME: "Javascript para renderizar nombres de nodos",
-  NODETITLE_SCRIPT_DESC: "Código Javascript para renderizar el título del nodo. Si no lo necesitas, simplemente deja este campo vacío.<br>" +
-    "Definición de la función: <code>customNodeLabel: (dvPage: Literal, defaultName:string) => string</code><br>" +
-    "En tu script, puedes referirte al objeto de página Dataview a través de la variable <code>dvPage</code>; y el nombre de página predeterminado (nombre de archivo o alias si está disponible) a través de la variable <code>defaultName</code>. " +
-    "Utiliza la siguiente sintaxis de expresión:<br><code>dvPage['campo 1']??defaultName</code> - este ejemplo mostrará el valor de 'campo 1' si está disponible, de lo contrario mostrará defaultName<br>" +
-    "⚠ Tu línea de código se ejecutará tal como está, asegúrate de agregar un manejo adecuado de excepciones. Además de <code>defaultName</code> y los nombres de campo de dataview, también tienes la libertad de " + 
-    "usar cualquier función de javascript (por ejemplo, <code>defaultName.toLowerCase()</code>) y cualquier valor que aparezca en el objeto <code>dvPage</code>, como <code>dvPage.file.path</code>, etc. <br> " +
-    "Para explorar el objeto de página de Dataview, abre la Consola de Desarrollador e ingresa el siguiente código:<br>" + 
-    "<code>DataviewAPI.page('ruta completa del archivo incluyendo extensión')</code><br>" + 
-    "Aquí tienes un ejemplo de código que mostrará el valor del campo 'title' si está disponible, de lo contrario mostrará el nombre de archivo, seguido del estado (si está disponible): <br>" +
-    "<code>dvPage.title??defaultName & (dvPage.state ? ' - ' & dvPage.state : '')</code>",
+  NODETITLE_SCRIPT_NAME: 'Expresión de Dataview para los nombres de nodos',
+  NODETITLE_SCRIPT_DESC: 'Expresión de Dataview usada para mostrar el título del nodo. Déjala vacía si no la necesitas.<br>La expresión recibe la página de Dataview como <code>dvPage</code> y la etiqueta normal de ExcaliBrain como <code>defaultName</code>.<br>Ejemplos:<br><code>default(dvPage.title, defaultName)</code><br><code>lower(defaultName)</code><br><code>dvPage.file.path</code>',
   SHOWINFERRED_NAME: "Mostrar relaciones inferidas",
   SHOWINFERRED_DESC: "<b>Activado:</b> Mostrar tanto los enlaces explícitamente definidos como los inferidos. Los enlaces hacia adelante son hijos, los enlaces de retroceso son padres, " +
     "si dos páginas se refieren mutuamente, se infiere que existe una amistad. Las relaciones definidas explícitamente siempre tienen prioridad.<br><b>Desactivado:</b> Mostrar solo relaciones definidas explícitamente.",

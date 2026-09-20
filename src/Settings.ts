@@ -8,17 +8,16 @@ import {
   TextComponent,
   ToggleComponent,
 } from "obsidian";
-import { FillStyle, getEA, StrokeRoundness, StrokeStyle } from "obsidian-excalidraw-plugin";
-import { ExcalidrawAutomate } from "obsidian-excalidraw-plugin/lib/ExcalidrawAutomate";
 import { Page } from "./graph/Page";
 import { t } from "./lang/helpers";
 import ExcaliBrain from "./excalibrain-main";
-import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData, LinkDirection, Role, Arrowhead } from "./types";
+import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData, LinkDirection, Role, Arrowhead } from "./Types";
 import { WarningPrompt } from "./utils/Prompts";
-import { Node } from "./graph/Node";
+import { Node as GraphNode } from "./graph/Node";
 import { svgToBase64 } from "./utils/utils";
 import { Link } from "./graph/Link";
 import { DEFAULT_HIERARCHY_DEFINITION, DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, PREDEFINED_LINK_STYLES } from "./constants/constants";
+import { ExcalidrawAutomate, FillStyle, StrokeRoundness, StrokeStyle, getEA } from "./utils/ExcalidrawAutomateCompatibility";
 
 export interface ExcaliBrainSettings {
   compactView: boolean;
@@ -194,23 +193,68 @@ const getHex = (color:string) => color.substring(0,7);
 const getAlphaFloat = (color:string) => parseInt(color.substring(7,9),16)/255;
 const getAlphaHex = (a: number) => ((a * 255) | 1 << 8).toString(16).slice(1)
 
-const fragWithHTML = (html: string) =>
-  createFragment((frag) => (frag.createDiv().innerHTML = html));
+const decodeMarkupEntities = (text: string): string => text
+  .replaceAll("&lt;", "<")
+  .replaceAll("&gt;", ">")
+  .replaceAll("&thinsp;", "\u2009");
 
-const removeStylesheet = (name:string) => {
-  const sheetToBeRemoved = document.getElementById(name);
-  if(!sheetToBeRemoved) return;
-  const sheetParent = sheetToBeRemoved.parentNode;
-  if(!sheetParent) return;
-  sheetParent.removeChild(sheetToBeRemoved);
-}
+/** Render the small trusted formatting vocabulary used by locale strings. */
+const fragWithHTML = (markup: string): DocumentFragment => createFragment((frag) => {
+  const doc = frag.ownerDocument;
+  const stack: Array<{tag: string; node: HTMLElement}> = [];
+  let parent: DocumentFragment | HTMLElement = frag;
 
-const addStylesheet = (stylesheet: string, classname: string) => {
-  const sheet = document.createElement('style');
-  sheet.id = stylesheet;
-  sheet.innerHTML = `.${classname} {display: none;}`;
-  document.body.appendChild(sheet);
-}
+  const createFormattingElement = (tag: string): HTMLElement | null => {
+    switch(tag) {
+      case "b": return doc.createElement("b");
+      case "i": return doc.createElement("i");
+      case "u": return doc.createElement("u");
+      case "code": return doc.createElement("code");
+      case "kbd": return doc.createElement("kbd");
+      case "mark": return doc.createElement("mark");
+      case "ul": return doc.createElement("ul");
+      case "ol": return doc.createElement("ol");
+      case "li": return doc.createElement("li");
+      default: return null;
+    }
+  };
+
+  markup.split(/(<[^>]+>)/g).filter(Boolean).forEach((token) => {
+    if(!token.startsWith("<")) {
+      parent.appendChild(doc.createTextNode(decodeMarkupEntities(token)));
+      return;
+    }
+
+    const match = token.match(/^<\s*(\/?)\s*([a-zA-Z0-9]+)[^>]*>$/);
+    if(!match) {
+      parent.appendChild(doc.createTextNode(token));
+      return;
+    }
+
+    const closing = match[1] === "/";
+    const tag = match[2].toLowerCase();
+    if(tag === "br") {
+      if(!closing) parent.appendChild(doc.createElement("br"));
+      return;
+    }
+    if(closing) {
+      const index = stack.map((item) => item.tag).lastIndexOf(tag);
+      if(index >= 0) stack.splice(index);
+      parent = stack.at(-1)?.node ?? frag;
+      return;
+    }
+
+    const element = createFormattingElement(tag);
+    if(!element) {
+      parent.appendChild(doc.createTextNode(token));
+      return;
+    }
+    parent.appendChild(element);
+    stack.push({tag, node: element});
+    parent = element;
+  });
+});
+
 
 export class ExcaliBrainSettingTab extends PluginSettingTab {
   private isPersistingSettings: boolean = false;
@@ -218,7 +262,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
   plugin: ExcaliBrain;
   ea: ExcalidrawAutomate;
   private dirty:boolean = false;
-  private demoNode: Node;
+  private demoNode: GraphNode;
   private demoNodeImg: HTMLImageElement;
   private demoLinkImg: HTMLImageElement;
   private demoLinkStyle: LinkStyleData;
@@ -288,7 +332,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       page2.addParent(page,RelationType.DEFINED,LinkDirection.TO);  
     }
 
-    const demoNode = new Node({
+    const demoNode = new GraphNode({
       ea: this.ea,
       page,
       isInferred: false,
@@ -299,7 +343,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     demoNode.ea = this.ea;
     demoNode.setCenter({x:0,y:0}) 
 
-    const demoNode2 = new Node({
+    const demoNode2 = new GraphNode({
       ea: this.ea,
       page: page2,
       isInferred:false,
@@ -445,9 +489,10 @@ private normalizeSettings() {
         }
 
         const doc = this.containerEl.ownerDocument;
-        const nextFocusTarget =
-          (event.relatedTarget as globalThis.Node | null) ??
-          doc.activeElement;
+        const ownerWindow = doc.defaultView;
+        const nextFocusTarget = ownerWindow && event.relatedTarget instanceof ownerWindow.Node
+          ? event.relatedTarget
+          : doc.activeElement;
         
         // If the new focus is still inside the settings container AND the document still has focus, do nothing
         if (doc.hasFocus() && nextFocusTarget && this.containerEl.contains(nextFocusTarget)) {
@@ -1386,7 +1431,7 @@ private normalizeSettings() {
     )
     page.addChild(page2,RelationType.DEFINED,LinkDirection.FROM);
     page2.addParent(page,RelationType.DEFINED,LinkDirection.TO);
-    this.demoNode = new Node({
+    this.demoNode = new GraphNode({
       ea: this.ea,
       page,
       isInferred: false,
@@ -1464,7 +1509,7 @@ private normalizeSettings() {
       text: t("HIERARCHY_HEAD")
     });
     const hierarchyDesc = this.containerEl.createEl("p", {});
-    hierarchyDesc.innerHTML =  t("HIERARCHY_DESC");
+    hierarchyDesc.appendChild(fragWithHTML(t("HIERARCHY_DESC")));
 
     let onHierarchyChange: Function = ()=>{};
 
@@ -2089,7 +2134,7 @@ private normalizeSettings() {
       text: t("STYLE_HEAD")
     });
     const styleDesc = this.containerEl.createEl("p", {});
-    styleDesc.innerHTML =  t("STYLE_DESC");
+    styleDesc.appendChild(fragWithHTML(t("STYLE_DESC")));
 
     this.colorpicker(
       containerEl,
@@ -2223,9 +2268,9 @@ private normalizeSettings() {
           return;
         }
         if(value) {
-          removeStylesheet(HIDE_DISABLED_STYLE);
+          containerEl.removeClass(HIDE_DISABLED_STYLE);
         } else {
-          addStylesheet(HIDE_DISABLED_STYLE, HIDE_DISABLED_CLASS);
+          containerEl.addClass(HIDE_DISABLED_STYLE);
         }
         boundToggleChange = true;
         linkStylesToggle.setValue(value);
@@ -2240,7 +2285,7 @@ private normalizeSettings() {
     nodeStyleDiv = containerEl.createDiv({
       cls: "excalibrain-setting-style-section"
     });
-    removeStylesheet(HIDE_DISABLED_STYLE);
+    containerEl.removeClass(HIDE_DISABLED_STYLE);
     nodeStylesDropdown
       .setValue("base")
       .onChange(nodeDropdownOnChange)
@@ -2295,9 +2340,9 @@ private normalizeSettings() {
           return;
         }
         if(value) {
-          removeStylesheet(HIDE_DISABLED_STYLE);
+          containerEl.removeClass(HIDE_DISABLED_STYLE);
         } else {
-          addStylesheet(HIDE_DISABLED_STYLE, HIDE_DISABLED_CLASS);
+          containerEl.addClass(HIDE_DISABLED_STYLE);
         }
         boundToggleChange = true;
         nodeStylesToggle.setValue(value);
