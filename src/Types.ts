@@ -19,7 +19,7 @@ export enum LinkDirection {
   BOTH = 3,
 }
 
-export type Arrowhead = ExcalidrawArrowHead | "none";
+export type Arrowhead = ExcalidrawArrowHead;
 
 export type Relation = {
   target: Page;
@@ -50,6 +50,8 @@ export type Hierarchy = {
   parents: string[],
   children: string[],
   leftFriends: string[],
+  /** Legacy pre-left/right friend setting retained only for settings migration. */
+  friends?: string[],
   rightFriends: string[],
   previous: string[],
   next: string[],

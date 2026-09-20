@@ -95,9 +95,7 @@ export class PageSuggest extends TextInputSuggest<Page> {
         const [highlightedFolderPath, highlightedFileName] = this.highlightSequence(folderPath, fileName);
 
         el.empty();
-        const folderEl = el.createSpan();
-        folderEl.style.fontSize = "0.8em";
-        folderEl.style.opacity = "0.8";
+        const folderEl = el.createSpan({ cls: "excalibrain-page-suggester-folder" });
         this.appendHighlightedParts(folderEl, highlightedFolderPath);
         this.appendHighlightedParts(el, highlightedFileName);
     }

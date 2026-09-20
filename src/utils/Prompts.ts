@@ -15,7 +15,9 @@ export class WarningPrompt extends Modal {
     this.createForm();
   }
 
-  onClose() {}
+  onClose(): void {
+    // Modal cleanup is handled by Obsidian.
+  }
 
   createForm(): void {
     this.titleEl.setText(this.title);
@@ -25,8 +27,7 @@ export class WarningPrompt extends Modal {
       text: this.message,
     });
 
-    this.contentEl.createDiv({ cls: "excalibrain-prompt-center" }, (el) => {
-      el.style.textAlign = "right";
+    this.contentEl.createDiv({ cls: "excalibrain-prompt-center excalibrain-prompt-actions" }, (el) => {
 
 
       const bOk = el.createEl("button", { text: "Ok" });

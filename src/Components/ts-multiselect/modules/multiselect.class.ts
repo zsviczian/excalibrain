@@ -1,233 +1,193 @@
-import {MultiselectConfig} from '../models/multiselect-config';
-import {MultiselectOption} from './multiselect-option.class';
-import {IMultiselectOption} from '../models/multiselect-option';
+import { MultiselectConfig } from '../models/multiselect-config';
+import { MultiselectOption } from './multiselect-option.class';
+import { IMultiselectOption } from '../models/multiselect-option';
 
 export class Multiselect {
-	private config: MultiselectConfig;
+  private readonly config: MultiselectConfig;
 
-	// from config
   private origin: HTMLElement;
-	private configOptions: IMultiselectOption[];
-	private multiple: boolean;
-	private singularNominativeLabel: string;
-	private pluralNominativeLabel: string;
-	private pluralGenitiveLabel: string;
-	private placeholder: string;
-	private headerLabel: string;
-	private onDropdownOpen: () => any;
-	private onDropdownClose: (selectedItems: any[]) => any;
-	private onSelectionChange: (selectedItems: any[]) => any;
+  private configOptions: IMultiselectOption[];
+  private multiple: boolean;
+  private singularNominativeLabel?: string;
+  private pluralNominativeLabel?: string;
+  private pluralGenitiveLabel?: string;
+  private placeholder: string;
+  private headerLabel?: string;
+  private onDropdownOpen?: () => void;
+  private onDropdownClose?: (selectedItems: string[]) => void;
+  private onSelectionChange?: (selectedItems: string[]) => void;
 
-	// used in class
-	private selectHeaderRef: HTMLElement;
-	private selectWrapperRef: HTMLElement;
-	private selectedValueRef: HTMLElement;
-	private optionsWrapperRef: HTMLElement;
-	private options: MultiselectOption[] = [];
-	private dropdownOpened: boolean = false;
-	private destroyed: boolean = false;
+  private selectHeaderRef?: HTMLElement;
+  private selectWrapperRef: HTMLElement;
+  private selectedValueRef: HTMLElement;
+  private optionsWrapperRef: HTMLElement;
+  private options: MultiselectOption[] = [];
+  private dropdownOpened = false;
+  private destroyed = false;
 
-	public selected: any[];
-	public rendered: boolean = false;
+  public selected: string[];
+  public rendered = false;
 
-	private documentClickDropdownToggle = (e: MouseEvent) => {
-		if (!this.selectWrapperRef.contains((e.target as any))) {
-			this.handleDropdownToggle(false, this.dropdownOpened);
-		}
-	}
+  private readonly documentClickDropdownToggle = (event: MouseEvent): void => {
+    const target = event.target;
+    if (target instanceof Node && !this.selectWrapperRef.contains(target)) {
+      this.handleDropdownToggle(false, this.dropdownOpened);
+    }
+  };
 
-	constructor(config: MultiselectConfig) {
-		this.config = config;
-		this.assignConfig()
+  constructor(config: MultiselectConfig) {
+    this.config = config;
+    this.assignConfig();
+    if (!this.origin) {
+      throw new Error('You have to pass origin element!');
+    }
+    this.setOrigin();
+    this.init();
+  }
 
-		this.setOrigin();
-		if (!this.origin) {
-			throw 'You have to pass origin element!';
-		}
+  public init(): void {
+    this.destroyed = false;
+    this.dropdownOpened = false;
+    this.createSelect();
+    this.createListeners();
+  }
 
-		this.init();
-	}
+  public destroy(): void {
+    this.destroyed = true;
+    this.rendered = false;
+    this.hide();
+    this.origin.ownerDocument.removeEventListener('click', this.documentClickDropdownToggle);
+    this.options = [];
+  }
 
-	public init() {
-		this.destroyed = false;
-		this.dropdownOpened = false;
+  public reset(): void {
+    this.options.forEach((option) => option.deselect(false));
+    this.updateSelection();
+  }
 
-		this.createSelect();
-		this.createListeners();
-	}
+  public hide(): void {
+    this.origin.replaceChildren();
+    this.rendered = false;
+  }
 
-	public destroy() {
-		this.destroyed = true;
-		this.rendered = false;
-		this.hide();
-		document.removeEventListener('click', this.documentClickDropdownToggle);
-		this.selectWrapperRef.cloneNode(true);
-		this.origin = null;
-		this.selectHeaderRef = null;
-		this.selectWrapperRef = null;
-		this.selectedValueRef = null;
-		this.optionsWrapperRef = null;
-		this.options = [];
-	}
+  public render(): void {
+    if (this.destroyed) {
+      throw new Error('Cannot render a destroyed multiselect.');
+    }
+    if (this.origin.innerText.trim()) {
+      throw new Error('Multiselect is already rendered.');
+    }
 
-	public reset() {
-		this.options.forEach(x => x.deselect(false));
-		this.updateSelection();
-	}
+    this.origin.appendChild(this.selectWrapperRef);
+    this.rendered = true;
+    if (this.selectHeaderRef) this.origin.prepend(this.selectHeaderRef);
+  }
 
-	public hide() {
-		this.origin.replaceChildren();
-		this.rendered = false;
-	}
+  private assignConfig(): void {
+    this.origin = this.config.origin;
+    this.configOptions = this.config.options;
+    this.multiple = this.config.multiple ?? true;
+    this.singularNominativeLabel = this.config.singularNominativeLabel;
+    this.pluralNominativeLabel = this.config.pluralNominativeLabel;
+    this.pluralGenitiveLabel = this.config.pluralGenitiveLabel;
+    this.placeholder = this.config.placeholder ?? '';
+    this.headerLabel = this.config.headerLabel;
+    this.selected = this.config.selected ?? [];
+    this.onDropdownOpen = this.config.onDropdownOpen;
+    this.onDropdownClose = this.config.onDropdownClose;
+    this.onSelectionChange = this.config.onSelectionChange;
+  }
 
-	public render() {
-		if (this.destroyed) {
-			throw 'But you destroyed me... :(';
-		}
+  private setOrigin(): void {
+    this.origin.addClass('multiselect-container');
+  }
 
-		if (!!this.origin.innerText.trim()) {
-			throw 'Hey! I am rendered already!';
-		}
+  private createHeader(): void {
+    if (!this.headerLabel) return;
+    this.selectHeaderRef = createDiv({ cls: 'multiselect-header', text: this.headerLabel });
+  }
 
-		this.origin.appendChild(this.selectWrapperRef);
-		this.rendered = true;
-		if (!!this.selectHeaderRef) {
-			this.origin.prepend(this.selectHeaderRef);
-		}
-	}
+  private createSelect(): void {
+    this.selectWrapperRef = createDiv({ cls: 'multiselect-wrapper' });
+    if (!this.multiple) this.selectWrapperRef.addClass('single-select');
 
-	private assignConfig() {
-		this.origin = this.config.origin;
-		this.configOptions = this.config.options;
-		this.multiple = this.config.multiple ?? true;
-		this.singularNominativeLabel = this.config.singularNominativeLabel;
-		this.pluralNominativeLabel = this.config.pluralNominativeLabel;
-		this.pluralGenitiveLabel = this.config.pluralGenitiveLabel;
-		this.placeholder = this.config.placeholder ?? '';
-		this.headerLabel = this.config.headerLabel;
-		this.selected = this.config.selected;
-		this.onDropdownOpen = this.config.onDropdownOpen;
-		this.onDropdownClose = this.config.onDropdownClose;
-		this.onSelectionChange = this.config.onSelectionChange;
-	}
+    this.selectedValueRef = createDiv({ cls: 'selected-value' });
+    this.selectWrapperRef.appendChild(this.selectedValueRef);
 
-	private setOrigin() {
-		if (!this.origin) {
-			return;
-		}
-		this.origin.classList.add('multiselect-container');
-	}
+    this.optionsWrapperRef = createDiv({ cls: 'options-wrapper' });
+    this.configOptions.forEach((option) => {
+      const optionClass = new MultiselectOption(
+        option.value,
+        option.label,
+        this.multiple,
+        this.onSelectChange.bind(this),
+      );
+      if (this.selected.includes(option.value)) optionClass.select(false);
+      this.options.push(optionClass);
+      this.optionsWrapperRef.appendChild(optionClass.optionRef);
+    });
+    this.updateSelection();
+    this.selectWrapperRef.appendChild(this.optionsWrapperRef);
+    this.createHeader();
+    this.render();
+  }
 
-	private createHeader() {
-		if (!this.headerLabel) {
-			return;
-		}
+  private createListeners(): void {
+    this.selectWrapperRef.addEventListener('click', (event) => {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        this.selectWrapperRef.contains(target) &&
+        !this.optionsWrapperRef.contains(target)
+      ) {
+        this.handleDropdownToggle(!this.dropdownOpened);
+      }
+    });
+    this.origin.ownerDocument.addEventListener('click', this.documentClickDropdownToggle);
+  }
 
-		this.selectHeaderRef = document.createElement('div');
-		this.selectHeaderRef.classList.add('multiselect-header');
-		this.selectHeaderRef.innerText = this.headerLabel;
-	}
+  private handleDropdownToggle(opened: boolean, emitEvent = true): void {
+    this.dropdownOpened = opened;
+    this.selectWrapperRef.toggleClass('opened', opened);
 
-	private createSelect() {
-		this.selectWrapperRef = document.createElement('div');
-		this.selectWrapperRef.classList.add('multiselect-wrapper');
+    if (opened) {
+      if (this.onDropdownOpen && emitEvent) this.onDropdownOpen();
+    } else if (this.onDropdownClose && emitEvent) {
+      this.onDropdownClose(this.selected);
+    }
+  }
 
-		if (!this.multiple) {
-			this.selectWrapperRef.classList.add('single-select');
-		}
+  private onSelectChange(option: MultiselectOption): void {
+    if (!this.multiple) {
+      this.options.forEach((item) => item.deselect(false));
+      option.select(false);
+    }
 
-		this.selectedValueRef = document.createElement('div');
-		this.selectedValueRef.classList.add('selected-value');
-		this.selectWrapperRef.appendChild(this.selectedValueRef);
+    this.updateSelection();
+    this.onSelectionChange?.(this.selected);
 
-		this.optionsWrapperRef = document.createElement('div');
-		this.optionsWrapperRef.classList.add('options-wrapper');
+    if (!this.multiple) this.handleDropdownToggle(false);
+  }
 
-		this.configOptions.forEach(option => {
-			const optionClass = new MultiselectOption(
-				option.value,
-				option.label,
-				this.multiple,
-				this.onSelectChange.bind(this),
-			);
-			if (this.selected?.includes(option.value)) {
-				optionClass.select(false);
-			}
-			this.options.push(optionClass);
-			this.optionsWrapperRef.appendChild(optionClass.optionRef)
-		});
-		this.updateSelection();
-		this.selectWrapperRef.appendChild(this.optionsWrapperRef);
-		this.createHeader();
-		this.render();
-	}
+  private updateSelection(): void {
+    const selectedOptions = this.options.filter((option) => option.selected);
+    this.selected = selectedOptions.map((option) => option.value);
+    const labels = selectedOptions.map((option) => option.label);
 
-	private createListeners() {
-		this.selectWrapperRef.addEventListener('click', (e) => {
-			if (this.selectWrapperRef.contains((e.target as any)) && !this.optionsWrapperRef.contains((e.target as any))) {
-				this.handleDropdownToggle(!this.dropdownOpened);
-			}
-		});
+    let label = this.placeholder;
+    if (labels.length === 1) {
+      label = labels[0];
+    } else if (labels.length > 1) {
+      label = `${labels.length} ${this.transformPluralLabel(labels.length)}`;
+    }
+    this.selectedValueRef.setText(label);
+  }
 
-		document.addEventListener('click', this.documentClickDropdownToggle);
-	}
-
-	private handleDropdownToggle(opened: boolean, emitEvent: boolean = true) {
-		this.dropdownOpened = opened;
-
-		if (this.dropdownOpened) {
-			this.selectWrapperRef.classList.add('opened');
-
-			if (this.onDropdownOpen && emitEvent) {
-				this.onDropdownOpen()
-			}
-		} else {
-			this.selectWrapperRef.classList.remove('opened');
-
-			if (this.onDropdownClose && emitEvent) {
-				this.onDropdownClose(this.selected);
-			}
-		}
-	}
-
-	private onSelectChange(option: MultiselectOption) {
-		if (!this.multiple) {
-			this.options.forEach(x => x.deselect(false));
-			option.select(false);
-		}
-
-		this.updateSelection();
-
-		if (this.onSelectionChange) {
-			this.onSelectionChange(this.selected);
-		}
-
-		if (!this.multiple) {
-			this.handleDropdownToggle(false);
-		}
-	}
-
-	private updateSelection() {
-		this.selected = this.options.filter(x => !!x.selected).map(x => x.value);
-		const labelsArr: string[] = this.options.filter(x => !!x.selected).map(x => x.label);
-
-		let label = this.placeholder;
-		if (labelsArr.length === 1) {
-			label = labelsArr[0];
-		} else if (labelsArr.length > 1) {
-			label = `${labelsArr.length} ${this.transformPluralLabel(labelsArr.length)}`;
-		}
-
-		this.selectedValueRef.innerText = label;
-	}
-
-	private transformPluralLabel(value: number) {
-		if (value === 1) {
-			return this.singularNominativeLabel ?? 'items';
-		} else if (value % 10 >= 2 && value % 10 <= 4 && (value % 100 < 10 || value % 100 >= 20)) {
-			return this.pluralNominativeLabel ?? 'items';
-		} else {
-			return this.pluralGenitiveLabel ?? 'items';
-		}
-	}
+  private transformPluralLabel(value: number): string {
+    if (value === 1) return this.singularNominativeLabel ?? 'items';
+    if (value % 10 >= 2 && value % 10 <= 4 && (value % 100 < 10 || value % 100 >= 20)) {
+      return this.pluralNominativeLabel ?? 'items';
+    }
+    return this.pluralGenitiveLabel ?? 'items';
+  }
 }

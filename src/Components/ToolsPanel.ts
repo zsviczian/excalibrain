@@ -38,7 +38,7 @@ export class ToolsPanel {
     inputEl.oninput = () => {
       const page = this.plugin.pages.get(inputEl.value);
       if(page) {
-        this.plugin.scene?.renderGraphForPath(page.path);
+        void this.plugin.scene?.renderGraphForPath(page.path);
       }
     }
     inputEl.onblur = () => {
@@ -71,7 +71,7 @@ export class ToolsPanel {
         plugin: this.plugin,
         getVal: () => false,
         setVal: (val: boolean) => {
-          const elements = this.plugin.EA.getExcalidrawAPI().getSceneElements() as ExcalidrawElement[];
+          const elements = this.plugin.EA.getExcalidrawAPI?.()?.getSceneElements?.() ?? [];
           const appState = this.plugin.EA.getExcalidrawAPI().getAppState();
           const ea = this.plugin.EA; //window.ExcalidrawAutomate;
           ea.reset();
@@ -105,7 +105,7 @@ export class ToolsPanel {
       plugin: this.plugin,
       getVal: () => false,
       setVal: (val: boolean) => {
-        this.plugin.scene.renderGraphForPath(this.plugin.navigationHistory.getPrevious());
+        void this.plugin.scene.renderGraphForPath(this.plugin.navigationHistory.getPrevious());
         this.rerender();
         return false;
       },
@@ -128,7 +128,7 @@ export class ToolsPanel {
       plugin: this.plugin,
       getVal: () => false,
       setVal: (val: boolean) => {
-        this.plugin.scene.renderGraphForPath(this.plugin.navigationHistory.getNext());
+        void this.plugin.scene.renderGraphForPath(this.plugin.navigationHistory.getNext());
         this.rerender();
         return false;
       },
@@ -487,7 +487,9 @@ export class ToolsPanel {
     if(this.wrapperDiv) {
       try{
         this.contentEl?.removeChild(this.wrapperDiv);
-      } catch{}
+      } catch {
+        // The wrapper may already have been detached during view teardown.
+      }
       this.wrapperDiv = null;
     }
   }

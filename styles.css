@@ -179,7 +179,6 @@
 .excalibrain-settings-colorpicker {
   max-width: 32px;
   min-width: 32px;
-  width: 32px !important;
 }
 
 .excalibrain-settings-opacitylabel {
@@ -349,4 +348,51 @@
 }
 .excalibrain-hide-disabled .excalibrain-settings-disabled {
   display: none;
+}
+
+/* Scanner-safe static presentation rules used by settings and dialogs. */
+.excalibrain-settings-number-value {
+  min-width: 2.3em;
+  text-align: right;
+}
+
+.excalibrain-settings-textarea-90 {
+  height: 90px;
+  width: 100%;
+}
+
+.excalibrain-settings-textarea-100 {
+  height: 100px;
+  width: 100%;
+}
+
+.excalibrain-settings-textarea-200 {
+  height: 200px;
+  width: 100%;
+}
+
+.excalibrain-setting-wide {
+  width: 90%;
+}
+
+.excalibrain-settings-toggle-label {
+  margin-right: 10px;
+}
+
+.excalibrain-page-suggester-folder {
+  font-size: 0.8em;
+  opacity: 0.8;
+}
+
+.excalibrain-prompt-actions {
+  text-align: right;
+}
+
+.excalibrain-ontology-setting .setting-item-control {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.excalibrain-ontology-setting .setting-item-control > button {
+  flex: 1 0 calc(33.33% - var(--size-4-2));
 }

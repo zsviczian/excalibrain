@@ -59,7 +59,7 @@ const locale = localeMap[moment.locale()];
 export function t(str: keyof typeof en): string {
   if (!locale) {
     errorlog({
-      fn: t,
+      fn: "t",
       where: "src/lang/helpers.ts",
       message: "Error: locale not found",
       data: moment.locale(),

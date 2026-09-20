@@ -1,4 +1,4 @@
-import { ExcalidrawAutomate, ExcalidrawImageElement } from "src/utils/ExcalidrawAutomateCompatibility";
+import { ExcalidrawAutomate, ExcalidrawImageElement, applyEAStyle } from "src/utils/ExcalidrawAutomateCompatibility";
 import { ExcaliBrainSettings } from "src/Settings";
 import { Dimensions, Mutable, NodeStyle } from "src/Types";
 import { getTagStyle } from "src/utils/dataview";
@@ -36,7 +36,7 @@ export class Node {
     if(x.embeddedElementIds) {
       this.embeddedElementIds = x.embeddedElementIds;
     }
-    this.isEmbedded = Boolean(x.isEmbeded);
+    this.isEmbedded = x.isEmbeded ?? false;
     this.isCentral = x.isCentral;
     this.page = x.page;
     this.settings = x.page.plugin.settings;
@@ -106,7 +106,7 @@ export class Node {
         this.page.isURL ? this.page.url : undefined,
         this.page.isURL ? undefined : this.page.file      
       );
-      const embeddable = ea.getElement(this.id) as any;
+      const embeddable = ea.getElement(this.id);
       //overriding the default link with the full filepath
       embeddable.link = this.page.isURL ? this.page.url : `[[${this.page.file.path}]]`;
       embeddable.backgroundColor = this.style.backgroundColor;
@@ -122,7 +122,7 @@ export class Node {
         false,
         false,
       )
-      const imgEl = ea.getElement(this.id) as Mutable<ExcalidrawImageElement>;
+      const imgEl = ea.getElement<ExcalidrawImageElement>(this.id);
       //overriding the default link with the full filepath
       imgEl.link = `[[${this.page.file.path}]]`;
       let width  = imgEl.width;
@@ -153,7 +153,7 @@ export class Node {
         width,
         height
       );
-      const box = ea.getElement(id) as any;
+      const box = ea.getElement(id);
       box.backgroundColor = this.style.backgroundColor;
       box.strokeColor = this.style.borderColor;
       box.strokeStyle = this.style.strokeStyle;
@@ -182,7 +182,7 @@ export class Node {
         boxPadding: this.style.padding,
       }
     );
-    const box = ea.getElement(this.id) as any;
+    const box = ea.getElement(this.id);
     box.link = this.page.isURL ? this.page.url : `[[${this.page.file?.path??this.page.path}]]`;
     box.backgroundColor = this.style.backgroundColor;
     box.strokeColor = this.style.borderColor;
@@ -195,14 +195,14 @@ export class Node {
     const settings = this.settings;
     
     const gateDiameter = this.style.gateRadius*2;
-    ea.style.fontSize = this.style.fontSize;
-    ea.style.fontFamily = this.style.fontFamily;
-    ea.style.fillStyle = this.style.fillStyle;
-    ea.style.roughness = this.style.roughness;
-    ea.style.strokeSharpness = this.style.strokeShaprness;
-    ea.style.strokeWidth = this.style.strokeWidth;
-    ea.style.strokeColor = this.style.textColor;
-    ea.style.backgroundColor = "transparent";
+    applyEAStyle(ea, { fontSize: this.style.fontSize });
+    applyEAStyle(ea, { fontFamily: this.style.fontFamily });
+    applyEAStyle(ea, { fillStyle: this.style.fillStyle });
+    applyEAStyle(ea, { roughness: this.style.roughness });
+    applyEAStyle(ea, { strokeSharpness: this.style.strokeShaprness });
+    applyEAStyle(ea, { strokeWidth: this.style.strokeWidth });
+    applyEAStyle(ea, { strokeColor: this.style.textColor });
+    applyEAStyle(ea, { backgroundColor: "transparent" });
 
     //if this.embeddedElementIds.length>0 then we are retaining the embedded element (so it does not reload)
     //Scene.render: retainCentralNode
@@ -212,9 +212,9 @@ export class Node {
         : await this.renderEmbedded()
       : this.renderText();
 
-    ea.style.fillStyle = this.style.gateFillStyle;
-    ea.style.strokeColor = this.style.gateStrokeColor;
-    ea.style.strokeStyle = "solid";
+    applyEAStyle(ea, { fillStyle: this.style.gateFillStyle });
+    applyEAStyle(ea, { strokeColor: this.style.gateStrokeColor });
+    applyEAStyle(ea, { strokeStyle: "solid" });
 
     const previousFriendCount = this.friendGateOnLeft
       ? this.page.previousFriendCount()
@@ -224,9 +224,9 @@ export class Node {
       : this.page.previousFriendCount();
     
     const leftFriendCount = this.page.leftFriendCount() + previousFriendCount;
-    ea.style.backgroundColor =  leftFriendCount > 0 
-      ? this.style.gateBackgroundColor
-      : "transparent";
+    applyEAStyle(ea, {
+      backgroundColor: leftFriendCount > 0 ? this.style.gateBackgroundColor : "transparent",
+    });
     this.friendGateId = ea.addEllipse(
       this.friendGateOnLeft
         ? this.center.x - gateDiameter - this.style.padding - labelSize.width / 2
@@ -238,7 +238,7 @@ export class Node {
 
     const neighborCountLabelIds = [];
     if(settings.showNeighborCount && leftFriendCount>0) {
-      ea.style.fontSize = gateDiameter;
+      applyEAStyle(ea, { fontSize: gateDiameter });
       neighborCountLabelIds.push(ea.addText(
         this.friendGateOnLeft
         ? leftFriendCount>9
@@ -253,9 +253,9 @@ export class Node {
     }
 
     const rightFriendCount = this.page.rightFriendCount() + nextFriendCount;
-    ea.style.backgroundColor = rightFriendCount > 0 
-      ? this.style.gateBackgroundColor
-      : "transparent";
+    applyEAStyle(ea, {
+      backgroundColor: rightFriendCount > 0 ? this.style.gateBackgroundColor : "transparent",
+    });
     this.nextFriendGateId = ea.addEllipse(
       !this.friendGateOnLeft
         ? this.center.x - gateDiameter - this.style.padding - labelSize.width / 2
@@ -266,7 +266,7 @@ export class Node {
     );
 
     if(settings.showNeighborCount && rightFriendCount>0) {
-      ea.style.fontSize = gateDiameter;
+      applyEAStyle(ea, { fontSize: gateDiameter });
       neighborCountLabelIds.push(ea.addText(
         !this.friendGateOnLeft
         ? rightFriendCount>9
@@ -285,9 +285,9 @@ export class Node {
     }
 
     const parentCount = this.page.parentCount()
-    ea.style.backgroundColor =  parentCount > 0
-      ? this.style.gateBackgroundColor
-      : "transparent";
+    applyEAStyle(ea, {
+      backgroundColor: parentCount > 0 ? this.style.gateBackgroundColor : "transparent",
+    });
     this.parentGateId = ea.addEllipse(
       this.center.x - this.style.gateRadius - this.style.gateOffset,
       this.center.y - gateDiameter - this.style.padding - labelSize.height / 2,
@@ -295,7 +295,7 @@ export class Node {
       gateDiameter
     );
     if(settings.showNeighborCount && parentCount>0) {
-      ea.style.fontSize = gateDiameter;
+      applyEAStyle(ea, { fontSize: gateDiameter });
       neighborCountLabelIds.push(ea.addText(
         this.center.x + gateDiameter - this.style.gateOffset,
         this.center.y - gateDiameter - this.style.padding - labelSize.height / 2,
@@ -304,9 +304,9 @@ export class Node {
     }
 
     const childrenCount = this.page.childrenCount()
-    ea.style.backgroundColor =  childrenCount > 0
-      ? this.style.gateBackgroundColor
-      : "transparent";
+    applyEAStyle(ea, {
+      backgroundColor: childrenCount > 0 ? this.style.gateBackgroundColor : "transparent",
+    });
     this.childGateId = ea.addEllipse(
       this.center.x - this.style.gateRadius + this.style.gateOffset,
       this.center.y + this.style.padding + labelSize.height / 2,
@@ -314,7 +314,7 @@ export class Node {
       gateDiameter
     );
     if(settings.showNeighborCount && childrenCount>0) {
-      ea.style.fontSize = gateDiameter;
+      applyEAStyle(ea, { fontSize: gateDiameter });
       neighborCountLabelIds.push(ea.addText(
         this.center.x + gateDiameter + this.style.gateOffset,
         this.center.y + this.style.padding + labelSize.height / 2,

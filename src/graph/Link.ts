@@ -1,4 +1,4 @@
-import { ExcalidrawAutomate } from "src/utils/ExcalidrawAutomateCompatibility";
+import { ExcalidrawAutomate, applyEAStyle } from "src/utils/ExcalidrawAutomateCompatibility";
 import ExcaliBrain from "src/excalibrain-main";
 import { ExcaliBrainSettings } from "src/Settings";
 import { LinkStyle, RelationType, Role } from "src/Types";
@@ -58,11 +58,13 @@ export class Link {
   render(hide: boolean) {
     const ea = this.ea;
     const style = this.style;
-    ea.style.strokeStyle = style.strokeStyle;
-    ea.style.roughness = style.roughness;
-    ea.style.strokeColor = style.strokeColor;
-    ea.style.strokeWidth = style.strokeWidth;
-    ea.style.opacity = hide ? 10 : 100;
+    applyEAStyle(ea, {
+      strokeStyle: style.strokeStyle,
+      roughness: style.roughness,
+      strokeColor: style.strokeColor,
+      strokeWidth: style.strokeWidth,
+      opacity: hide ? 10 : 100,
+    });
     let gateAId: string;
     let gateBId: string;
     switch(this.nodeBRole) {
@@ -94,9 +96,11 @@ export class Link {
       }
     )
     if(style.showLabel && this.hierarchyDefinition) {
-      ea.style.fontSize = style.fontSize;
-      ea.style.fontFamily = style.fontFamily;
-      ea.style.strokeColor = style.textColor;
+      applyEAStyle(ea, {
+        fontSize: style.fontSize,
+        fontFamily: style.fontFamily,
+        strokeColor: style.textColor,
+      });
       ea.addLabelToLine(id,this.hierarchyDefinition);
     }   
   }

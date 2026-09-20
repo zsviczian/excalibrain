@@ -171,49 +171,41 @@ export class AddToOntologyModal extends Modal {
     contentEl.createEl("p", {text: t("ADD_TO_ONTOLOGY_MODAL_DESC")});
     const setting = new Setting(contentEl)
       .addButton((b) => {
-        b.buttonEl.style.flex = "1 0 calc(33.33% - var(--size-4-2))";
         b.setButtonText(t("HIDDEN_NAME"))
         if(this.ontology === Ontology.Hidden) b.setCta();
-        b.onClick(()=>this.setOntology(Ontology.Hidden))
+        b.onClick(() => { void this.setOntology(Ontology.Hidden); })
       })
       .addButton((b) => {
-        b.buttonEl.style.flex = "1 0 calc(33.33% - var(--size-4-2))";
         b.setButtonText(t("PARENTS_NAME"))
         if(this.ontology === Ontology.Parent) b.setCta();
-        b.onClick(()=>this.setOntology(Ontology.Parent))
+        b.onClick(() => { void this.setOntology(Ontology.Parent); })
       })
       .addButton((b) => {
-        b.buttonEl.style.flex = "1 0 calc(33.33% - var(--size-4-2))";
         b.setButtonText(t("CHILDREN_NAME"))
         if(this.ontology === Ontology.Child) b.setCta();
-        b.onClick(()=>this.setOntology(Ontology.Child))
+        b.onClick(() => { void this.setOntology(Ontology.Child); })
       })
       .addButton((b) => {
-        b.buttonEl.style.flex = "1 0 calc(33.33% - var(--size-4-2))";
         b.setButtonText(t("LEFT_FRIENDS_NAME"))
         if(this.ontology === Ontology.LeftFriend) b.setCta();
-        b.onClick(()=>this.setOntology(Ontology.LeftFriend))
+        b.onClick(() => { void this.setOntology(Ontology.LeftFriend); })
       })
       .addButton((b) => {
-        b.buttonEl.style.flex = "1 0 calc(33.33% - var(--size-4-2))";
         b.setButtonText(t("RIGHT_FRIENDS_NAME"))
         if(this.ontology === Ontology.RightFriend) b.setCta();
-        b.onClick(()=>this.setOntology(Ontology.RightFriend))
+        b.onClick(() => { void this.setOntology(Ontology.RightFriend); })
       })
       .addButton((b) => {
-        b.buttonEl.style.flex = "1 0 calc(33.33% - var(--size-4-2))";
         b.setButtonText(t("PREVIOUS_NAME"))
         if(this.ontology === Ontology.Previous) b.setCta();
-        b.onClick(()=>this.setOntology(Ontology.Previous))
+        b.onClick(() => { void this.setOntology(Ontology.Previous); })
       })
       .addButton((b) => {
-        b.buttonEl.style.flex = "1 0 calc(33.33% - var(--size-4-2))";
         b.setButtonText(t("NEXT_NAME"))
         if(this.ontology === Ontology.Next) b.setCta();
-        b.onClick(()=>this.setOntology(Ontology.Next))
+        b.onClick(() => { void this.setOntology(Ontology.Next); })
       });
-    setting.controlEl.style.flexWrap = "wrap";
-    setting.controlEl.style.justifyContent = "space-between";
+    setting.settingEl.addClass("excalibrain-ontology-setting");
     super.open();
   }
 

@@ -1,34 +1,29 @@
-import type { WorkspaceLeaf } from "obsidian";
+import type { TFile, WorkspaceLeaf } from "obsidian";
 
 /**
  * Minimal structural types for the public ExcalidrawAutomate surface consumed
  * by ExcaliBrain. Keeping these local avoids bundling/pinning an old copy of
  * the entire Obsidian Excalidraw plugin just to obtain TypeScript declarations.
  */
-export type FillStyle = "hachure" | "cross-hatch" | "solid" | "zigzag" | string;
-export type StrokeStyle = "solid" | "dashed" | "dotted" | string;
+export type FillStyle = string;
+export type StrokeStyle = string;
 export type StrokeRoundness = "round" | "sharp" | number | null;
-export type Arrowhead =
-  | "arrow"
-  | "bar"
-  | "circle"
-  | "circle_outline"
-  | "triangle"
-  | "triangle_outline"
-  | "diamond"
-  | "diamond_outline"
-  | "dot"
-  | "none"
-  | null
-  | string;
+export type Arrowhead = string | null;
 
 export type Literal = Record<string, unknown> & {
   file?: {
     path?: string;
     name?: string;
+    tags?: { values?: string[] };
+    etags?: { values?: string[] };
     [key: string]: unknown;
   };
 };
+
+export interface BoundElementLike {
+  id: string;
+  type?: string;
+}
 
 export interface ExcalidrawElement {
   id: string;
@@ -38,7 +33,13 @@ export interface ExcalidrawElement {
   y?: number;
   width?: number;
   height?: number;
-  [key: string]: any;
+  backgroundColor?: string;
+  strokeColor?: string;
+  strokeStyle?: string;
+  fillStyle?: string;
+  boundElements?: BoundElementLike[] | null;
+  link?: string;
+  [key: string]: unknown;
 }
 
 export interface ExcalidrawImageElement extends ExcalidrawElement {
@@ -49,78 +50,141 @@ export interface ExcalidrawImageElement extends ExcalidrawElement {
   y: number;
 }
 
+export interface ExcalidrawAppStateLike {
+  viewModeEnabled?: boolean;
+  viewBackgroundColor?: string;
+  [key: string]: unknown;
+}
+
+export interface ExcalidrawSceneUpdate {
+  elements?: ExcalidrawElement[];
+  appState?: Partial<ExcalidrawAppStateLike>;
+  files?: Record<string, unknown>;
+  commitToHistory?: boolean;
+  storeAction?: string;
+  captureUpdate?: "IMMEDIATELY" | "NEVER" | "EVENTUALLY";
+  [key: string]: unknown;
+}
+
+export interface ExcalidrawImperativeAPI {
+  getAppState(): ExcalidrawAppStateLike;
+  getSceneElements?(): ExcalidrawElement[];
+  updateScene(scene: ExcalidrawSceneUpdate): void;
+  setMobileModeAllowed?(allowed: boolean): void;
+  zoomToFit?(
+    elements?: readonly ExcalidrawElement[] | null,
+    maxZoom?: number,
+    viewportZoomFactor?: number,
+  ): void;
+}
+
 export interface ExcalidrawViewLike {
   leaf?: WorkspaceLeaf;
-  file?: { path?: string };
+  file?: TFile | { path?: string } | null;
   contentEl?: HTMLElement;
+  containerEl?: HTMLElement;
   ownerWindow?: Window;
   excalidrawAPI?: ExcalidrawImperativeAPI;
   _loaded?: boolean;
   isLoaded?: boolean;
   linksAlwaysOpenInANewPane?: boolean;
   allowFrameButtonsInViewMode?: boolean;
-  clearDirty?: () => void;
-  setHookServer?: (ea?: ExcalidrawAutomate) => void;
-  [key: string]: any;
+  clearDirty?(): void;
+  setHookServer?(ea?: ExcalidrawAutomate): void;
 }
 
-export interface ExcalidrawImperativeAPI {
-  getAppState: () => any;
-  getSceneElements?: () => ExcalidrawElement[];
-  updateScene: (scene: any) => void;
-  setMobileModeAllowed?: (allowed: boolean) => void;
-  zoomToFit?: (...args: any[]) => void;
-  [key: string]: any;
+export interface ExcalidrawStyleLike {
+  strokeColor?: string;
+  backgroundColor?: string;
+  fillStyle?: string;
+  strokeStyle?: string;
+  strokeWidth?: number;
+  strokeSharpness?: StrokeRoundness;
+  roughness?: number;
+  opacity?: number;
+  fontFamily?: number;
+  fontSize?: number;
+  verticalAlign?: string;
+}
+
+export interface ExcalidrawCanvasLike {
+  viewBackgroundColor?: string;
+  theme?: string;
 }
 
 export interface ExcalidrawAutomate {
   targetView?: ExcalidrawViewLike | null;
-  DEVICE?: { isMobile?: boolean; isDesktop?: boolean; [key: string]: any };
-  style?: any;
-  canvas?: any;
-  elementsDict?: Record<string, ExcalidrawElement>;
+  DEVICE?: { isMobile?: boolean; isDesktop?: boolean };
+  style: ExcalidrawStyleLike;
+  canvas: ExcalidrawCanvasLike;
+  elementsDict: Record<string, ExcalidrawElement>;
+  width?: number;
+  height?: number;
   onViewModeChangeHook?: ((isViewModeEnabled: boolean) => void) | undefined;
-  onLinkHoverHook?: ((element: any, linkText: string) => boolean) | undefined;
-  onLinkClickHook?: ((element: any, linkText: string, event: MouseEvent) => boolean) | undefined;
+  onLinkHoverHook?: ((element: ExcalidrawElement, linkText: string) => boolean) | undefined;
+  onLinkClickHook?: ((element: ExcalidrawElement, linkText: string, event: MouseEvent) => boolean) | undefined;
   onViewUnloadHook?: ((view: ExcalidrawViewLike) => void) | undefined;
-  getAPI?: (view?: any) => ExcalidrawAutomate | null;
-  setView?: (view: any) => void;
-  getExcalidrawAPI?: () => ExcalidrawImperativeAPI;
-  addElementsToView?: (
+  getAPI?(view?: unknown): ExcalidrawAutomate | null;
+  setView?(view: unknown): void;
+  getExcalidrawAPI?(): ExcalidrawImperativeAPI;
+  addElementsToView?(
     repositionToCursor?: boolean,
     save?: boolean,
     newElementsOnTop?: boolean,
     shouldRestoreElements?: boolean,
     captureUpdate?: "IMMEDIATELY" | "NEVER" | "EVENTUALLY",
-  ) => Promise<boolean>;
-  viewUpdateScene?: (scene: any, restore?: boolean) => void;
-  setViewModeEnabled?: (enabled: boolean) => void;
-  registerThisAsViewEA?: () => boolean;
-  deregisterThisAsViewEA?: () => boolean;
-  clearViewDirty?: () => void;
-  destroy?: () => void;
-  verifyMinimumPluginVersion?: (version: string) => boolean;
-  isExcalidrawView?: (view: any) => boolean;
-  [key: string]: any;
+  ): Promise<boolean>;
+  viewUpdateScene?(scene: ExcalidrawSceneUpdate, restore?: boolean): void;
+  setViewModeEnabled?(enabled: boolean): void;
+  registerThisAsViewEA?(): boolean;
+  deregisterThisAsViewEA?(): boolean;
+  clearViewDirty?(): void;
+  destroy?(): void;
+  verifyMinimumPluginVersion?(version: string): boolean;
+  isExcalidrawView?(view: unknown): boolean;
+  isExcalidrawFile(file: TFile): boolean;
+  getLeaf(leaf?: WorkspaceLeaf | null, openState?: string): WorkspaceLeaf;
+  openFileInNewOrAdjacentLeaf(file: TFile, openState?: { active?: boolean }): WorkspaceLeaf;
+  getActiveEmbeddableViewOrEditor?(view: unknown): unknown;
+  clear(): void;
+  reset(): void;
+  copyViewElementsToEAforEditing(elements: ExcalidrawElement[]): void;
+  getViewElements(): ExcalidrawElement[];
+  getElements(): ExcalidrawElement[];
+  getElement<T extends ExcalidrawElement = ExcalidrawElement>(id: string): T;
+  measureText(text: string): { width: number; height: number };
+  addText(...args: unknown[]): string;
+  addRect(...args: unknown[]): string;
+  addEllipse(...args: unknown[]): string;
+  addEmbeddable(...args: unknown[]): string;
+  addImage(...args: unknown[]): Promise<string>;
+  connectObjects(...args: unknown[]): string;
+  addLabelToLine(...args: unknown[]): void;
+  addToGroup(...args: unknown[]): void;
+  create(options: Record<string, unknown>): unknown;
+  createSVG(...args: unknown[]): Promise<SVGSVGElement>;
 }
 
 declare global {
   interface Window {
     ExcalidrawAutomate?: ExcalidrawAutomate;
-    DataviewAPI?: any;
+    DataviewAPI?: unknown;
   }
 }
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => window.setTimeout(resolve, ms));
 
-/**
- * Obtain an EA instance from the installed Excalidraw plugin without importing
- * or bundling the Excalidraw plugin package. Modern Excalidraw exposes getAPI()
- * on window.ExcalidrawAutomate. This API is present in the minimum supported
- * Excalidraw release (2.27.3), so no global-instance mutation fallback is used.
- */
-export function getEA(view?: any): ExcalidrawAutomate | null {
+
+export function applyEAStyle(
+  ea: ExcalidrawAutomate,
+  style: Partial<ExcalidrawStyleLike>,
+): void {
+  Object.assign(ea.style, style);
+}
+
+/** Obtain a disposable EA instance from the installed Excalidraw plugin. */
+export function getEA(view?: unknown): ExcalidrawAutomate | null {
   const root = window.ExcalidrawAutomate;
   if (!root || typeof root.getAPI !== "function") return null;
   try {
@@ -140,11 +204,12 @@ export async function waitForExcalidrawViewReady(
     const view = ea.targetView;
     const api = view?.excalidrawAPI ?? ea.getExcalidrawAPI?.();
     const loaded =
-      Boolean(view) &&
-      Boolean(api) &&
-      view?._loaded !== false &&
-      (typeof view?.isLoaded !== "boolean" || view.isLoaded) &&
-      Boolean(view?.contentEl?.querySelector(".excalidraw"));
+      typeof view !== "undefined" && view !== null &&
+      typeof api !== "undefined" && api !== null &&
+      view._loaded !== false &&
+      (typeof view.isLoaded !== "boolean" || view.isLoaded) &&
+      typeof view.contentEl !== "undefined" &&
+      view.contentEl.querySelector(".excalidraw") !== null;
 
     if (loaded) {
       await new Promise<void>((resolve) => {
@@ -162,11 +227,7 @@ export async function waitForExcalidrawViewReady(
   return false;
 }
 
-/**
- * Clear dirty state created by a generated ExcaliBrain scene without saving it.
- * Prefer the public EA bridge when available; retain one isolated legacy
- * fallback for current Excalidraw releases that do not expose it yet.
- */
+/** Clear dirty state created by a generated ExcaliBrain scene without saving it. */
 export function clearTransientViewDirty(ea: ExcalidrawAutomate): void {
   if (typeof ea.clearViewDirty === "function") {
     ea.clearViewDirty();
@@ -181,9 +242,7 @@ function settleTransientViewDirty(ea: ExcalidrawAutomate): void {
   ownerWindow.setTimeout(() => clearTransientViewDirty(ea), 0);
   ownerWindow.setTimeout(() => clearTransientViewDirty(ea), 100);
   ownerWindow.setTimeout(() => clearTransientViewDirty(ea), 300);
-  if (typeof ownerWindow.requestAnimationFrame === "function") {
-    ownerWindow.requestAnimationFrame(() => clearTransientViewDirty(ea));
-  }
+  ownerWindow.requestAnimationFrame?.(() => clearTransientViewDirty(ea));
 }
 
 /** Commit generated elements to the live view without saving/history capture. */
@@ -199,21 +258,18 @@ export async function addElementsToViewTransient(
 /** Apply generated app-state/scene changes without undo-history capture. */
 export function updateViewSceneTransient(
   ea: ExcalidrawAutomate,
-  scene: Record<string, any>,
+  scene: ExcalidrawSceneUpdate,
 ): void {
+  const update: ExcalidrawSceneUpdate = {
+    ...scene,
+    commitToHistory: false,
+    storeAction: "none",
+    captureUpdate: "NEVER",
+  };
   if (typeof ea.viewUpdateScene === "function") {
-    ea.viewUpdateScene({
-      ...scene,
-      commitToHistory: false,
-      storeAction: "none",
-      captureUpdate: "NEVER",
-    });
+    ea.viewUpdateScene(update);
   } else {
-    ea.getExcalidrawAPI?.()?.updateScene({
-      ...scene,
-      commitToHistory: false,
-      captureUpdate: "NEVER",
-    });
+    ea.getExcalidrawAPI?.()?.updateScene(update);
   }
   settleTransientViewDirty(ea);
 }
@@ -240,11 +296,7 @@ export function temporarilyAllowSamePaneLinkOpen(ea: ExcalidrawAutomate): void {
   }, 300);
 }
 
-/**
- * Release a view-local hook server. Current Excalidraw builds contain a
- * deregisterThisAsViewEA implementation that re-registers the same EA; the
- * setHookServer() fallback is therefore intentionally isolated here.
- */
+/** Release a view-local hook server. */
 export function releaseViewEA(ea: ExcalidrawAutomate): void {
   ea.onViewModeChangeHook = undefined;
   ea.onLinkHoverHook = undefined;
@@ -254,16 +306,15 @@ export function releaseViewEA(ea: ExcalidrawAutomate): void {
   try {
     ea.deregisterThisAsViewEA?.();
   } catch {
-    // The view may already be tearing down.
+    // View teardown may already have released the hook server.
   }
 
   try {
     ea.targetView?.setHookServer?.();
   } catch {
-    // Older versions may not expose setHookServer.
+    // Older Excalidraw versions may not expose setHookServer.
   }
 }
-
 
 /** Destroy only disposable view-local EA instances, never the plugin-global EA. */
 export function destroyViewEA(ea: ExcalidrawAutomate): void {

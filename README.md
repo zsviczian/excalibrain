@@ -1,3 +1,5 @@
+# ExcaliBrain
+
 ![image](https://user-images.githubusercontent.com/14358394/169708284-9b81233c-a672-4346-ab01-2ea6241c8a6f.png)
 
 ExcaliBrain is inspired by [TheBrain](https://www.thebrain.com) and [Breadcrumbs](https://github.com/SkepticMystic/breadcrumbs). It is an interactive, structured mind-map of your Obsidian Vault generated based on the folders and files in your Vault by interpreting the links, dataview fields, tags and YAML front matter in your markdown files.

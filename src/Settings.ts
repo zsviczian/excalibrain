@@ -11,13 +11,13 @@ import {
 import { Page } from "./graph/Page";
 import { t } from "./lang/helpers";
 import ExcaliBrain from "./excalibrain-main";
-import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData, LinkDirection, Role, Arrowhead } from "./Types";
+import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData, LinkDirection, Role } from "./Types";
 import { WarningPrompt } from "./utils/Prompts";
 import { Node as GraphNode } from "./graph/Node";
 import { svgToBase64 } from "./utils/utils";
 import { Link } from "./graph/Link";
 import { DEFAULT_HIERARCHY_DEFINITION, DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, PREDEFINED_LINK_STYLES } from "./constants/constants";
-import { ExcalidrawAutomate, FillStyle, StrokeRoundness, StrokeStyle, getEA } from "./utils/ExcalidrawAutomateCompatibility";
+import { ExcalidrawAutomate, getEA } from "./utils/ExcalidrawAutomateCompatibility";
 
 export interface ExcaliBrainSettings {
   compactView: boolean;
@@ -206,15 +206,15 @@ const fragWithHTML = (markup: string): DocumentFragment => createFragment((frag)
 
   const createFormattingElement = (tag: string): HTMLElement | null => {
     switch(tag) {
-      case "b": return doc.createElement("b");
-      case "i": return doc.createElement("i");
-      case "u": return doc.createElement("u");
-      case "code": return doc.createElement("code");
-      case "kbd": return doc.createElement("kbd");
-      case "mark": return doc.createElement("mark");
-      case "ul": return doc.createElement("ul");
-      case "ol": return doc.createElement("ol");
-      case "li": return doc.createElement("li");
+      case "b": return createEl("b");
+      case "i": return createEl("i");
+      case "u": return createEl("u");
+      case "code": return createEl("code");
+      case "kbd": return createEl("kbd");
+      case "mark": return createEl("mark");
+      case "ul": return createEl("ul");
+      case "ol": return createEl("ol");
+      case "li": return createEl("li");
       default: return null;
     }
   };
@@ -234,7 +234,7 @@ const fragWithHTML = (markup: string): DocumentFragment => createFragment((frag)
     const closing = match[1] === "/";
     const tag = match[2].toLowerCase();
     if(tag === "br") {
-      if(!closing) parent.appendChild(doc.createElement("br"));
+      if(!closing) parent.appendChild(createEl("br"));
       return;
     }
     if(closing) {
@@ -292,7 +292,7 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       ...this.demoNodeStyle.getInheritedStyle(),
       ...this.demoNodeStyle.style
     }
-    this.demoNode.render();
+    await this.demoNode.render();
     const svg = await this.ea.createSVG(null,true,{withBackground:true, withTheme:false},null,"",40);
     svg.removeAttribute("width");
     svg.removeAttribute("height");
@@ -381,13 +381,13 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
       ...this.plugin.settings.baseNodeStyle,
       ...this.plugin.settings.centralNodeStyle,
     }
-    demoNode.render();
+    await demoNode.render();
 
     demoNode2.style = {
       ...this.demoNodeStyle.getInheritedStyle(),
       ...this.demoNodeStyle.style
     }
-    demoNode2.render();
+    await demoNode2.render();
 
     demoLink.style = {
       ...this.demoLinkStyle.getInheritedStyle(),
@@ -441,7 +441,7 @@ private normalizeSettings() {
         this.updateTimer = false;
       }
         
-      this.plugin.scene.reRender();
+      void this.plugin.scene.reRender();
     }
   }
 
@@ -508,10 +508,10 @@ private normalizeSettings() {
     this.containerEl.addEventListener("focusout", this.settingsFocusoutHandler);
   }
 
-  async hide() {
+  hide(): void {
     this.detachSettingsFocusoutHandler();
     if (this.dirty) {
-      await this.executeSaveAndApply();
+      void this.executeSaveAndApply();
     }
   }
 
@@ -546,12 +546,12 @@ private normalizeSettings() {
         setting.settingEl.removeClass(HIDE_DISABLED_CLASS);
       }      
       picker.disabled = isDisabled;
-      picker.style.opacity = isDisabled ? "0.3" : "1";
+      picker.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
       sliderComponent.setDisabled(isDisabled);
-      sliderComponent.sliderEl.style.opacity = isDisabled ? "0.3" : "1";
-      colorLabel.style.opacity = isDisabled ? "0.3" : "1";
-      opacityLabel.style.opacity = isDisabled ? "0.3" : "1";
-      displayText.style.opacity = isDisabled ? "0.3" : "1";
+      sliderComponent.sliderEl.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
+      colorLabel.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
+      opacityLabel.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
+      displayText.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
     }
     if(allowOverride) {
       setting.addToggle(toggle => {
@@ -573,7 +573,7 @@ private normalizeSettings() {
       })
     }
     setting.settingEl.removeClass("mod-toggle");
-    colorLabel = createEl("span",{
+    colorLabel = createSpan({
       text: "color:",
       cls: "excalibrain-settings-colorlabel"
     });
@@ -592,7 +592,7 @@ private normalizeSettings() {
     });
     setting.controlEl.appendChild(picker);
 
-    opacityLabel = createEl("span",{
+    opacityLabel = createSpan({
       text: "opacity:",
       cls: "excalibrain-settings-opacitylabel"
     });
@@ -606,7 +606,7 @@ private normalizeSettings() {
         .onChange((value)=>{
           setValue(picker.value + getAlphaHex(value));
           displayText.innerText = ` ${value.toString()}`;
-          picker.style.opacity = value.toString();
+          picker.setCssProps({"opacity": value.toString()});
           this.dirty = true;
         })
     })
@@ -616,7 +616,7 @@ private normalizeSettings() {
       cls: "excalibrain-settings-sliderlabel"
     });
     setting.controlEl.appendChild(displayText);
-    picker.style.opacity = sliderComponent.getValue().toString();
+    picker.setCssProps({"opacity": sliderComponent.getValue().toString()});
 
     setDisabled(allowOverride && !toggleComponent.getValue());
     
@@ -646,8 +646,8 @@ private normalizeSettings() {
         setting.settingEl.removeClass(HIDE_DISABLED_CLASS);
       }
       sliderComponent.setDisabled(isDisabled);
-      sliderComponent.sliderEl.style.opacity = isDisabled ? "0.3" : "1";
-      displayText.style.opacity = isDisabled ? "0.3" : "1";
+      sliderComponent.sliderEl.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
+      displayText.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
     }
 
     if(allowOverride) {
@@ -675,7 +675,7 @@ private normalizeSettings() {
       slider
         .setLimits(limits.min,limits.max,limits.step)
         .setValue(getValue()??defaultValue)
-        .onChange(async (value) => {
+        .onChange((value) => {
           displayText.innerText = ` ${value.toString()}`;
           setValue(value);
           this.dirty = true;
@@ -686,10 +686,8 @@ private normalizeSettings() {
       setting.setDesc(fragWithHTML(description));
     }
 
-    setting.settingEl.createDiv("", (el) => {
+    setting.settingEl.createDiv({ cls: "excalibrain-settings-number-value" }, (el) => {
       displayText = el;
-      el.style.minWidth = "2.3em";
-      el.style.textAlign = "right";
       el.innerText = ` ${sliderComponent.getValue().toString()}`;
     });
 
@@ -719,7 +717,7 @@ private normalizeSettings() {
         setting.settingEl.removeClass(HIDE_DISABLED_CLASS);
       }
       valueComponent.setDisabled(isDisabled);
-      valueComponent.toggleEl.style.opacity = isDisabled ? "0.3" : "1";
+      valueComponent.toggleEl.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
     }
 
     if(allowOverride) {
@@ -746,7 +744,7 @@ private normalizeSettings() {
       valueComponent = toggle;
       toggle
         .setValue(getValue()??defaultValue)
-        .onChange(async (value) => {
+        .onChange((value) => {
           setValue(value);
           this.dirty = true;
         })
@@ -782,7 +780,7 @@ private normalizeSettings() {
         setting.settingEl.removeClass(HIDE_DISABLED_CLASS);
       }
       dropdownComponent.setDisabled(isDisabled);
-      dropdownComponent.selectEl.style.opacity = isDisabled ? "0.3" : "1";
+      dropdownComponent.selectEl.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
     }
 
     if(allowOverride) {
@@ -843,7 +841,7 @@ private normalizeSettings() {
         prefixSetting.settingEl.removeClass(HIDE_DISABLED_CLASS);
       }
       textComponent.setDisabled(isDisabled);
-      textComponent.inputEl.style.opacity = isDisabled ? "0.3": "1"; 
+      textComponent.inputEl.setCssProps({"opacity": isDisabled ? "0.3" : "1"}); 
     }
     if(allowOverride) {
       prefixSetting.addToggle(toggle => {
@@ -857,7 +855,7 @@ private normalizeSettings() {
             if(!value) {
               setDisabled(true);
               setting.prefix = undefined;
-              this.updateNodeDemoImg();
+              void this.updateNodeDemoImg();
               return;
             }
             setDisabled(false);
@@ -871,7 +869,7 @@ private normalizeSettings() {
           .setValue(setting.prefix??inheritedStyle.prefix)
           .onChange(value => {
             setting.prefix = value;
-            this.updateNodeDemoImg();
+            void this.updateNodeDemoImg();
             this.dirty = true;
           })
       })  
@@ -884,11 +882,11 @@ private normalizeSettings() {
       ()=>setting.backgroundColor,
       val=>{ 
         setting.backgroundColor=val;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=>{
         delete setting.backgroundColor;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.backgroundColor,
@@ -901,12 +899,12 @@ private normalizeSettings() {
       {"hachure": "Hachure", "cross-hatch": "Cross-hatch", "solid": "Solid"},
       () => setting.fillStyle?.toString(),
       (val) => {
-        setting.fillStyle = val as FillStyle;
-        this.updateNodeDemoImg();
+        setting.fillStyle = val;
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.fillStyle;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.fillStyle.toString(),
@@ -919,11 +917,11 @@ private normalizeSettings() {
       ()=>setting.textColor,
       val=> {
         setting.textColor=val;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.textColor;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.textColor,
@@ -936,11 +934,11 @@ private normalizeSettings() {
       ()=>setting.borderColor,
       val=> {
         setting.borderColor=val;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.borderColor;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.borderColor,
@@ -954,11 +952,11 @@ private normalizeSettings() {
       () => setting.fontSize,
       (val) => {
         setting.fontSize = val;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.fontSize;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.fontSize,
@@ -972,11 +970,11 @@ private normalizeSettings() {
       () => setting.fontFamily?.toString(),
       (val) => {
         setting.fontFamily =  parseInt(val);
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.fontFamily;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.fontFamily.toString(),
@@ -990,11 +988,11 @@ private normalizeSettings() {
       () => setting.maxLabelLength,
       (val) => {
         setting.maxLabelLength = val;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.maxLabelLength;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.maxLabelLength,
@@ -1008,11 +1006,11 @@ private normalizeSettings() {
       () => setting.roughness?.toString(),
       (val) => {
         setting.roughness =  parseInt(val);
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.roughness;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.roughness.toString(),
@@ -1025,12 +1023,14 @@ private normalizeSettings() {
       {"sharp":"Sharp","round":"Round"},
       () => setting.strokeShaprness,
       (val) => {
-        setting.strokeShaprness = val as StrokeRoundness;
-        this.updateNodeDemoImg();
+        if(val === "sharp" || val === "round") {
+          setting.strokeShaprness = val;
+          void this.updateNodeDemoImg();
+        }
       },
       ()=> {
         delete setting.strokeShaprness;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.strokeShaprness,
@@ -1044,11 +1044,11 @@ private normalizeSettings() {
       () => setting.strokeWidth,
       (val) => {
         setting.strokeWidth = val;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.strokeWidth;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.strokeWidth,
@@ -1061,12 +1061,12 @@ private normalizeSettings() {
       {"solid":"Solid","dashed":"Dashed","dotted":"Dotted"},
       () => setting.strokeStyle,
       (val) => {
-        setting.strokeStyle = val as StrokeStyle;
-        this.updateNodeDemoImg();
+        setting.strokeStyle = val;
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.strokeStyle;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.strokeStyle,
@@ -1080,11 +1080,11 @@ private normalizeSettings() {
       () => setting.padding,
       (val) => {
         setting.padding = val;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.padding;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.padding,
@@ -1098,11 +1098,11 @@ private normalizeSettings() {
       () => setting.gateRadius,
       (val) => {
         setting.gateRadius = val;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.gateRadius;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.gateRadius,
@@ -1116,11 +1116,11 @@ private normalizeSettings() {
       () => setting.gateOffset,
       (val) => {
         setting.gateOffset = val;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.gateOffset;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.gateOffset,
@@ -1133,11 +1133,11 @@ private normalizeSettings() {
       ()=>setting.gateStrokeColor,
       val=> {
         setting.gateStrokeColor=val;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.gateStrokeColor;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.gateStrokeColor,
@@ -1150,11 +1150,11 @@ private normalizeSettings() {
       ()=>setting.gateBackgroundColor,
       val=> {
         setting.gateBackgroundColor=val;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.gateBackgroundColor;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.gateBackgroundColor,
@@ -1167,12 +1167,12 @@ private normalizeSettings() {
       {"hachure": "Hachure", "cross-hatch": "Cross-hatch", "solid": "Solid"},
       () => setting.gateFillStyle?.toString(),
       (val) => {
-        setting.gateFillStyle = val as FillStyle;
-        this.updateNodeDemoImg();
+        setting.gateFillStyle = val;
+        void this.updateNodeDemoImg();
       },
       ()=> {
         delete setting.gateFillStyle;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       allowOverride,
       inheritedStyle.gateFillStyle.toString(),
@@ -1192,11 +1192,11 @@ private normalizeSettings() {
       ()=>setting.strokeColor,
       val=>{ 
         setting.strokeColor=val;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       ()=>{
         delete setting.strokeColor;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       allowOverride,
       inheritedStyle.strokeColor,
@@ -1210,11 +1210,11 @@ private normalizeSettings() {
       () => setting.strokeWidth,
       (val) => {
         setting.strokeWidth = val;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       ()=> {
         delete setting.strokeWidth;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       allowOverride,
       inheritedStyle.strokeWidth,
@@ -1228,11 +1228,11 @@ private normalizeSettings() {
       () => setting.roughness?.toString(),
       (val) => {
         setting.roughness =  parseInt(val);
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       ()=> {
         delete setting.roughness;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       allowOverride,
       inheritedStyle.roughness.toString(),
@@ -1245,12 +1245,12 @@ private normalizeSettings() {
       {"solid":"Solid","dashed":"Dashed","dotted":"Dotted"},
       () => setting.strokeStyle,
       (val) => {
-        setting.strokeStyle = val as StrokeStyle;
-        this.updateLinkDemoImg();
+        setting.strokeStyle = val;
+        void this.updateLinkDemoImg();
       },
       ()=> {
         delete setting.strokeStyle;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       allowOverride,
       inheritedStyle.strokeStyle,
@@ -1263,12 +1263,12 @@ private normalizeSettings() {
       {"none":"None","arrow":"Arrow","bar":"Bar","dot":"Dot","triangle":"Triangle"},
       () => setting.startArrowHead,
       (val) => {
-        setting.startArrowHead = (val === "") ? null : val as Arrowhead;
-        this.updateLinkDemoImg();
+        setting.startArrowHead = (val === "") ? null : val;
+        void this.updateLinkDemoImg();
       },
       ()=> {
         delete setting.startArrowHead;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       allowOverride,
       inheritedStyle.startArrowHead,
@@ -1281,12 +1281,12 @@ private normalizeSettings() {
       {"none":"None","arrow":"Arrow","bar":"Bar","dot":"Dot","triangle":"Triangle"},
       () => setting.endArrowHead,
       (val) => {
-        setting.endArrowHead = (val === "") ? null : val as Arrowhead;
-        this.updateLinkDemoImg();
+        setting.endArrowHead = (val === "") ? null : val;
+        void this.updateLinkDemoImg();
       },
       ()=> {
         delete setting.endArrowHead;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       allowOverride,
       inheritedStyle.endArrowHead,
@@ -1299,11 +1299,11 @@ private normalizeSettings() {
       () => setting.showLabel,
       (val) => {
         setting.showLabel = val;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       () => {
         delete setting.showLabel;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       allowOverride,
       inheritedStyle.showLabel
@@ -1316,11 +1316,11 @@ private normalizeSettings() {
       ()=>setting.textColor,
       val=> {
         setting.textColor=val;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       ()=> {
         delete setting.textColor;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       allowOverride,
       inheritedStyle.textColor,
@@ -1335,11 +1335,11 @@ private normalizeSettings() {
       () => setting.fontSize,
       (val) => {
         setting.fontSize = val;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       ()=> {
         delete setting.fontSize;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       allowOverride,
       inheritedStyle.fontSize,
@@ -1353,11 +1353,11 @@ private normalizeSettings() {
       () => setting.fontFamily?.toString(),
       (val) => {
         setting.fontFamily =  parseInt(val);
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       ()=> {
         delete setting.fontFamily;
-        this.updateLinkDemoImg();
+        void this.updateLinkDemoImg();
       },
       allowOverride,
       inheritedStyle.fontFamily.toString(),
@@ -1366,9 +1366,8 @@ private normalizeSettings() {
   }  
 
   getUnusedFieldNames():string {
-    const fieldSet = new Set();
-    //@ts-ignore
-    this.plugin.DVAPI.index.pages.forEach(p=>{
+    const fieldSet = new Set<string>();
+    this.plugin.DVAPI.index.pages.forEach((p) => {
       const keys:IterableIterator<string> = p?.fields.keys();
       if(!keys) return;
       let f;
@@ -1381,11 +1380,11 @@ private normalizeSettings() {
         }
       }
     });
-    const fieldNameMap = new Map();
+    const fieldNameMap = new Map<string, string>();
     fieldSet.forEach((f:string)=>{
       fieldNameMap.set(f,f.toLowerCase().replaceAll(" ","-"))
     });
-    const assigned = new Set();
+    const assigned = new Set<string>();
     this.plugin.settings.hierarchy.hidden.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
     this.plugin.settings.hierarchy.parents.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
     this.plugin.settings.hierarchy.children.forEach(x=>assigned.add(x.toLowerCase().replaceAll(" ","-")))
@@ -1411,7 +1410,11 @@ private normalizeSettings() {
     return Array.from(fieldNameMap.keys()).sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1).join(", ")
   }
 
-  async display() {
+  display(): void {
+    void this.displayAsync();
+  }
+
+  private async displayAsync(): Promise<void> {
     await this.plugin.loadSettings(); //in case sync loaded changed settings in the background
 
     this.ea = getEA();
@@ -1511,13 +1514,12 @@ private normalizeSettings() {
     const hierarchyDesc = this.containerEl.createEl("p", {});
     hierarchyDesc.appendChild(fragWithHTML(t("HIERARCHY_DESC")));
 
-    let onHierarchyChange: Function = ()=>{};
+    let onHierarchyChange: () => void = () => {};
 
     const hierarchyParentSetting = new Setting(containerEl)
       .setName(t("PARENTS_NAME"))
       .addTextArea((text)=> {
-        text.inputEl.style.height = "90px";
-        text.inputEl.style.width = "100%";
+        text.inputEl.addClass("excalibrain-settings-textarea-90");
         text
           .setValue(this.plugin.settings.hierarchy.parents.join(", "))
           .onChange(value => {
@@ -1538,8 +1540,7 @@ private normalizeSettings() {
     const hierarchyChildSetting = new Setting(containerEl)
       .setName(t("CHILDREN_NAME"))
       .addTextArea((text)=> {
-        text.inputEl.style.height = "90px";
-        text.inputEl.style.width = "100%";
+        text.inputEl.addClass("excalibrain-settings-textarea-90");
         text
           .setValue(this.plugin.settings.hierarchy.children.join(", "))
           .onChange(value => {
@@ -1560,8 +1561,7 @@ private normalizeSettings() {
     const hierarchyLeftFriendSetting = new Setting(containerEl)
       .setName(t("LEFT_FRIENDS_NAME"))
       .addTextArea((text)=> {
-        text.inputEl.style.height = "90px";
-        text.inputEl.style.width = "100%";
+        text.inputEl.addClass("excalibrain-settings-textarea-90");
         text
           .setValue(this.plugin.settings.hierarchy.leftFriends.join(", "))
           .onChange(value => {
@@ -1583,8 +1583,7 @@ private normalizeSettings() {
     const hierarchyRightFriendSetting = new Setting(containerEl)
       .setName(t("RIGHT_FRIENDS_NAME"))
       .addTextArea((text)=> {
-        text.inputEl.style.height = "90px";
-        text.inputEl.style.width = "100%";
+        text.inputEl.addClass("excalibrain-settings-textarea-90");
         text
           .setValue(this.plugin.settings.hierarchy.rightFriends.join(", "))
           .onChange(value => {
@@ -1605,8 +1604,7 @@ private normalizeSettings() {
     const hierarchyPreviousSetting = new Setting(containerEl)
       .setName(t("PREVIOUS_NAME"))
       .addTextArea((text)=> {
-        text.inputEl.style.height = "90px";
-        text.inputEl.style.width = "100%";
+        text.inputEl.addClass("excalibrain-settings-textarea-90");
         text
           .setValue(this.plugin.settings.hierarchy.previous.join(", "))
           .onChange(value => {
@@ -1627,8 +1625,7 @@ private normalizeSettings() {
     const hierarchyNextSetting = new Setting(containerEl)
       .setName(t("NEXT_NAME"))
       .addTextArea((text)=> {
-        text.inputEl.style.height = "90px";
-        text.inputEl.style.width = "100%";
+        text.inputEl.addClass("excalibrain-settings-textarea-90");
         text
           .setValue(this.plugin.settings.hierarchy.next.join(", "))
           .onChange(value => {
@@ -1650,8 +1647,7 @@ private normalizeSettings() {
       .setName(t("HIDDEN_NAME"))
       .setDesc(t("HIDDEN_DESC"))
       .addTextArea((text)=> {
-        text.inputEl.style.height = "90px";
-        text.inputEl.style.width = "100%";
+        text.inputEl.addClass("excalibrain-settings-textarea-90");
         text
           .setValue(this.plugin.settings.hierarchy.hidden.join(", "))
           .onChange(value => {
@@ -1673,8 +1669,7 @@ private normalizeSettings() {
       .setName(t("EXCLUSIONS_NAME"))
       .setDesc(t("EXCLUSIONS_DESC"))
       .addTextArea((text)=> {
-        text.inputEl.style.height = "90px";
-        text.inputEl.style.width = "100%";
+        text.inputEl.addClass("excalibrain-settings-textarea-90");
         text
           .setValue(this.plugin.settings.hierarchy.exclusions.join(", "))
           .onChange(value => {
@@ -1696,8 +1691,7 @@ private normalizeSettings() {
       .setDesc(t("UNASSIGNED_DESC"))
       .addTextArea((text)=> {
         unassingedFieldsTextArea = text;
-        text.inputEl.style.height = "90px";
-        text.inputEl.style.width = "100%";
+        text.inputEl.addClass("excalibrain-settings-textarea-90");
         text.setValue(this.getUnusedFieldNames())
         text.setDisabled(true);
       })
@@ -1895,8 +1889,7 @@ private normalizeSettings() {
       .setName(t("EXCLUDE_PATHLIST_NAME"))
       .setDesc(fragWithHTML(t("EXCLUDE_PATHLIST_DESC")))
       .addTextArea((text)=> {
-        text.inputEl.style.height = "100px";
-        text.inputEl.style.width = "100%";
+        text.inputEl.addClass("excalibrain-settings-textarea-100");
         text
           .setValue(this.plugin.settings.excludeFilepaths.join(", "))
           .onChange(value => {
@@ -1906,15 +1899,14 @@ private normalizeSettings() {
             this.dirty = true;
           });
         })
-    filepathList.descEl.style.width = "90%";
-    filepathList.controlEl.style.width = "90%";
+    filepathList.descEl.addClass("excalibrain-setting-wide");
+    filepathList.controlEl.addClass("excalibrain-setting-wide");
     
     const nodeScriptSetting = new Setting(containerEl)
       .setName(t("NODETITLE_SCRIPT_NAME"))
       .setDesc(fragWithHTML(t("NODETITLE_SCRIPT_DESC")))
       .addTextArea(text=> {
-        text.inputEl.style.height = "200px";
-        text.inputEl.style.width = "100%";
+        text.inputEl.addClass("excalibrain-settings-textarea-200");
         text
           .setValue(this.plugin.settings.nodeTitleScript)
           .onChange(value => {
@@ -1922,8 +1914,8 @@ private normalizeSettings() {
             this.dirty = true;
           })
         });
-    nodeScriptSetting.descEl.style.width="90%";
-    nodeScriptSetting.controlEl.style.width="90%";
+    nodeScriptSetting.descEl.addClass("excalibrain-setting-wide");
+    nodeScriptSetting.controlEl.addClass("excalibrain-setting-wide");
     // ------------------------------
     // Display
     // ------------------------------
@@ -2143,7 +2135,7 @@ private normalizeSettings() {
       ()=>this.plugin.settings.backgroundColor,
       (val)=> {
         this.plugin.settings.backgroundColor=val;
-        this.updateNodeDemoImg();
+        void this.updateNodeDemoImg();
       },
       ()=>{},
       false,
@@ -2165,15 +2157,14 @@ private normalizeSettings() {
         nodeStyle.getInheritedStyle()
       )
       this.demoNodeStyle = nodeStyle;
-      this.updateNodeDemoImg();
+      void this.updateNodeDemoImg();
     }
 
     const taglist = new Setting(containerEl)
       .setName(t("TAGLIST_NAME"))
       .setDesc(t("TAGLIST_DESC"))
       .addTextArea((text)=> {
-        text.inputEl.style.height = "200px";
-        text.inputEl.style.width = "100%";
+        text.inputEl.addClass("excalibrain-settings-textarea-200");
         text
           .setValue(this.plugin.settings.tagStyleList.sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1).join(", "))
           .onChange(value => {
@@ -2242,8 +2233,8 @@ private normalizeSettings() {
           })
       )
 
-    taglist.descEl.style.width="90%";
-    taglist.controlEl.style.width="90%";
+    taglist.descEl.addClass("excalibrain-setting-wide");
+    taglist.controlEl.addClass("excalibrain-setting-wide");
 
     const nodeStylesWrapper = containerEl.createDiv({cls:"setting-item"});
     const nodeStylesDropdownWrapper = nodeStylesWrapper.createDiv({cls:"setting-item-info"});
@@ -2253,7 +2244,7 @@ private normalizeSettings() {
       text: "Show inherited",
       cls: "setting-item-name"
     });
-    nodeStylestoggleLabel.style.marginRight = "10px";
+    nodeStylestoggleLabel.addClass("excalibrain-settings-toggle-label");
 
     let linkStylesToggle: ToggleComponent;
 
@@ -2297,7 +2288,7 @@ private normalizeSettings() {
         nodeStyle.getInheritedStyle()
       )
       this.demoNodeStyle = nodeStyle;
-      this.updateNodeDemoImg();
+      void this.updateNodeDemoImg();
 
     //-----------------------------
     // Link Style settings
@@ -2315,7 +2306,7 @@ private normalizeSettings() {
         ls.getInheritedStyle()
       )
       this.demoLinkStyle = ls;
-      this.updateLinkDemoImg();
+      void this.updateLinkDemoImg();
     }
 
     const linkStylesWrapper = containerEl.createDiv({cls:"setting-item"});
@@ -2327,7 +2318,7 @@ private normalizeSettings() {
       text: "Show inherited",
       cls: "setting-item-name"
     });
-    linkStylesToggleLabel.style.marginRight = "10px";
+    linkStylesToggleLabel.addClass("excalibrain-settings-toggle-label");
     
     linkStylesToggle = new ToggleComponent(linkStylesWrapper)
 
@@ -2369,7 +2360,7 @@ private normalizeSettings() {
         ls.getInheritedStyle()
       )
       this.demoLinkStyle = ls;
-      this.updateLinkDemoImg();
+      void this.updateLinkDemoImg();
 
     onHierarchyChange = () => {
       unassingedFieldsTextArea.setValue(this.getUnusedFieldNames());

@@ -6,7 +6,7 @@ export class LinkTagFilter {
   selectedTags: Set<string> = new Set<string>();
   filterDiv: HTMLDivElement;
   isOpen: boolean = false;
-  selectedItems: any[];
+  selectedItems: string[] = [];
 
   constructor(
     private plugin: ExcaliBrain,
@@ -72,12 +72,12 @@ export class LinkTagFilter {
             this.selectedTags.add(x);
           }
         })
-        this.plugin.scene?.reRender(false);
+        void this.plugin.scene?.reRender(false);
       },
       onDropdownClose: (selectedItems) => {
         this.isOpen = false;
         if(selectedItems !== this.selectedItems) {
-          this.plugin.scene?.reRender(false);
+          void this.plugin.scene?.reRender(false);
         }
       }
     })

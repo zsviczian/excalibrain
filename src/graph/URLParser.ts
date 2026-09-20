@@ -1,4 +1,4 @@
-import { App, TFile, Vault } from "obsidian";
+import { App, TFile } from "obsidian";
 import ExcaliBrain from "src/excalibrain-main";
 
 export interface FileURL {
@@ -8,7 +8,7 @@ export interface FileURL {
 }
 
 // Matches links in markdown format [label](url)
-export const linkRegex = /(?:\[([^[\]]+)\]\()((?:(?:ftp|https?|sftp|shttp|tftp):(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>"']|\([^\s()<>]*\))+(?:\([^\s()<>]*\)|[^\s`*!()\[\]{};:'".,<>?«»“”‘’]))\)|\b()((?:(?:ftp|https?|sftp|shttp|tftp):(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>"']|\([^\s()<>]*\))+(?:\([^\s()<>]*\)|[^\s`*!()\[\]{};:'".,<>?«»“”‘’]))\b/gi;
+export const linkRegex = /(?:\[([^[\]]+)\]\()((?:(?:ftp|https?|sftp|shttp|tftp):(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.-]+[.][a-z]{2,4}\/)(?:[^\s()<>"']|\([^\s()<>]*\))+(?:\([^\s()<>]*\)|[^\s`*!()[\]{};:'".,<>?«»“”‘’]))\)|\b()((?:(?:ftp|https?|sftp|shttp|tftp):(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.-]+[.][a-z]{2,4}\/)(?:[^\s()<>"']|\([^\s()<>]*\))+(?:\([^\s()<>]*\)|[^\s`*!()[\]{};:'".,<>?«»“”‘’]))\b/gi;
 
 export class URLParser {
   fileToUrlMap: Map<TFile, FileURL[]> = new Map();
@@ -22,7 +22,6 @@ export class URLParser {
   }
 
   public async init(): Promise<void> {
-    const startTimestamp = Date.now();
     const markdownFiles = this.app.vault.getMarkdownFiles();
     for (const file of markdownFiles) {
       await this.parseFileURLs(file);
@@ -30,18 +29,12 @@ export class URLParser {
 
     this.registerFileEvents();
     this.initalized = true;
-    console.log(`ExcaliBrain indexed ${
-      this.fileUrlInverseMap.size} URLs from ${
-      this.hosts.length} unique hosts in ${
-      this.fileToUrlMap.size} of ${markdownFiles.length} markdown files in ${
-      ((Date.now()-startTimestamp)/1000).toFixed(1)} seconds`);
   }
 
   private getOrigin(url:string, file: TFile):string {
     try {
       return new URL(url).origin;
-    } catch (e) {
-      console.log(`ExcaliBrain URLParser: Invalid URL ${url} in file ${file.path}`);
+    } catch {
       return ":Unknown Origin:";
     }
   }
@@ -52,8 +45,7 @@ export class URLParser {
     try {
       content = await this.app.vault.cachedRead(file);
     }
-    catch (e) {
-      console.log(`ExcaliBrain URLParser: Failed to read file ${file.path}`, e);
+    catch {
       return;
     }
     const links = new Map<string,FileURL>();
@@ -102,7 +94,7 @@ export class URLParser {
   private registerFileEvents(): void {
     const modifyEventHandler = (file: TFile) => {
       deleteEventHandler(file);
-      this.parseFileURLs(file);
+      void this.parseFileURLs(file);
     };
 
     const deleteEventHandler = (file: TFile) => {

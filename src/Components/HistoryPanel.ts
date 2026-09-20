@@ -60,7 +60,7 @@ export class HistoryPanel {
         cls: "excalibrain-history-item"
       }, el=> {
         //el.ariaLabel = `[[${label}]]`;
-        el.onclick = () => this.plugin.scene?.renderGraphForPath(link);
+        el.onclick = () => { void this.plugin.scene?.renderGraphForPath(link); };
       })
     }
   }
@@ -69,7 +69,9 @@ export class HistoryPanel {
     if(this.wrapperDiv) {
       try{
         this.contentEl?.removeChild(this.wrapperDiv);
-      } catch{}
+      } catch {
+        // The wrapper may already have been detached during view teardown.
+      }
       this.wrapperDiv = null;
     }
   }

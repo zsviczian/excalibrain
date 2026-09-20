@@ -1,6 +1,13 @@
 // Credits go to Liam's Periodic Notes Plugin: https://github.com/liamcain/obsidian-periodic-notes
 
 import { App, ISuggestOwner, Scope } from "obsidian";
+
+type AppWithKeymap = App & {
+    keymap: {
+        pushScope(scope: Scope): void;
+        popScope(scope: Scope): void;
+    };
+};
 import { SUGGEST_LIMIT } from "src/constants/constants";
 
 const wrapAround = (value: number, size: number): number => {
@@ -122,7 +129,7 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
         this.scope = new Scope();
 
         this.suggestEl = containerEl.createDiv("suggestion-container");
-        this.suggestEl.style.left = "-1000px";
+        this.suggestEl.setCssProps({"left": "-1000px"});
         const suggestion = this.suggestEl.createDiv("suggestion");
         this.suggest = new Suggest(this, suggestion, this.scope);
 
@@ -151,28 +158,26 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
 
         if (suggestions.length > 0) {
             this.suggest.setSuggestions(suggestions);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            this.open(this.containerEl, this.inputEl); //(<any>this.app).dom.appContainerEl
+            this.open(this.containerEl, this.inputEl);
         } else {
             this.close();
         }
     }
 
     open(container: HTMLElement, inputEl: HTMLElement): void {
-        (<any>this.app).keymap.pushScope(this.scope);
+        (this.app as AppWithKeymap).keymap.pushScope(this.scope);
 
         container.appendChild(this.suggestEl);
         const rect = inputEl.getBoundingClientRect();
-        this.suggestEl.style.position = "fixed";
-        this.suggestEl.style.left = `${rect.left}px`;
-        this.suggestEl.style.top = `${rect.bottom}px`;
-        this.suggestEl.style.width = `${rect.width}px`;
-        this.suggestEl.style.zIndex = "var(--layer-menu)";
+        this.suggestEl.setCssProps({"position": "fixed"});
+        this.suggestEl.setCssProps({"left": `${rect.left}px`});
+        this.suggestEl.setCssProps({"top": `${rect.bottom}px`});
+        this.suggestEl.setCssProps({"width": `${rect.width}px`});
+        this.suggestEl.setCssProps({"z-index": "var(--layer-menu)"});
     }
 
     close(): void {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (<any>this.app).keymap.popScope(this.scope);
+        (this.app as AppWithKeymap).keymap.popScope(this.scope);
 
         this.suggest.setSuggestions([]);
         this.suggestEl.detach();

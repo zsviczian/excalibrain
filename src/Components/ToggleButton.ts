@@ -46,13 +46,13 @@ export class ToggleButton {
 
     this.button.onclick = () => {
       const shouldSaveSettings = setVal(!getVal());
-      if(shouldSaveSettings) plugin.saveSettings();
+      if(shouldSaveSettings) void plugin.saveSettings();
       this.updateButton();
       if(options.icon) {
         this.button.empty();
         setIcon(this.button, getIcon(getVal()));
       }
-      if(shouldRerenderOnToggle) plugin.scene?.reRender(updateIndex);
+      if(shouldRerenderOnToggle) void plugin.scene?.reRender(updateIndex);
     }
   }
 

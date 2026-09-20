@@ -5,184 +5,182 @@ import { linkRegex } from "src/graph/URLParser";
 import { ExcaliBrainSettings } from "src/Settings";
 import { NodeStyle } from "src/Types";
 
-const getPathOrSelf = (app: App, link:string, hostPath:string):string => {
-  const f = app.metadataCache.getFirstLinkpathDest(link,hostPath);
-  return f ? f.path : link;
-}
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
 
-const readLinksFromString = (app: App, data: string, file:TFile):string[] => {
-  const res = new Set<string>();
-  //               wiki link                    markdown link 
-  const linkReg = /[^[]*\[\[(?<wikiLink>[^#\]\|]*)[^\]]*]]|\[[^\]]*]\((?<mdLink>[^)]*)\)/g;
-  const m = data.matchAll(linkReg);
-  let r;
-  while(!(r=m.next()).done) {
-    if(r?.value?.groups?.wikiLink) {
-      const path = getPathOrSelf(app, r.value.groups.wikiLink,file.path);
-      if(path) { 
-        res.add(path);
-      }
+const getPathOrSelf = (app: App, link: string, hostPath: string): string => {
+  const file = app.metadataCache.getFirstLinkpathDest(link, hostPath);
+  return file ? file.path : link;
+};
+
+const readLinksFromString = (app: App, data: string, file: TFile): string[] => {
+  const result = new Set<string>();
+  const linkReg = /[^[]*\[\[(?<wikiLink>[^#|]*)[^\]]*]]|\[[^\]]*]\((?<mdLink>[^)]*)\)/g;
+
+  for (const match of data.matchAll(linkReg)) {
+    const wikiLink = match.groups?.wikiLink;
+    if (wikiLink) {
+      result.add(getPathOrSelf(app, wikiLink, file.path));
     }
-    if(r?.value?.groups?.mdLink) {
+
+    const markdownLink = match.groups?.mdLink;
+    if (markdownLink) {
       try {
-        const path = getPathOrSelf(app, decodeURIComponent(r.value.groups.mdLink),file.path);
-        if(path) { 
-          res.add(path);
-        }
-      } catch(e) {
-        console.log({error: "Error decoding link in readLinksFromString", errorLocation:"readLinksFromString", link:r.value.groups.mdLink, file});
+        result.add(getPathOrSelf(app, decodeURIComponent(markdownLink), file.path));
+      } catch {
+        // Ignore malformed percent-encoding while continuing to parse other links.
       }
     }
   }
-  
-  let match;
+
+  let match: RegExpExecArray | null;
   while ((match = linkRegex.exec(data)) !== null) {
-    res.add(match[2]??match[4]);
+    const url = match[2] ?? match[4];
+    if (url) result.add(url);
   }
 
-  return Array.from(res);
-}
+  return Array.from(result);
+};
 
-const readDailyNoteLinks = (plugin: ExcaliBrain, data: any[], file:TFile):string[] => {
-  const res = new Set<string>();
-  data.forEach((l:any)=>{
-    if(l?.hasOwnProperty?.("ts")) {
-      //@ts-ignore
-      res.add(moment(l.ts).format(plugin.dailyNoteSettings.format))
-    }
+const readDailyNoteLinks = (
+  plugin: ExcaliBrain,
+  data: unknown[],
+): string[] => {
+  const result = new Set<string>();
+  data.forEach((value) => {
+    if (!isRecord(value) || !Object.hasOwn(value, "ts")) return;
+    const timestamp = value.ts;
+    if (timestamp === undefined || timestamp === null) return;
+    result.add(moment(timestamp).format(plugin.dailyNoteSettings.format));
   });
-  return Array.from(res);
-}
+  return Array.from(result);
+};
 
-const readDVField = (plugin: ExcaliBrain, field: any, file:TFile):string[] => {
-  const res = new Set<string>();
+const readDVField = (plugin: ExcaliBrain, field: unknown, file: TFile): string[] => {
+  const result = new Set<string>();
 
-  //the field is a list of links
-  if(field.values) {
-    if(field.hasOwnProperty("conversionAccuracy")) {
-      return []; //ignore duration data
-    }
-    const values =  Array.from(field.values())
-    //List of links
-    let tmp: any;
-    try {
-      values
-        .filter((l:any)=>l?.type && (l.type === "file" || l.type === "header" || l.type=="block"))
-        .forEach((l:any)=>{
-          const path = getPathOrSelf(plugin.app, l.path,file.path);
-          if(path) {
-            res.add(path);
-          }
-        });
-      
-      values
-        .filter((l:any)=>Boolean(l?.values))
-        .forEach((l:any)=>{
-          tmp = l;
-          const values = Array.from(l.values());
-          readDVField(plugin,values,file).forEach(p=>res.add(p))
-        });
-    } catch(e) {
-      console.log(e);
-      console.log(values);
-      console.log(tmp);
-      console.log(tmp?.values);
-    }
+  if (isRecord(field) && typeof field.values === "function") {
+    if (Object.hasOwn(field, "conversionAccuracy")) return [];
 
-    //string: e.g. list of virtual links
-    const stringLinks:string[] = readLinksFromString(
+    const values = Array.from((field.values as () => Iterable<unknown>)());
+
+    values.forEach((value) => {
+      if (!isRecord(value)) return;
+      const type = value.type;
+      const path = value.path;
+      if (
+        typeof path === "string" &&
+        (type === "file" || type === "header" || type === "block")
+      ) {
+        result.add(getPathOrSelf(plugin.app, path, file.path));
+      }
+    });
+
+    values.forEach((value) => {
+      if (!isRecord(value) || typeof value.values !== "function") return;
+      const nestedValues = Array.from((value.values as () => Iterable<unknown>)());
+      readDVField(plugin, nestedValues, file).forEach((path) => result.add(path));
+    });
+
+    const stringLinks = readLinksFromString(
       plugin.app,
-      values.filter((l:any)=>typeof l === "string").join(" "),
-      file
-    )
+      values.filter((value): value is string => typeof value === "string").join(" "),
+      file,
+    );
 
-    //links in the frontmatter
-    //! currently there is an issue with case sensitivity. DataView retains case sensitivity of links for the front matter, but not the others
-    const objectLinks:string[] = values
-      .filter((l:any) => l?.values && typeof l === "object" && typeof l.values[0] === "string")
-      ?.map((l:any)=>getPathOrSelf(plugin.app,l.values[0],file.path))
-    if(!objectLinks) console.log({error: "objectLinks is undefined which is unexpected",errorLocation:"readDVField", field, file});
+    const objectLinks = values
+      .filter((value): value is Record<string, unknown> => isRecord(value))
+      .map((value) => value.values)
+      .filter((nested): nested is unknown[] => Array.isArray(nested))
+      .filter((nested) => typeof nested[0] === "string")
+      .map((nested) => getPathOrSelf(plugin.app, nested[0] as string, file.path));
 
-    const dateLinks = readDailyNoteLinks(plugin,values,file);
-    return Array.from(res).concat(stringLinks).concat(objectLinks??[]).concat(dateLinks);
+    const dateLinks = readDailyNoteLinks(plugin, values);
+    return Array.from(result).concat(stringLinks, objectLinks, dateLinks);
   }
 
-  //the field is a single link
-  if(field.path) {
-    const path = getPathOrSelf(plugin.app,field.path,file.path); 
-    return path ? [path] : [];
+  if (Array.isArray(field)) {
+    field.forEach((value) => readDVField(plugin, value, file).forEach((path) => result.add(path)));
+    return Array.from(result);
   }
 
-  if(typeof field === "string") {
-    //the field is a string that may contain a link
-    return readLinksFromString(plugin.app,field,file);
+  if (isRecord(field) && typeof field.path === "string") {
+    return [getPathOrSelf(plugin.app, field.path, file.path)];
   }
 
-  //other type of field, e.g. Datetime field
+  if (typeof field === "string") {
+    return readLinksFromString(plugin.app, field, file);
+  }
+
   return [];
-}
+};
 
-export const getDVFieldLinksForPage = (plugin: ExcaliBrain, dvPage: Record<string, Literal>, fields: string[]):{link:string,field:string}[] => {
-  const links:{link:string,field:string}[] = [];
-  const processed = new Set();
-  fields.forEach(f => {
-    //f = f.toLowerCase().replaceAll(" ","-");
-    const fieldvals = dvPage[f];
-    if(fieldvals && !processed.has(f)) {
-      processed.add(f);
-      readDVField(plugin,fieldvals,dvPage.file).forEach(l=>links.push({link:l,field:f}))
-    };
+export const getDVFieldLinksForPage = (
+  plugin: ExcaliBrain,
+  dvPage: Literal,
+  fields: string[],
+): { link: string; field: string }[] => {
+  const links: { link: string; field: string }[] = [];
+  const processed = new Set<string>();
+  fields.forEach((fieldName) => {
+    const fieldValue = dvPage[fieldName];
+    if (fieldValue !== undefined && !processed.has(fieldName)) {
+      processed.add(fieldName);
+      const filePath = dvPage.file?.path;
+      const file = filePath ? plugin.app.vault.getAbstractFileByPath(filePath) : null;
+      if (!(file instanceof TFile)) return;
+      readDVField(plugin, fieldValue, file).forEach((link) => links.push({ link, field: fieldName }));
+    }
   });
   return links;
-}
+};
 
 export const getPrimaryTag = (
-  dvPage: Record<string, Literal>,
-  settings: ExcaliBrainSettings
-):[string, string[]]|[null, null] => {
-  const pageTags = getPageTags(dvPage,settings);
-  if(!pageTags) return [null, null];
-  if(dvPage[settings.primaryTagFieldLowerCase]) {
-    const tags = dvPage[settings.primaryTagFieldLowerCase]
+  dvPage: Literal | undefined,
+  settings: ExcaliBrainSettings,
+): [string, string[]] | [null, null] => {
+  const pageTags = getPageTags(dvPage, settings);
+  if (!pageTags) return [null, null];
+
+  const primaryTagValue = dvPage[settings.primaryTagFieldLowerCase];
+  if (typeof primaryTagValue === "string") {
+    const tags = primaryTagValue
       .match(/#([^\s\])$"'\\]*)(?:$|\s)/g)
-      ?.map((match:string) => match.trim())
-      .filter((t:string)=>settings.tagStyleList.some(x=>t.startsWith(x)));
-    const styleTag = tags && (tags.length > 0) ? tags[0] : pageTags[0];
-    return [styleTag, pageTags.filter(t=>t!=styleTag)];
+      ?.map((match) => match.trim())
+      .filter((tag) => settings.tagStyleList.some((styleTag) => tag.startsWith(styleTag)));
+    const styleTag = tags && tags.length > 0 ? tags[0] : pageTags[0];
+    return [styleTag, pageTags.filter((tag) => tag !== styleTag)];
   }
   return [pageTags[0], pageTags.slice(1)];
-}
+};
 
 const getPageTags = (
-  dvPage: Record<string, Literal>,
-  settings: ExcaliBrainSettings
-):string[]|null => {
-  if(!dvPage) return null;
-  return (dvPage.file?.tags?.values??[])
-    .filter((t:string)=>settings.tagStyleList.some(x=>t.startsWith(x)));
-}
+  dvPage: Literal | undefined,
+  settings: ExcaliBrainSettings,
+): string[] | null => {
+  if (!dvPage) return null;
+  const tags = dvPage.file?.tags?.values;
+  if (!tags) return null;
+  return tags.filter((tag) => settings.tagStyleList.some((styleTag) => tag.startsWith(styleTag)));
+};
 
 export const getTagStyle = (
   tags: [string, string[]],
-  settings: ExcaliBrainSettings
-):NodeStyle => {
+  settings: ExcaliBrainSettings,
+): NodeStyle => {
   const [tag, otherTags] = tags;
-  if(!tag) {
-    return {};
-  }
-  const style = settings.tagNodeStyles[settings.tagStyleList.filter(x=>tag.startsWith(x))[0]];
-  if(style && settings.displayAllStylePrefixes) {
-    const keys = Object.keys(settings.tagNodeStyles).filter(key => otherTags.includes(key));
+  if (!tag) return {};
+
+  const style = settings.tagNodeStyles[settings.tagStyleList.filter((item) => tag.startsWith(item))[0]];
+  if (style && settings.displayAllStylePrefixes) {
+    const keys = Object.keys(settings.tagNodeStyles).filter((key) => otherTags.includes(key));
     const prefixSet = new Set<string>();
-    if(style.prefix) prefixSet.add(style.prefix);
+    if (style.prefix) prefixSet.add(style.prefix);
     keys
-      ?.map(key=>settings.tagNodeStyles[key].prefix).filter(x=>Boolean(x))
-      .forEach(x=>prefixSet.add(x??""));
-    const prefix = Array.from(prefixSet).join("");
-    return {
-      ...style,
-      ...{prefix}
-    }
+      .map((key) => settings.tagNodeStyles[key].prefix)
+      .filter((prefix): prefix is string => typeof prefix === "string" && prefix.length > 0)
+      .forEach((prefix) => prefixSet.add(prefix));
+    return { ...style, prefix: Array.from(prefixSet).join("") };
   }
   return style;
-}
+};

@@ -4,7 +4,7 @@ import ExcaliBrain from "src/excalibrain-main";
 import { LinkDirection, Neighbour, Relation, RelationType } from "src/Types";
 import { getDVFieldLinksForPage, getPrimaryTag } from "src/utils/dataview";
 import { getFilenameFromPath } from "src/utils/fileUtils";
-import { errorlog, log } from "src/utils/utils";
+import { errorlog } from "src/utils/utils";
 import { Pages, addUnresolvedPage } from "./Pages";
 
 const DEFAULT_RELATION:Relation = {
@@ -53,7 +53,7 @@ const relationTypeToSet = (currentType: RelationType, newType: RelationType):Rel
 export class Page {
   public mtime: number|null;
   public neighbours: Map<string,Relation>;
-  public dvPage: Record<string, Literal>;
+  public dvPage?: Literal;
   public primaryStyleTag: string|null;
   public styleTags: string[]|null; //other style tags beyond primary
   public dvIndexReady: boolean = false;
@@ -74,7 +74,7 @@ export class Page {
       ? (file.extension === "md")
         ? file.basename
         : file.name
-      : Boolean(url) ? url : getFilenameFromPath(path);
+      : url ? url : getFilenameFromPath(path);
     }
     this.mtime = file ? file.stat.mtime : null;
     this.neighbours = new Map<string,Relation>();
@@ -92,7 +92,7 @@ export class Page {
       if(!invMap) {
         return;
       }
-      invMap.forEach((path: any)=>{
+      invMap.forEach((path) => {
         const child = this.pages.get(path);
         if(!child) {
           return;
@@ -224,7 +224,7 @@ export class Page {
 
     //when the alias contains a colon, it is parsed by DataView as an object
     if(defaultName === "[object Object]") {
-      if(this.dvPage.aliases?.[0]) {
+      if(this.dvPage?.aliases?.[0]) {
         defaultName = Object.entries(this.dvPage.aliases[0])[0].join(": ");
       } else {
         defaultName = this.name;
@@ -236,11 +236,11 @@ export class Page {
       } 
       catch(e) {
         errorlog({
-          fn: this.getTitle,
+          fn: "Page.getTitle",
           message: "Error executing cutomer node label function. The script is: " + this.plugin.settings.nodeTitleScript,
           data: this.dvPage,
           where: "Page.getTitle()",
-          error: e as Error
+          error: e instanceof Error ? e : new Error(String(e))
         })
       }
     }
@@ -297,7 +297,7 @@ export class Page {
   }
 
   public get isURL(): boolean {
-    return Boolean(this.url);
+    return typeof this.url === "string" && this.url.length > 0;
   }
 
   public get isAttachment(): boolean {

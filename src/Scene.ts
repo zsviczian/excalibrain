@@ -1,4 +1,4 @@
-import { App, FileView, Notice, TextFileView, TFile, WorkspaceLeaf } from "obsidian";
+import { App, FileView, Notice, TFile, WorkspaceLeaf } from "obsidian";
 import { EMPTYBRAIN } from "./constants/emptyBrainFile";
 import { Layout } from "./graph/Layout";
 import { Links } from "./graph/Links";
@@ -9,10 +9,10 @@ import { ToolsPanel } from "./Components/ToolsPanel";
 import { Mutable, Neighbour, NodeStyle, RelationType, Role } from "./Types";
 import { HistoryPanel } from "./Components/HistoryPanel";
 import { WarningPrompt } from "./utils/Prompts";
-import { keepOnTop } from "./utils/utils";
+import { errorlog, keepOnTop } from "./utils/utils";
 import { isEmbedFileType } from "./utils/fileUtils";
 import { Page } from "./graph/Page";
-import { ExcalidrawAutomate, ExcalidrawElement, ExcalidrawImperativeAPI, addElementsToViewTransient, configureExcaliBrainView, getEA, destroyViewEA, releaseViewEA, updateViewSceneTransient, waitForExcalidrawViewReady } from "./utils/ExcalidrawAutomateCompatibility";
+import { ExcalidrawAutomate, ExcalidrawElement, ExcalidrawImperativeAPI, addElementsToViewTransient, applyEAStyle, configureExcaliBrainView, getEA, destroyViewEA, releaseViewEA, updateViewSceneTransient, waitForExcalidrawViewReady } from "./utils/ExcalidrawAutomateCompatibility";
  
 export class Scene {
   ea: ExcalidrawAutomate;
@@ -31,12 +31,12 @@ export class Scene {
   public nodesMap: Map<string,Node> = new Map<string,Node>();
   public links: Links;
   private layouts: Layout[] = [];
-  private removeEH: Function;
-  private removeTimer: Function;
-  private removeOnCreate: Function;
-  private removeOnModify: Function;
-  private removeOnDelete: Function;
-  private removeOnRename: Function;
+  private removeEH?: () => void;
+  private removeTimer?: () => void;
+  private removeOnCreate?: () => void;
+  private removeOnModify?: () => void;
+  private removeOnDelete?: () => void;
+  private removeOnRename?: () => void;
   private blockUpdateTimer: boolean = false;
   public toolsPanel: ToolsPanel;
   private historyPanel: HistoryPanel;
@@ -71,6 +71,29 @@ export class Scene {
     return null;
   }
 
+  /**
+   * Rebind the disposable EA instance to the brain view when Excalidraw has
+   * temporarily cleared targetView during lifecycle transitions. The Scene's
+   * own leaf is the stable source of truth for whether the brain view still
+   * exists.
+   */
+  private ensureBrainViewBound(): boolean {
+    if(this.terminated) return false;
+    if(!(this.leaf?.view instanceof FileView)) return false;
+    if(this.leaf.view.file?.path !== this.plugin.settings.excalibrainFilepath) return false;
+
+    if(this.ea.targetView?.file?.path === this.plugin.settings.excalibrainFilepath) {
+      return true;
+    }
+
+    this.ea.setView?.(this.leaf.view);
+    const rebound = this.ea.targetView?.file?.path === this.plugin.settings.excalibrainFilepath;
+    if(rebound) {
+      this.ea.registerThisAsViewEA?.();
+    }
+    return rebound;
+  }
+
   public async initialize(focusSearchAfterInitiation: boolean): Promise<void> {
     this.focusSearchAfterInitiation = focusSearchAfterInitiation;
     await this.plugin.loadSettings();
@@ -78,7 +101,7 @@ export class Scene {
     if(!await waitForExcalidrawViewReady(this.ea)) {
       throw new Error("ExcaliBrain: Excalidraw view did not become ready within 10 seconds.");
     }
-    const excalidrawEl = (this.leaf.view as TextFileView).contentEl.querySelector<HTMLElement>(".excalidraw");
+    const excalidrawEl = this.leaf.view.containerEl.querySelector<HTMLElement>(".excalidraw");
     if(!excalidrawEl) {
       throw new Error("ExcaliBrain: Excalidraw canvas DOM is unavailable after view startup.");
     }
@@ -90,9 +113,8 @@ export class Scene {
    * Check if ExcaliBrain is currently active
    * @returns boolean; true if active
    */
-  public isActive() {
-    //@ts-ignore
-    return !this.terminated && this.app.workspace.getLeafById(this.leaf?.id)
+  public isActive(): boolean {
+    return !this.terminated && this.leaf?.id != null && this.app.workspace.getLeafById(this.leaf.id) != null;
   }
 
   /**
@@ -123,10 +145,10 @@ export class Scene {
       if(!this.centralLeaf) {
         this.ea.openFileInNewOrAdjacentLeaf(centralPage.file);
       } else if (
-        //@ts-ignore
-        this.centralLeaf.view?.file?.path !== centralPage.file.path
+        !(this.centralLeaf.view instanceof FileView) ||
+        this.centralLeaf.view.file?.path !== centralPage.file.path
       ) {
-        this.centralLeaf.openFile(centralPage.file, {active: false});
+        void this.centralLeaf.openFile(centralPage.file, {active: false});
       }
     }
     await this.render(this.plugin.settings.embedCentralNode);
@@ -183,14 +205,15 @@ export class Scene {
       return;
     }
 
-    //abort excalibrain if the file in the Obsidian view has changed
-    if(!this.ea.targetView?.file || this.ea.targetView.file.path !== settings.excalibrainFilepath) {
+    // Abort if the brain leaf is gone. If EA merely lost its target binding,
+    // restore it from the still-live brain leaf before continuing.
+    if(!this.ensureBrainViewBound()) {
       this.unloadScene();
       return;
     }
     
     //don't render if the user is trying to render the excaliBrain file itself
-    if (isFile && (page.file.path === this.ea.targetView.file.path)) { //brainview drawing is the active leaf
+    if (isFile && page.file.path === settings.excalibrainFilepath) { //brainview drawing is the active leaf
       this.blockUpdateTimer = false;
       return; 
     }
@@ -210,11 +233,10 @@ export class Scene {
 
     if(isFile && shouldOpenFile && settings.autoOpenCentralDocument) {
       const centralLeaf = this.centralLeaf;
-      //@ts-ignore
       if(!centralLeaf || !this.app.workspace.getLeafById(centralLeaf.id)) {
         this.centralLeaf = this.ea.openFileInNewOrAdjacentLeaf(page.file, {active: false});
       } else {
-        centralLeaf.openFile(page.file, {active: false});
+        void centralLeaf.openFile(page.file, {active: false});
       }
       this.plugin.navigationHistory.addToHistory(page.file.path);
     } else {
@@ -261,22 +283,27 @@ export class Scene {
         await sleep(50);
       }
     }
+    if (!(file instanceof TFile)) return null;
+
     counter = 0;
-    if(file && file instanceof TFile && !ea.isExcalidrawFile(file)) {
+    if(!ea.isExcalidrawFile(file)) {
+      const brainFile = file;
       (new WarningPrompt(
         app,
         "⚠ File Exists",
-        `${file.path} already exists in your Vault. Is it ok to overwrite this file? If not, change ExcaliBrain file path in plugin settings.`)
-      ).show(async (result: boolean) => {
-        if(result) {
-          await app.vault.modify(file as TFile,EMPTYBRAIN);
-          while(file instanceof TFile && !ea.isExcalidrawFile(file) && counter++<10) {
+        `${brainFile.path} already exists in your Vault. Is it ok to overwrite this file? If not, change ExcaliBrain file path in plugin settings.`)
+      ).show((result: boolean) => {
+        if(!result) {
+          new Notice(`Could not start ExcaliBrain. Please change the ExcaliBrain file path in plugin settings.`);
+          return;
+        }
+        void (async (): Promise<void> => {
+          await app.vault.modify(brainFile, EMPTYBRAIN);
+          while(!ea.isExcalidrawFile(brainFile) && counter++ < 10) {
             await sleep(50);
           }
           void Scene.openExcalidrawLeaf(app, ea, settings, leaf);
-        } else {
-          new Notice(`Could not start ExcaliBrain. Please change the ExcaliBrain file path in plugin settings.`);
-        }
+        })();
       });
       return null;
     }
@@ -286,14 +313,16 @@ export class Scene {
         leaf = ea.getLeaf(leaf, "new-pane");
       }
     }
-    if(settings.defaultAlwaysOnTop && leaf && ea.DEVICE.isDesktop) {
-      //@ts-ignore
-      const ownerWindow = leaf.view?.ownerWindow;
-      if(ownerWindow && (ownerWindow !== window) && !ownerWindow.electronWindow?.isMaximized()) {
-        ownerWindow.electronWindow.setAlwaysOnTop(true);
+    if(settings.defaultAlwaysOnTop && leaf && ea.DEVICE?.isDesktop) {
+      const ownerWindow = leaf.view.containerEl.ownerDocument.defaultView as (Window & {
+        electronWindow?: { isMaximized(): boolean; setAlwaysOnTop(value: boolean): void };
+      }) | null;
+      const electronWindow = ownerWindow?.electronWindow;
+      if(ownerWindow && ownerWindow !== window && electronWindow && !electronWindow.isMaximized()) {
+        electronWindow.setAlwaysOnTop(true);
       }
     }
-    await leaf.openFile(file as TFile);
+    await leaf.openFile(file);
     return leaf;
   }
 
@@ -303,7 +332,10 @@ export class Scene {
     const settings = this.plugin.settings;
 
     ea.clear();
-    ea.setView?.(this.leaf.view as any);
+    ea.setView?.(this.leaf.view);
+    if(!this.ensureBrainViewBound()) {
+      throw new Error("ExcaliBrain: Excalidraw view lost its target binding during scene initialization.");
+    }
     ea.copyViewElementsToEAforEditing(ea.getViewElements());
     ea.getElements().forEach((el: Mutable<ExcalidrawElement>)=>el.isDeleted=true);
 
@@ -334,7 +366,7 @@ export class Scene {
       },
     });
 
-    ea.style.strokeColor = settings.baseNodeStyle.textColor;
+    applyEAStyle(ea, { strokeColor: settings.baseNodeStyle.textColor });
     ea.addText(0,0,"🚀 To get started\nselect a document using the search in the top left or\n" +
       "open a document in another pane.\n\n" +
       "✨ For the best experience enable 'Open in adjacent pane'\nin Excalidraw settings " +
@@ -346,7 +378,7 @@ export class Scene {
       window.setTimeout((): void => api.zoomToFit?.(null, settings.maxZoom, 0.15),100);
     }
     await this.addEventHandler();
-    const excalidrawEl = (this.leaf.view as TextFileView).contentEl.querySelector<HTMLElement>(".excalidraw");
+    const excalidrawEl = this.leaf.view.containerEl.querySelector<HTMLElement>(".excalidraw");
     if(!excalidrawEl) {
       throw new Error("ExcaliBrain: Excalidraw canvas DOM disappeared during scene initialization.");
     }
@@ -362,12 +394,12 @@ export class Scene {
       ...settings.centralNodeStyle,
     };
 
-    ea.style.fontFamily = settings.baseLinkStyle.fontFamily;
-    ea.style.fontSize = settings.baseLinkStyle.fontSize;
+    applyEAStyle(ea, { fontFamily: settings.baseLinkStyle.fontFamily });
+    applyEAStyle(ea, { fontSize: settings.baseLinkStyle.fontSize });
     this.minLinkLength = ea.measureText("m".repeat(settings.minLinkLength)).width;
 
-    ea.style.fontFamily = style.fontFamily;
-    ea.style.fontSize = style.fontSize;
+    applyEAStyle(ea, { fontFamily: style.fontFamily });
+    applyEAStyle(ea, { fontSize: style.fontSize });
     this.textSize = ea.measureText("m".repeat(style.maxLabelLength));
     this.nodeWidth = this.textSize.width + 2 * style.padding;
     this.nodeHeight = 2 * (this.textSize.height + 2 * style.padding);
@@ -381,7 +413,7 @@ export class Scene {
     friendGateOnLeft: boolean
   }) {
     x.neighbours.forEach(n => {
-      if(n.page.path === this.ea.targetView.file.path) {
+      if(n.page.path === this.plugin.settings.excalibrainFilepath) {
         return; 
       }
       n.page.maxLabelLength = x.layout.spec.maxLabelLength;
@@ -561,7 +593,7 @@ export class Scene {
     const prefixLength = Math.max(rootNode.prefix.length,2);
     
     // container
-    const container = ea.targetView.containerEl;
+    const container = this.leaf.view.containerEl;
     const h = container.innerHeight-150;
     const w = container.innerWidth;
     const rf = 1/(h/w);
@@ -633,8 +665,8 @@ export class Scene {
     const siblingsStyle = settings.siblingNodeStyle;
     const siblingsPadding = siblingsStyle.padding??settings.baseNodeStyle.padding;
     const siblingsLabelLength = Math.min(this.longestTitle(siblings,20) + prefixLength, correctedMinLabelLength);
-    ea.style.fontFamily = siblingsStyle.fontFamily;
-    ea.style.fontSize = siblingsStyle.fontSize;
+    applyEAStyle(ea, { fontFamily: siblingsStyle.fontFamily });
+    applyEAStyle(ea, { fontSize: siblingsStyle.fontSize });
     const siblingsTextSize = ea.measureText("m".repeat(siblingsLabelLength+3));
     const siblingsNodeWidth =  horizontalFactor * (siblingsTextSize.width + 3 * siblingsPadding);
     const siblingsNodeHeight = compactFactor * (siblingsTextSize.height + 2 * siblingsPadding);
@@ -697,6 +729,9 @@ export class Scene {
    * @returns 
    */
   private async render(retainCentralNode:boolean = false) {
+    if(!this.ensureBrainViewBound()) {
+      return;
+    }
     if(this.historyPanel) {
       this.historyPanel.rerender()
     }
@@ -715,10 +750,10 @@ export class Scene {
 
     const ea = this.ea;
     retainCentralNode = 
-      retainCentralNode && Boolean(this.rootNode) &&
+      retainCentralNode && this.rootNode !== undefined &&
       settings.embedCentralNode && ((centralPage.file && isEmbedFileType(centralPage.file,ea)) || centralPage.isURL);
 
-    this.zoomToFitOnNextBrainLeafActivate = !ea.targetView.containerEl.isShown();
+    this.zoomToFitOnNextBrainLeafActivate = !this.leaf.view.containerEl.isShown();
 
     ea.clear();
     ea.copyViewElementsToEAforEditing(ea.getViewElements());
@@ -728,7 +763,7 @@ export class Scene {
     ea.getElements()
       .filter((el: ExcalidrawElement)=>!retainCentralNode || !this.rootNode.embeddedElementIds.includes(el.id))
       .forEach((el: Mutable<ExcalidrawElement>)=>el.isDeleted=true);
-    ea.style.verticalAlign = "middle";
+    applyEAStyle(ea, { verticalAlign: "middle" });
 
     const {parents,children,leftFriends,rightFriends,siblings} = this.getNeighbors(centralPage);
 
@@ -751,8 +786,8 @@ export class Scene {
       ...settings.centralNodeStyle,
     };
     const basestyle = settings.baseNodeStyle;
-    ea.style.fontFamily = basestyle.fontFamily;
-    ea.style.fontSize = basestyle.fontSize;
+    applyEAStyle(ea, { fontFamily: basestyle.fontFamily });
+    applyEAStyle(ea, { fontSize: basestyle.fontSize });
 
     this.rootNode = new Node({
       ea,
@@ -939,7 +974,7 @@ export class Scene {
   
     //-------------------------------------------------------
     // Render
-    ea.style.opacity = 100;
+    applyEAStyle(ea, { opacity: 100 });
     await Promise.all(this.layouts.map(async (layout) => await layout.render()));
     const nodeElements = ea.getElements();
     this.links.render(Array.from(this.toolsPanel.linkTagFilter.selectedLinks));
@@ -949,18 +984,22 @@ export class Scene {
 
     //hack to send link elements behind node elements
     const newImagesDict = linkElements.concat(nodeElements) 
-      .reduce((dict:{[key:string]:any}, obj:ExcalidrawElement) => {
+      .reduce<Record<string, ExcalidrawElement>>((dict, obj) => {
         dict[obj.id] = obj;
         return dict;
       }, {});
 
     ea.elementsDict = newImagesDict;
 
-    const excalidrawAPI = ea.getExcalidrawAPI() as ExcalidrawImperativeAPI;
+    const excalidrawAPI = ea.getExcalidrawAPI();
+    if(!excalidrawAPI) {
+      throw new Error("ExcaliBrain: Excalidraw API became unavailable during render.");
+    }
     await addElementsToViewTransient(ea);
     updateViewSceneTransient(ea, {appState: {viewBackgroundColor: settings.backgroundColor}});
     if(settings.allowAutozoom && !retainCentralNode) {
-      setTimeout(()=>excalidrawAPI.zoomToFit(ea.getViewElements(),settings.maxZoom,0.15),100);
+      const activeWindow = ea.targetView?.contentEl?.ownerDocument?.defaultView ?? window;
+      activeWindow.setTimeout(() => excalidrawAPI.zoomToFit?.(ea.getViewElements(), settings.maxZoom, 0.15), 100);
     }
   
     this.toolsPanel.rerender();
@@ -974,13 +1013,12 @@ export class Scene {
 
   public isCentralLeafStillThere():boolean {
     const settings = this.plugin.settings;
-    //@ts-ignore
-    const noCentralLeaf = this.app.workspace.getLeafById(this.centralLeaf?.id) === null ;
+    const centralLeaf = this.centralLeaf;
+    const noCentralLeaf = !centralLeaf || this.app.workspace.getLeafById(centralLeaf.id) === null;
     if(noCentralLeaf) {
       return false;
     }
-    //@ts-ignore
-    if (this.centralLeaf.view?.file?.path === settings.excalibrainFilepath) {
+    if (centralLeaf?.view instanceof FileView && centralLeaf.view.file?.path === settings.excalibrainFilepath) {
       return false;
     }
     return true;
@@ -989,8 +1027,8 @@ export class Scene {
   private async brainEventHandler (leaf:WorkspaceLeaf, startup:boolean = false) {
     const settings = this.plugin.settings;
     
-    if(!this.ea.targetView?.file || this.ea.targetView.file.path !== settings.excalibrainFilepath) {
-      this.unloadScene();
+    if(!this.ensureBrainViewBound()) {
+      if(!this.terminated) this.unloadScene();
       return;
     }
 
@@ -1004,6 +1042,21 @@ export class Scene {
 
     this.blockUpdateTimer = true;
     await sleep(100);
+
+    // active-leaf-change handlers can outlive a startup/teardown transition.
+    // Revalidate after the await before touching EA or Scene state.
+    if(this.terminated || !this.ensureBrainViewBound()) {
+      this.blockUpdateTimer = false;
+      return;
+    }
+
+    // The user may turn navigation synchronization off while this debounced
+    // active-leaf-change handler is waiting. Do not let that already queued
+    // event navigate the graph after the toggle has been switched off.
+    if(!startup && !this.plugin.settings.autoOpenCentralDocument) {
+      this.blockUpdateTimer = false;
+      return;
+    }
 
     //-------------------------------------------------------
     //terminate event handler if view no longer exists or file has changed
@@ -1022,7 +1075,7 @@ export class Scene {
 
     const rootFile = leaf.view.file;
     
-    if (rootFile.path === this.ea.targetView.file.path) { //brainview drawing is the active leaf
+    if (rootFile.path === settings.excalibrainFilepath) { //brainview drawing is the active leaf
       if(this.vaultFileChanged) {
         this.zoomToFitOnNextBrainLeafActivate = false;
         await this.reRender(true);
@@ -1055,7 +1108,7 @@ export class Scene {
     this.centralPagePath = rootFile.path;
     this.centralPageFile = rootFile;
     this.centralLeaf = leaf;
-    this.render();
+    await this.render();
   }
 
   private async addEventHandler() {
@@ -1063,7 +1116,18 @@ export class Scene {
       this.vaultFileChanged = true;
     }
 
-    const beh = (leaf:WorkspaceLeaf)=>this.brainEventHandler(leaf);
+    const beh = (leaf: WorkspaceLeaf): void => {
+      void this.brainEventHandler(leaf).catch((error: unknown) => {
+        if(!this.terminated) {
+          errorlog({
+            fn: "Scene.brainEventHandler",
+            where: "Scene.brainEventHandler()",
+            message: "Active-leaf-change handler failed",
+            error: error instanceof Error ? error : new Error(String(error)),
+          });
+        }
+      });
+    };
     this.app.workspace.on("active-leaf-change", beh);
     this.removeEH = () => this.app.workspace.off("active-leaf-change",beh);
     this.setTimer();
@@ -1078,7 +1142,7 @@ export class Scene {
 
     const leaves: WorkspaceLeaf[] = [];
     this.app.workspace.iterateAllLeaves(l=>{
-      if( (l.view instanceof FileView) && l.view.file && l.view.file.path !== this.ea.targetView.file.path) {
+      if( (l.view instanceof FileView) && l.view.file && l.view.file.path !== this.plugin.settings.excalibrainFilepath) {
         leaves.push(l);
       }
     })
@@ -1089,17 +1153,27 @@ export class Scene {
     if(leaves.length>0) {
       const lastFilePath = this.app.workspace.getLastOpenFiles()[0];
       if(lastFilePath && lastFilePath !== "") {
-        const leaf = leaves.filter(l=>(l.view as FileView)?.file?.path === lastFilePath);
+        const leaf = leaves.filter((l) => l.view instanceof FileView && l.view.file?.path === lastFilePath);
         if(leaf.length>0) {
           leafToOpen = leaf[0];
         }
       }
       keepOnTop(this.ea, this.app);  
-      this.brainEventHandler(leafToOpen, true);
+      void this.brainEventHandler(leafToOpen, true).catch((error: unknown) => {
+        if(!this.terminated) {
+          errorlog({
+            fn: "Scene.brainEventHandler",
+            where: "Scene.addEventHandler()",
+            message: "Initial brain navigation failed",
+            error: error instanceof Error ? error : new Error(String(error)),
+          });
+        }
+      });
     } else {
       if(this.plugin.navigationHistory.length>0) {
         const lastFilePath = this.plugin.navigationHistory.last;
-        setTimeout(()=>this.renderGraphForPath(lastFilePath,true),100);
+        const activeWindow = this.ea.targetView?.contentEl?.ownerDocument?.defaultView ?? window;
+        activeWindow.setTimeout(() => { void this.renderGraphForPath(lastFilePath, true); }, 100);
       }
     }
   }
@@ -1115,15 +1189,14 @@ export class Scene {
         if(this.centralPagePath) {
           const centralPage = this.getCentralPage();
           if(!centralPage) {
-            //@ts-ignore
-            if(this.centralLeaf && this.centralLeaf.view && this.centralLeaf.view.file) {
-              //@ts-ignore
-              this.centralPageFile = this.centralLeaf.view.file;
+            const centralLeaf = this.centralLeaf;
+            if(centralLeaf?.view instanceof FileView && centralLeaf.view.file) {
+              this.centralPageFile = centralLeaf.view.file;
               this.centralPagePath = this.centralPageFile.path;
             }
           }
         }
-        this.render(true);
+        await this.render(true);
       }
     }
 
@@ -1132,8 +1205,9 @@ export class Scene {
       this.removeTimer = undefined;
     }
 
-    const timer = setInterval(updateTimer,this.plugin.settings.indexUpdateInterval);
-    this.removeTimer = () => clearInterval(timer);
+    const activeWindow = this.ea.targetView?.contentEl?.ownerDocument?.defaultView ?? window;
+    const timer = activeWindow.setInterval((): void => { void updateTimer(); }, this.plugin.settings.indexUpdateInterval);
+    this.removeTimer = () => activeWindow.clearInterval(timer);
   }
 
 
@@ -1173,18 +1247,23 @@ export class Scene {
       try {
         this.ea.targetView.excalidrawAPI.setMobileModeAllowed?.(true);
         updateViewSceneTransient(this.ea, {appState:{viewModeEnabled:false}});
-      } catch {}
+      } catch {
+        // View teardown can invalidate the transient API between the guard and update.
+      }
     }
     releaseViewEA(this.ea);
     // timout is to make sure Obsidian is not being terminated when scene closes,
     // becasue that can lead to crippled settings file
     // if the plugin is still there after 400ms, it is safe to save the settings
     if(saveSettings) {
-      setTimeout(async () => {
-        await this.plugin.loadSettings(); //only overwrite the navigation history, save other synchronized settings
-        this.plugin.settings.navigationHistory = [...this.plugin.navigationHistory.get()];
-        await this.plugin.saveSettings();
-      },400);
+      const activeWindow = this.ea.targetView?.contentEl?.ownerDocument?.defaultView ?? window;
+      activeWindow.setTimeout((): void => {
+        void (async (): Promise<void> => {
+          await this.plugin.loadSettings(); //only overwrite the navigation history, save other synchronized settings
+          this.plugin.settings.navigationHistory = [...this.plugin.navigationHistory.get()];
+          await this.plugin.saveSettings();
+        })();
+      }, 400);
     }
     this.toolsPanel?.terminate();
     this.toolsPanel = undefined;
@@ -1198,7 +1277,6 @@ export class Scene {
     this.centralPagePath = undefined;
     this.centralPageFile = undefined;
     this.terminated = true;
-    //@ts-ignore
     if(!this.app.plugins.plugins["obsidian-excalidraw-plugin"]) {
       this.plugin.EA = null;
     }

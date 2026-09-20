@@ -2,46 +2,53 @@ import { App } from "obsidian";
 import { ExcalidrawAutomate } from "./ExcalidrawAutomateCompatibility";
 
 export interface ErrorLog {
-  fn: Function;
+  fn: string;
   where: string;
   message: string;
   error?: Error;
-  data?: any;
+  data?: unknown;
 }
 
-export const errorlog = (data: ErrorLog) => {
+export const errorlog = (data: ErrorLog): void => {
   console.error({ plugin: "ExcaliBrain", ...data });
 };
-export const log = console.log.bind(window.console);
-export const debug = console.log.bind(window.console);
 
-export const sleep = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export const sleep = async (ms: number): Promise<void> =>
+  new Promise((resolve) => window.setTimeout(resolve, ms));
 
 export const svgToBase64 = (svg: string): string => {
-  return `data:image/svg+xml;base64,${btoa(
-    unescape(encodeURIComponent(svg.replaceAll("&nbsp;", " "))),
-  )}`;
+  const bytes = new TextEncoder().encode(svg.replaceAll("&nbsp;", " "));
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return `data:image/svg+xml;base64,${btoa(binary)}`;
 };
 
-export const keepOnTop = (ea: ExcalidrawAutomate, app: App, ownerWindow?: Window) => {
+interface ElectronWindowLike {
+  isAlwaysOnTop(): boolean;
+  setAlwaysOnTop(value: boolean): void;
+}
+
+type WindowWithElectron = Window & { electronWindow?: ElectronWindowLike };
+
+export const keepOnTop = (
+  ea: ExcalidrawAutomate,
+  app: App,
+  ownerWindow?: Window,
+): void => {
   if(!ea.DEVICE?.isDesktop) return;
   let keepontop = true;
   if(!ownerWindow) {
     const view = ea.targetView;
     if(!view) return;
-    keepontop = (app.workspace.activeLeaf === view.leaf);
+    keepontop = app.workspace.activeLeaf === view.leaf;
     ownerWindow = view.ownerWindow;
   }
 
-  if (keepontop) {
-    //@ts-ignore
-    if(!ownerWindow.electronWindow.isAlwaysOnTop()) {
-      //@ts-ignore
-      ownerWindow.electronWindow.setAlwaysOnTop(true);
-      setTimeout(() => {
-        //@ts-ignore
-        ownerWindow.electronWindow.setAlwaysOnTop(false);
-      }, 500);
-    }
+  const electronWindow = (ownerWindow as WindowWithElectron | undefined)?.electronWindow;
+  if (keepontop && electronWindow && !electronWindow.isAlwaysOnTop()) {
+    electronWindow.setAlwaysOnTop(true);
+    ownerWindow?.setTimeout(() => electronWindow.setAlwaysOnTop(false), 500);
   }
 };

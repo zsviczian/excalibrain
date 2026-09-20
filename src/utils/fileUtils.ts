@@ -8,14 +8,6 @@ export const getFilenameFromPath = (path:string):string => {
   return mdFile ? filename.slice(0,-3) : filename;
 }
 
-const getExtension = (path:string):string => {
-  if(!path) {
-    return;
-  }
-  const extension = path.match(/\.([^\s\/\.]*)$/);
-  if(!extension) return "md";
-  return extension[1];
-}
 
 export function splitFolderAndFilename(filepath: string): {
   folderpath: string;
@@ -27,7 +19,7 @@ export function splitFolderAndFilename(filepath: string): {
   return {
     folderpath: normalizePath(filepath.substring(0, lastIndex)),
     filename,
-    basename: filename.replace(/\.[^/.]+$/, ""),
+    basename: filename.replace(/[.][^/.]+$/, ""),
   };
 }
 
@@ -36,11 +28,11 @@ export function resolveTFolder(app: App, folder_str: string): TFolder {
 
   const folder = app.vault.getAbstractFileByPath(folder_str);
   if (!folder) {
-    errorlog({fn: resolveTFolder,message: `Folder "${folder_str}" doesn't exist`,where:"resolveTFolder"});
+    errorlog({fn: "resolveTFolder",message: `Folder "${folder_str}" doesn't exist`,where:"resolveTFolder"});
     return null;
   }
   if (!(folder instanceof TFolder)) {
-    errorlog({fn: resolveTFolder,message: `${folder_str} is a file, not a folder`,where:"resolveTFolder"});
+    errorlog({fn: "resolveTFolder",message: `${folder_str} is a file, not a folder`,where:"resolveTFolder"});
     return null;
   }
   return folder;

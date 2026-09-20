@@ -1,4 +1,4 @@
 export interface IMultiselectOption {
-	value: any;
-	label: string;
+  value: string;
+  label: string;
 }

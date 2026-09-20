@@ -49,8 +49,8 @@ export class Links {
       settings,
       this.plugin
     )
-    this.links.set(key1, link),
-    this.reverseLinks.add(key2)
+    this.links.set(key1, link);
+    this.reverseLinks.add(key2);
   }
 
   render(linksToHide:string[]) {
