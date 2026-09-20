@@ -274,6 +274,24 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+  /**
+   * ExcaliBrain keeps its existing imperative settings UI for compatibility
+   * with older Obsidian versions. Returning an empty definition list prevents
+   * Obsidian 1.13+ from trying to index a second declarative settings model.
+   */
+  getSettingDefinitions(): [] {
+    return [];
+  }
+
+  private createSectionHeading(containerEl: HTMLElement, text: string): void {
+    const heading = containerEl.createDiv({
+      cls: "excalibrain-settings-h1",
+      text,
+    });
+    heading.setAttr("role", "heading");
+    heading.setAttr("aria-level", "1");
+  }
+
   get hierarchyStyleList(): string[] {
     return PREDEFINED_LINK_STYLES
       .concat(Array.from(this.plugin.settings.hierarchy.hidden))
@@ -1507,10 +1525,7 @@ private normalizeSettings() {
         5000
       )
     
-    this.containerEl.createEl("h1", {
-      cls: "excalibrain-settings-h1",
-      text: t("HIERARCHY_HEAD")
-    });
+    this.createSectionHeading(this.containerEl, t("HIERARCHY_HEAD"));
     const hierarchyDesc = this.containerEl.createEl("p", {});
     hierarchyDesc.appendChild(fragWithHTML(t("HIERARCHY_DESC")));
 
@@ -1868,10 +1883,7 @@ private normalizeSettings() {
     // ------------------------------
     // Behavior
     // ------------------------------
-    this.containerEl.createEl("h1", {
-      cls: "excalibrain-settings-h1",
-      text: t("BEHAVIOR_HEAD") 
-    });
+    this.createSectionHeading(this.containerEl, t("BEHAVIOR_HEAD"));
 
     //toggleEmbedTogglesAutoOpen: boolean;
     new Setting(containerEl)
@@ -1919,10 +1931,7 @@ private normalizeSettings() {
     // ------------------------------
     // Display
     // ------------------------------
-    this.containerEl.createEl("h1", {
-      cls: "excalibrain-settings-h1",
-      text: t("DISPLAY_HEAD") 
-    });
+    this.createSectionHeading(this.containerEl, t("DISPLAY_HEAD"));
 
     new Setting(containerEl)
       .setName(t("COMPACT_VIEW_NAME"))
@@ -2121,10 +2130,7 @@ private normalizeSettings() {
     // ------------------------------
     // Style
     // ------------------------------
-    containerEl.createEl("h1", {
-      cls: "excalibrain-settings-h1",
-      text: t("STYLE_HEAD")
-    });
+    this.createSectionHeading(containerEl, t("STYLE_HEAD"));
     const styleDesc = this.containerEl.createEl("p", {});
     styleDesc.appendChild(fragWithHTML(t("STYLE_DESC")));
 
