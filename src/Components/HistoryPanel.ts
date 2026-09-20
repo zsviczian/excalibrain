@@ -1,4 +1,3 @@
-import { TFile } from "obsidian";
 import ExcaliBrain from "src/excalibrain-main";
 import { getPrimaryTag, getTagStyle } from "src/utils/dataview";
 
@@ -32,7 +31,7 @@ export class HistoryPanel {
           cls: "excalibrain-history-divider"
         })
       }
-      let displayName = "", link = "", label = "";
+      let displayName = "", link = "";
       const page = this.plugin.pages.get(nh[i]);
       if(!page) {
         return;
@@ -48,11 +47,10 @@ export class HistoryPanel {
 
       if(page.file) {
         displayName = style.prefix + page.getTitle();
-        link = label = page.path;
+        link = page.path;
       } else {
 
         displayName = style.prefix + page.name;        
-        label = page.path;
         link = page.path;
       }
       container.createDiv({

@@ -1,6 +1,6 @@
 import { ExcalidrawAutomate, ExcalidrawImageElement, applyEAStyle } from "src/utils/ExcalidrawAutomateCompatibility";
 import { ExcaliBrainSettings } from "src/Settings";
-import { Dimensions, Mutable, NodeStyle } from "src/Types";
+import { Dimensions, NodeStyle } from "src/Types";
 import { getTagStyle } from "src/utils/dataview";
 import { Page } from "./Page";
 import { isEmbedFileType } from "src/utils/fileUtils";

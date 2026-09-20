@@ -1,11 +1,10 @@
-import { ExcalidrawElement } from "src/utils/ExcalidrawAutomateCompatibility";
 import { ToggleButton } from "src/Components/ToggleButton";
 import { t } from "src/lang/helpers";
 import ExcaliBrain from "src/excalibrain-main";
 import { splitFolderAndFilename } from "src/utils/fileUtils";
 import { PageSuggest } from "../Suggesters/PageSuggester";
 import { LinkTagFilter } from "./LinkTagFilter";
-import { EditableFileView, TextFileView, WorkspaceLeaf } from "obsidian";
+import { EditableFileView, WorkspaceLeaf } from "obsidian";
 import { addVerticalDivider } from "./VerticalDivider";
 
 export class ToolsPanel {

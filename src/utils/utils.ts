@@ -46,9 +46,9 @@ export const keepOnTop = (
     ownerWindow = view.ownerWindow;
   }
 
-  const electronWindow = (ownerWindow as WindowWithElectron | undefined)?.electronWindow;
+  const electronWindow = (ownerWindow as WindowWithElectron)?.electronWindow;
   if (keepontop && electronWindow && !electronWindow.isAlwaysOnTop()) {
     electronWindow.setAlwaysOnTop(true);
-    ownerWindow?.setTimeout(() => electronWindow.setAlwaysOnTop(false), 500);
+    window.setTimeout(() => electronWindow.setAlwaysOnTop(false), 500);
   }
 };

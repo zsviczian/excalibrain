@@ -201,7 +201,7 @@ export default class ExcaliBrain extends Plugin {
           .setTitle(`Add "${field}" to ExcaliBrain Ontology`)
           .setIcon("plus")
           .onClick(() => {
-            this.addToOntologyModal.show(field);
+            void this.addToOntologyModal.show(field);
           });
       });
     }
@@ -394,7 +394,7 @@ export default class ExcaliBrain extends Plugin {
     void this.app.workspace.revealLeaf(this.scene.leaf);
     const hoverEditor = this.app.plugins.plugins["obsidian-hover-editor"] as unknown as HoverEditorPluginLike | undefined;
     if(hoverEditor) {
-      const activeEditor = (hoverEditor as unknown as HoverEditorPluginLike).activePopovers
+      const activeEditor = hoverEditor.activePopovers
         .find((popover) => popover.leaves()[0] === this.scene?.leaf);
       if(activeEditor) {
         if(this.scene.leaf.view.containerEl.offsetHeight === 0) {
@@ -407,7 +407,7 @@ export default class ExcaliBrain extends Plugin {
   }
 
   private addFieldToOntology(field: string, direction: Ontology) {
-    this.addToOntologyModal.addFieldToOntology(direction, field);
+    void this.addToOntologyModal.addFieldToOntology(direction, field);
   }
 
   private registerCommands() {
@@ -451,7 +451,7 @@ export default class ExcaliBrain extends Plugin {
         return true;
       }
       if(direction === "select") {
-        this.addToOntologyModal.show(field);
+        void this.addToOntologyModal.show(field);
         return true; 
       }
       this.addFieldToOntology(field,direction);
@@ -598,7 +598,7 @@ export default class ExcaliBrain extends Plugin {
           //value in making the logic more sophisticated.
           const brainLeaf = this.getBrainLeaf();
           if(brainLeaf) {
-            const activeEditor = (hoverEditor as unknown as HoverEditorPluginLike).activePopovers
+            const activeEditor = hoverEditor.activePopovers
               .find((popover) => popover.leaves()[0] === brainLeaf);
             if(activeEditor) {
               void this.app.workspace.revealLeaf(brainLeaf);
@@ -613,8 +613,8 @@ export default class ExcaliBrain extends Plugin {
             }
           }
           const leaf = hoverEditor.spawnPopover(undefined, () => {
-            this.app.workspace.setActiveLeaf(leaf, false, true);
-            const activeEditor = (hoverEditor as unknown as HoverEditorPluginLike).activePopovers
+            this.app.workspace.setActiveLeaf(leaf, { focus: true });
+            const activeEditor = hoverEditor.activePopovers
               .find((popover) => popover.leaves()[0] === leaf);
             if(!activeEditor) {
               new Notice(t("HOVER_EDITOR_ERROR"), 6000);
@@ -629,7 +629,7 @@ export default class ExcaliBrain extends Plugin {
               if(openedLeaf) await this.start(openedLeaf);
             })();
           });
-        } catch(_error) {
+        } catch {
           new Notice(t("HOVER_EDITOR_ERROR"), 6000);
         }
       }
@@ -977,7 +977,7 @@ export default class ExcaliBrain extends Plugin {
       userStyle: false,
       display: t("NODESTYLE_URL"),
       getInheritedStyle: ()=> this.settings.baseNodeStyle
-    },
+    };
     this.nodeStyles["virtual"] = {
       style: this.settings.virtualNodeStyle,
       allowOverride: true,

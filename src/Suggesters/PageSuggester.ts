@@ -1,6 +1,6 @@
 // Credits go to Liam's Periodic Notes Plugin: https://github.com/liamcain/obsidian-periodic-notes
 
-import { App,  prepareFuzzySearch, TFile } from "obsidian";
+import { App, prepareFuzzySearch } from "obsidian";
 import { Page } from "src/graph/Page";
 import ExcaliBrain from "src/excalibrain-main";
 import { TextInputSuggest } from "./Suggest";

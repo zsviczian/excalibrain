@@ -12,7 +12,7 @@ import { WarningPrompt } from "./utils/Prompts";
 import { errorlog, keepOnTop } from "./utils/utils";
 import { isEmbedFileType } from "./utils/fileUtils";
 import { Page } from "./graph/Page";
-import { ExcalidrawAutomate, ExcalidrawElement, ExcalidrawImperativeAPI, addElementsToViewTransient, applyEAStyle, configureExcaliBrainView, getEA, destroyViewEA, releaseViewEA, updateViewSceneTransient, waitForExcalidrawViewReady } from "./utils/ExcalidrawAutomateCompatibility";
+import { ExcalidrawAutomate, ExcalidrawElement, addElementsToViewTransient, applyEAStyle, configureExcaliBrainView, getEA, destroyViewEA, releaseViewEA, updateViewSceneTransient, waitForExcalidrawViewReady } from "./utils/ExcalidrawAutomateCompatibility";
  
 export class Scene {
   ea: ExcalidrawAutomate;
@@ -998,8 +998,7 @@ export class Scene {
     await addElementsToViewTransient(ea);
     updateViewSceneTransient(ea, {appState: {viewBackgroundColor: settings.backgroundColor}});
     if(settings.allowAutozoom && !retainCentralNode) {
-      const activeWindow = ea.targetView?.contentEl?.ownerDocument?.defaultView ?? window;
-      activeWindow.setTimeout(() => excalidrawAPI.zoomToFit?.(ea.getViewElements(), settings.maxZoom, 0.15), 100);
+      window.setTimeout(() => excalidrawAPI.zoomToFit?.(ea.getViewElements(), settings.maxZoom, 0.15), 100);
     }
   
     this.toolsPanel.rerender();
@@ -1172,8 +1171,7 @@ export class Scene {
     } else {
       if(this.plugin.navigationHistory.length>0) {
         const lastFilePath = this.plugin.navigationHistory.last;
-        const activeWindow = this.ea.targetView?.contentEl?.ownerDocument?.defaultView ?? window;
-        activeWindow.setTimeout(() => { void this.renderGraphForPath(lastFilePath, true); }, 100);
+        window.setTimeout(() => { void this.renderGraphForPath(lastFilePath, true); }, 100);
       }
     }
   }
@@ -1205,9 +1203,8 @@ export class Scene {
       this.removeTimer = undefined;
     }
 
-    const activeWindow = this.ea.targetView?.contentEl?.ownerDocument?.defaultView ?? window;
-    const timer = activeWindow.setInterval((): void => { void updateTimer(); }, this.plugin.settings.indexUpdateInterval);
-    this.removeTimer = () => activeWindow.clearInterval(timer);
+    const timer = window.setInterval((): void => { void updateTimer(); }, this.plugin.settings.indexUpdateInterval);
+    this.removeTimer = () => window.clearInterval(timer);
   }
 
 
@@ -1256,8 +1253,7 @@ export class Scene {
     // becasue that can lead to crippled settings file
     // if the plugin is still there after 400ms, it is safe to save the settings
     if(saveSettings) {
-      const activeWindow = this.ea.targetView?.contentEl?.ownerDocument?.defaultView ?? window;
-      activeWindow.setTimeout((): void => {
+      window.setTimeout((): void => {
         void (async (): Promise<void> => {
           await this.plugin.loadSettings(); //only overwrite the navigation history, save other synchronized settings
           this.plugin.settings.navigationHistory = [...this.plugin.navigationHistory.get()];
