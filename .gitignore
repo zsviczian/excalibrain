@@ -23,3 +23,5 @@ data.json
 .DS_Store
 package-lock.json
 .aider*
+
+repository.zip
