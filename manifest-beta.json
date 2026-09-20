@@ -1,7 +1,7 @@
 {
 	"id": "excalibrain",
 	"name": "ExcaliBrain",
-	"version": "0.2.18",
+	"version": "0.2.19-beta.0",
 	"minAppVersion": "1.8.7",
 	"description": "A clean, intuitive and editable graph view.",
 	"author": "Zsolt Viczian",

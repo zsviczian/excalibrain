@@ -128,8 +128,7 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
       ) {
         this.scope = new Scope();
 
-        this.suggestEl = containerEl.createDiv("suggestion-container");
-        this.suggestEl.setCssProps({"left": "-1000px"});
+        this.suggestEl = containerEl.createDiv({cls: ["suggestion-container", "excalibrain-suggestion-container"]});
         const suggestion = this.suggestEl.createDiv("suggestion");
         this.suggest = new Suggest(this, suggestion, this.scope);
 
@@ -164,16 +163,21 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
         }
     }
 
-    open(container: HTMLElement, inputEl: HTMLElement): void {
+    open(_container: HTMLElement, inputEl: HTMLElement): void {
         (this.app as AppWithKeymap).keymap.pushScope(this.scope);
 
-        container.appendChild(this.suggestEl);
+        // Mount the fixed-position popup at the document root so its viewport
+        // coordinates use the same origin as getBoundingClientRect(). Keeping
+        // it inside the Excalidraw view causes workspace/tab/sidebar offsets to
+        // be applied a second time when an ancestor establishes a containing
+        // block for fixed-position descendants.
+        inputEl.ownerDocument.body.appendChild(this.suggestEl);
         const rect = inputEl.getBoundingClientRect();
-        this.suggestEl.setCssProps({"position": "fixed"});
-        this.suggestEl.setCssProps({"left": `${rect.left}px`});
-        this.suggestEl.setCssProps({"top": `${rect.bottom}px`});
-        this.suggestEl.setCssProps({"width": `${rect.width}px`});
-        this.suggestEl.setCssProps({"z-index": "var(--layer-menu)"});
+        this.suggestEl.setCssProps({
+            "left": `${rect.left}px`,
+            "top": `${rect.bottom}px`,
+            "width": `${rect.width}px`,
+        });
     }
 
     close(): void {

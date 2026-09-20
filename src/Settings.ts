@@ -188,6 +188,19 @@ export const DEFAULT_SETTINGS: ExcaliBrainSettings = {
 
 const HIDE_DISABLED_STYLE = "excalibrain-hide-disabled";
 const HIDE_DISABLED_CLASS = "excalibrain-settings-disabled";
+const CONTROL_DISABLED_CLASS = "excalibrain-settings-control-disabled";
+
+const setControlDisabledClass = (el: HTMLElement, isDisabled: boolean): void => {
+  if(isDisabled) {
+    el.addClass(CONTROL_DISABLED_CLASS);
+    return;
+  }
+  el.removeClass(CONTROL_DISABLED_CLASS);
+};
+
+const setColorPickerOpacity = (el: HTMLElement, opacity: number): void => {
+  el.setCssProps({"--excalibrain-color-opacity": opacity.toString()});
+};
 
 const getHex = (color:string) => color.substring(0,7);
 const getAlphaFloat = (color:string) => parseInt(color.substring(7,9),16)/255;
@@ -272,24 +285,6 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
   constructor(app: App, plugin: ExcaliBrain) {
     super(app, plugin);
     this.plugin = plugin;
-  }
-
-  /**
-   * ExcaliBrain keeps its existing imperative settings UI for compatibility
-   * with older Obsidian versions. Returning an empty definition list prevents
-   * Obsidian 1.13+ from trying to index a second declarative settings model.
-   */
-  getSettingDefinitions(): [] {
-    return [];
-  }
-
-  private createSectionHeading(containerEl: HTMLElement, text: string): void {
-    const heading = containerEl.createDiv({
-      cls: "excalibrain-settings-h1",
-      text,
-    });
-    heading.setAttr("role", "heading");
-    heading.setAttr("aria-level", "1");
   }
 
   get hierarchyStyleList(): string[] {
@@ -564,12 +559,15 @@ private normalizeSettings() {
         setting.settingEl.removeClass(HIDE_DISABLED_CLASS);
       }      
       picker.disabled = isDisabled;
-      picker.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
+      setControlDisabledClass(picker, isDisabled);
+      if(!isDisabled) {
+        setColorPickerOpacity(picker, 1);
+      }
       sliderComponent.setDisabled(isDisabled);
-      sliderComponent.sliderEl.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
-      colorLabel.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
-      opacityLabel.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
-      displayText.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
+      setControlDisabledClass(sliderComponent.sliderEl, isDisabled);
+      setControlDisabledClass(colorLabel, isDisabled);
+      setControlDisabledClass(opacityLabel, isDisabled);
+      setControlDisabledClass(displayText, isDisabled);
     }
     if(allowOverride) {
       setting.addToggle(toggle => {
@@ -624,7 +622,7 @@ private normalizeSettings() {
         .onChange((value)=>{
           setValue(picker.value + getAlphaHex(value));
           displayText.innerText = ` ${value.toString()}`;
-          picker.setCssProps({"opacity": value.toString()});
+          setColorPickerOpacity(picker, value);
           this.dirty = true;
         })
     })
@@ -634,7 +632,7 @@ private normalizeSettings() {
       cls: "excalibrain-settings-sliderlabel"
     });
     setting.controlEl.appendChild(displayText);
-    picker.setCssProps({"opacity": sliderComponent.getValue().toString()});
+    setColorPickerOpacity(picker, sliderComponent.getValue());
 
     setDisabled(allowOverride && !toggleComponent.getValue());
     
@@ -664,8 +662,8 @@ private normalizeSettings() {
         setting.settingEl.removeClass(HIDE_DISABLED_CLASS);
       }
       sliderComponent.setDisabled(isDisabled);
-      sliderComponent.sliderEl.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
-      displayText.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
+      setControlDisabledClass(sliderComponent.sliderEl, isDisabled);
+      setControlDisabledClass(displayText, isDisabled);
     }
 
     if(allowOverride) {
@@ -735,7 +733,7 @@ private normalizeSettings() {
         setting.settingEl.removeClass(HIDE_DISABLED_CLASS);
       }
       valueComponent.setDisabled(isDisabled);
-      valueComponent.toggleEl.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
+      setControlDisabledClass(valueComponent.toggleEl, isDisabled);
     }
 
     if(allowOverride) {
@@ -798,7 +796,7 @@ private normalizeSettings() {
         setting.settingEl.removeClass(HIDE_DISABLED_CLASS);
       }
       dropdownComponent.setDisabled(isDisabled);
-      dropdownComponent.selectEl.setCssProps({"opacity": isDisabled ? "0.3" : "1"});
+      setControlDisabledClass(dropdownComponent.selectEl, isDisabled);
     }
 
     if(allowOverride) {
@@ -859,7 +857,7 @@ private normalizeSettings() {
         prefixSetting.settingEl.removeClass(HIDE_DISABLED_CLASS);
       }
       textComponent.setDisabled(isDisabled);
-      textComponent.inputEl.setCssProps({"opacity": isDisabled ? "0.3" : "1"}); 
+      setControlDisabledClass(textComponent.inputEl, isDisabled);
     }
     if(allowOverride) {
       prefixSetting.addToggle(toggle => {
@@ -1525,7 +1523,10 @@ private normalizeSettings() {
         5000
       )
     
-    this.createSectionHeading(this.containerEl, t("HIERARCHY_HEAD"));
+    this.containerEl.createEl("h1", {
+      cls: "excalibrain-settings-h1",
+      text: t("HIERARCHY_HEAD")
+    });
     const hierarchyDesc = this.containerEl.createEl("p", {});
     hierarchyDesc.appendChild(fragWithHTML(t("HIERARCHY_DESC")));
 
@@ -1883,7 +1884,10 @@ private normalizeSettings() {
     // ------------------------------
     // Behavior
     // ------------------------------
-    this.createSectionHeading(this.containerEl, t("BEHAVIOR_HEAD"));
+    this.containerEl.createEl("h1", {
+      cls: "excalibrain-settings-h1",
+      text: t("BEHAVIOR_HEAD") 
+    });
 
     //toggleEmbedTogglesAutoOpen: boolean;
     new Setting(containerEl)
@@ -1931,7 +1935,10 @@ private normalizeSettings() {
     // ------------------------------
     // Display
     // ------------------------------
-    this.createSectionHeading(this.containerEl, t("DISPLAY_HEAD"));
+    this.containerEl.createEl("h1", {
+      cls: "excalibrain-settings-h1",
+      text: t("DISPLAY_HEAD") 
+    });
 
     new Setting(containerEl)
       .setName(t("COMPACT_VIEW_NAME"))
@@ -2130,7 +2137,10 @@ private normalizeSettings() {
     // ------------------------------
     // Style
     // ------------------------------
-    this.createSectionHeading(containerEl, t("STYLE_HEAD"));
+    containerEl.createEl("h1", {
+      cls: "excalibrain-settings-h1",
+      text: t("STYLE_HEAD")
+    });
     const styleDesc = this.containerEl.createEl("p", {});
     styleDesc.appendChild(fragWithHTML(t("STYLE_DESC")));
 

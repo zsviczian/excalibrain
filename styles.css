@@ -13,8 +13,8 @@
   display:none;
 }
 
-.excalibrain-contentEl {
-  overflow: hidden !important;
+.excalidraw.excalibrain-contentEl {
+  overflow: hidden;
   position: relative;
 }
 
@@ -63,15 +63,15 @@
     margin-right: 0.2em;
   }
 
-  .excalibrain-button {
+  .excalidraw.excalibrain-contentEl .excalibrain-buttons > .excalibrain-button {
     pointer-events: all;
     vertical-align: middle;
     padding-left: 0.3em;
     padding-right: 0.3em;
-    margin-left: 0.3em !important;
-    margin-right: 0px !important;
-    width: 2.4em !important;
-    justify-content: center !important;
+    margin-left: 0.3em;
+    margin-right: 0;
+    width: 2.4em;
+    justify-content: center;
     box-shadow: none;
     transition: box-shadow 0.3s ease;
   }
@@ -146,18 +146,6 @@
 
 .excalibrain-settings-h1 {
   color: var(--text-title-h1);
-  display: block;
-  font-family: var(--h1-font, inherit);
-  font-size: var(--h1-size, 2em);
-  font-style: var(--h1-style, normal);
-  font-variant: var(--h1-variant, normal);
-  font-weight: var(--h1-weight, bold);
-  letter-spacing: var(--h1-letter-spacing, normal);
-  line-height: var(--h1-line-height, normal);
-  margin-block-start: 0.67em;
-  margin-block-end: 0.67em;
-  margin-inline-start: 0;
-  margin-inline-end: 0;
 }
 
 .excalibrain-setting-style-section {
@@ -363,6 +351,20 @@
 }
 
 /* Scanner-safe static presentation rules used by settings and dialogs. */
+.excalibrain-settings-control-disabled {
+  opacity: 0.3;
+}
+
+.excalibrain-settings-colorpicker {
+  opacity: var(--excalibrain-color-opacity, 1);
+}
+
+.suggestion-container.excalibrain-suggestion-container {
+  position: fixed;
+  left: -1000px;
+  z-index: var(--layer-menu);
+}
+
 .excalibrain-settings-number-value {
   min-width: 2.3em;
   text-align: right;
