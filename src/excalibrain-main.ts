@@ -413,7 +413,7 @@ export default class ExcaliBrain extends Plugin {
   private registerCommands() {
     
     const addFieldToOntology = (checking: boolean, direction: Ontology | "select"):boolean => {
-      const activeView = this.app.workspace.activeLeaf?.view;
+      const activeView = this.app.workspace.getMostRecentLeaf()?.view;
       let editor: Editor;
 
       if(!activeView) {

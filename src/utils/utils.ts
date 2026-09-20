@@ -42,7 +42,7 @@ export const keepOnTop = (
   if(!ownerWindow) {
     const view = ea.targetView;
     if(!view) return;
-    keepontop = app.workspace.activeLeaf === view.leaf;
+    keepontop = app.workspace.getMostRecentLeaf() === view.leaf;
     ownerWindow = view.ownerWindow;
   }
 
