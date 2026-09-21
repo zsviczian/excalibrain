@@ -16,7 +16,7 @@
   "devDependencies": {
     "esbuild": "0.28.2",
     "obsidian": "1.8.7",
-    "typescript": "5.9.3"
+    "typescript": "7.0.2"
   },
   "overrides": {
     "moment": "2.31.0"
