@@ -380,7 +380,9 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
 
     let refreshHierarchyStyles: () => void = () => this.syncHierarchyStyles();
     let unusedFields: TextAreaComponent | undefined;
-    const refreshUnusedFields = () => unusedFields?.setValue(this.getUnusedFieldNames());
+    const refreshUnusedFields = (): void => {
+      unusedFields?.setValue(this.getUnusedFieldNames());
+    };
     const hierarchy = (
       key: "parents" | "children" | "leftFriends" | "rightFriends" | "previous" | "next" | "hidden" | "exclusions",
       name: Label, description?: Label,
@@ -511,7 +513,9 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
           toggle("inverseInfer", "REVERSE_NAME", "REVERSE_DESC"),
           toggle("inverseArrowDirection", "INVERSE_ARROW_DIRECTION_NAME", "INVERSE_ARROW_DIRECTION_DESC"),
           toggle("allowOntologySuggester", "ONTOLOGY_SUGGESTER_NAME", "ONTOLOGY_SUGGESTER_DESC",
-            (value) => ontologyControls.forEach((setting) => setting.setDisabled(!value))),
+            (value) => ontologyControls.forEach((setting): void => {
+              setting.setDisabled(!value);
+            })),
           text("ontologySuggesterTrigger", "ONTOLOGY_SUGGESTER_ALL_NAME", undefined, ontologyControl),
           text("ontologySuggesterParentTrigger", "ONTOLOGY_SUGGESTER_PARENT_NAME", undefined, ontologyControl),
           text("ontologySuggesterChildTrigger", "ONTOLOGY_SUGGESTER_CHILD_NAME", undefined, ontologyControl),
