@@ -144,10 +144,6 @@
     color: var(--text-title-h3);
 }
 
-.excalibrain-settings-h1 {
-  color: var(--text-title-h1);
-}
-
 .excalibrain-setting-style-section {
   padding-left: 30px;
   border-left: 10px solid var(--background-modifier-border);
@@ -409,4 +405,31 @@
 
 .excalibrain-ontology-setting .setting-item-control > button {
   flex: 1 0 calc(33.33% - var(--size-4-2));
+}
+
+/* The shared style editor contains several native Setting rows and previews. */
+.excalibrain-settings-style-editor {
+  display: block;
+}
+
+.excalibrain-settings-style-editor > .setting-item-info {
+  margin-right: 0;
+}
+
+.excalibrain-settings-style-editor > .setting-item-control {
+  display: block;
+  margin-top: var(--size-4-4);
+}
+
+.excalibrain-settings-support {
+  padding: 0;
+  border-top: none;
+}
+
+.excalibrain-settings-support > .setting-item-info {
+  display: none;
+}
+
+.excalibrain-settings-support > .setting-item-control {
+  justify-content: flex-start;
 }

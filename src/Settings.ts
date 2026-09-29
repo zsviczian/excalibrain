@@ -14,10 +14,11 @@ import ExcaliBrain from "./excalibrain-main";
 import { Hierarchy, NodeStyle, LinkStyle, RelationType, NodeStyleData, LinkStyleData, LinkDirection, Role } from "./Types";
 import { WarningPrompt } from "./utils/Prompts";
 import { Node as GraphNode } from "./graph/Node";
-import { svgToBase64 } from "./utils/utils";
+import { errorlog, svgToBase64 } from "./utils/utils";
 import { Link } from "./graph/Link";
 import { DEFAULT_HIERARCHY_DEFINITION, DEFAULT_LINK_STYLE, DEFAULT_NODE_STYLE, PREDEFINED_LINK_STYLES } from "./constants/constants";
 import { ExcalidrawAutomate, getEA } from "./utils/ExcalidrawAutomateCompatibility";
+import type { SearchableSettingDefinition, SearchableSettingItem } from "./utils/SettingsCompatibility";
 
 export interface ExcaliBrainSettings {
   compactView: boolean;
@@ -271,6 +272,8 @@ const fragWithHTML = (markup: string): DocumentFragment => createFragment((frag)
 
 export class ExcaliBrainSettingTab extends PluginSettingTab {
   private isPersistingSettings: boolean = false;
+  private definitionSettingsLoad: Promise<void> | null = null;
+  private definitionRenderGeneration = 0;
   private settingsFocusoutHandler: ((event: FocusEvent) => void) | null = null;
   plugin: ExcaliBrain;
   ea: ExcalidrawAutomate;
@@ -285,6 +288,318 @@ export class ExcaliBrainSettingTab extends PluginSettingTab {
   constructor(app: App, plugin: ExcaliBrain) {
     super(app, plugin);
     this.plugin = plugin;
+  }
+
+  /**
+   * Obsidian 1.13+ indexes these names without opening the settings tab.
+   * Keep indexing free of I/O, controls and Excalidraw/Dataview initialization.
+   * Older Obsidian versions continue to call display().
+   */
+  getSettingDefinitions(): SearchableSettingItem[] {
+    type Label = Parameters<typeof t>[0];
+    type BooleanKey = {
+      [K in keyof ExcaliBrainSettings]: ExcaliBrainSettings[K] extends boolean ? K : never
+    }[keyof ExcaliBrainSettings];
+    type StringKey = {
+      [K in keyof ExcaliBrainSettings]: ExcaliBrainSettings[K] extends string ? K : never
+    }[keyof ExcaliBrainSettings];
+
+    const plainText = (value: string): string => decodeMarkupEntities(value
+      .replace(/<br\b[^>]*>|<\/(?:ul|ol|li)>/gi, " ")
+      .replace(/<\/?(?:b|i|u|code|kbd|mark|ul|ol|li)\b[^>]*>/gi, ""))
+      .replace(/\s+/g, " ").trim();
+
+    const define = (
+      name: Label,
+      description: Label | undefined,
+      render: (setting: Setting) => void | (() => void),
+    ): SearchableSettingDefinition => ({
+      name: plainText(t(name)),
+      desc: description ? plainText(t(description)) : undefined,
+      render: (setting) => {
+        let disposed = false;
+        let cleanup: void | (() => void);
+        const generation = this.definitionRenderGeneration;
+        // The host does not await render callbacks. All rows share one reload,
+        // and teardown cancels mounting controls into an obsolete row.
+        void this.loadDefinitionSettings().then(() => {
+          if(disposed || generation !== this.definitionRenderGeneration) return;
+          if(!this.settingsFocusoutHandler) this.attachSettingsFocusoutHandler();
+          setting.setName(fragWithHTML(t(name)));
+          if(description) setting.setDesc(fragWithHTML(t(description)));
+          cleanup = render(setting);
+        }).catch((error: unknown) => {
+          if(disposed || generation !== this.definitionRenderGeneration) return;
+          setting.setDesc(String(error));
+          errorlog({
+            fn: "getSettingDefinitions",
+            where: "Settings.ts",
+            message: "Unable to render settings",
+            data: error,
+          });
+        });
+        return () => {
+          disposed = true;
+          if(typeof cleanup === "function") cleanup();
+          if(this.dirty) void this.executeSaveAndApply();
+        };
+      },
+    });
+
+    const toggle = (key: BooleanKey, name: Label, description?: Label,
+      onChange?: (value: boolean) => void): SearchableSettingDefinition =>
+      define(name, description, (setting) => {
+        setting.addToggle((control) => control
+          .setValue(this.plugin.settings[key])
+          .onChange((value) => {
+            this.plugin.settings[key] = value;
+            onChange?.(value);
+            this.dirty = true;
+          }));
+      });
+
+    const slider = (name: Label, description: Label | undefined,
+      limits: {min: number; max: number; step: number},
+      getValue: () => number, setValue: (value: number) => void): SearchableSettingDefinition =>
+      define(name, description, (setting) => {
+        this.numberslider(setting, t(name), description ? t(description) : undefined,
+          limits, getValue, setValue, () => {}, false, getValue());
+      });
+
+    const text = (key: StringKey, name: Label, description?: Label,
+      configure?: (setting: Setting) => void): SearchableSettingDefinition =>
+      define(name, description, (setting) => {
+        setting.addText((control) => control
+          .setValue(this.plugin.settings[key])
+          .onChange((value) => {
+            this.plugin.settings[key] = value;
+            this.dirty = true;
+          }));
+        configure?.(setting);
+      });
+
+    let refreshHierarchyStyles: () => void = () => this.syncHierarchyStyles();
+    let unusedFields: TextAreaComponent | undefined;
+    const refreshUnusedFields = () => unusedFields?.setValue(this.getUnusedFieldNames());
+    const hierarchy = (
+      key: "parents" | "children" | "leftFriends" | "rightFriends" | "previous" | "next" | "hidden" | "exclusions",
+      name: Label, description?: Label,
+    ): SearchableSettingDefinition => define(name, description, (setting) => {
+      setting.addTextArea((control) => {
+        control.inputEl.addClass("excalibrain-settings-textarea-90");
+        control.setValue(this.plugin.settings.hierarchy[key].join(", "))
+          .onChange((value) => {
+            const fields = value.split(",").map((field) => field.trim())
+              .sort((a, b) => a.toLowerCase() < b.toLowerCase() ? -1 : 1);
+            this.plugin.settings.hierarchy[key] = fields;
+            if(key !== "exclusions") {
+              this.plugin.hierarchyLowerCase[key] = fields.map((field) => field.toLowerCase().replaceAll(" ", "-"));
+            }
+            refreshUnusedFields();
+            refreshHierarchyStyles();
+            this.dirty = true;
+          });
+      });
+      setting.nameEl.addClass("excalibrain-setting-nameEl");
+      setting.descEl.addClass("excalibrain-setting-descEl");
+      setting.controlEl.addClass("excalibrain-setting-controlEl");
+    });
+
+    const ontologyControls = new Set<Setting>();
+    const ontologyControl = (setting: Setting): void => {
+      ontologyControls.add(setting);
+      setting.setDisabled(!this.plugin.settings.allowOntologySuggester);
+    };
+
+    // Preserve the custom style selectors, override toggles, previews and their
+    // interdependencies as a single shared editor. Its individual labels and
+    // descriptions are aliases, so those controls remain discoverable in search.
+    const styleEditor = define("STYLE_HEAD", "STYLE_DESC", (setting) => {
+      setting.setClass("excalibrain-settings-style-editor");
+      setting.nameEl.empty();
+      this.initializeDemo();
+      refreshHierarchyStyles = this.renderStyleSettings(setting.controlEl, refreshUnusedFields);
+      return () => setting.settingEl.removeClass("excalibrain-settings-style-editor");
+    });
+    const styleLabels: Label[] = [
+      "CANVAS_BGCOLOR", "TAGLIST_NAME", "TAGLIST_DESC", "NOTE_STYLE_TAG_NAME", "NOTE_STYLE_TAG_DESC",
+      "ALL_STYLE_PREFIXES_NAME", "ALL_STYLE_PREFIXES_DESC", "NODESTYLE_INCLUDE_TOGGLE",
+      "NODESTYLE_PREFIX_NAME", "NODESTYLE_PREFIX_DESC", "NODESTYLE_BGCOLOR", "NODESTYLE_BG_FILLSTYLE",
+      "NODESTYLE_TEXTCOLOR", "NODESTYLE_BORDERCOLOR", "NODESTYLE_FONTSIZE", "NODESTYLE_FONTFAMILY",
+      "NODESTYLE_MAXLABELLENGTH_NAME", "NODESTYLE_MAXLABELLENGTH_DESC", "NODESTYLE_ROUGHNESS",
+      "NODESTYLE_SHARPNESS", "NODESTYLE_STROKEWIDTH", "NODESTYLE_STROKESTYLE", "NODESTYLE_RECTANGLEPADDING",
+      "NODESTYLE_GATE_RADIUS_NAME", "NODESTYLE_GATE_RADIUS_DESC", "NODESTYLE_GATE_OFFSET_NAME",
+      "NODESTYLE_GATE_OFFSET_DESC", "NODESTYLE_GATE_COLOR", "NODESTYLE_GATE_BGCOLOR_NAME",
+      "NODESTYLE_GATE_BGCOLOR_DESC", "NODESTYLE_GATE_FILLSTYLE", "NODESTYLE_BASE", "NODESTYLE_CENTRAL",
+      "NODESTYLE_INFERRED", "NODESTYLE_URL", "NODESTYLE_VIRTUAL", "NODESTYLE_SIBLING", "NODESTYLE_ATTACHMENT",
+      "NODESTYLE_FOLDER", "NODESTYLE_TAG", "LINKSTYLE_COLOR", "LINKSTYLE_WIDTH", "LINKSTYLE_STROKE",
+      "LINKSTYLE_ROUGHNESS", "LINKSTYLE_ARROWSTART", "LINKSTYLE_ARROWEND", "LINKSTYLE_SHOWLABEL",
+      "LINKSTYLE_FONTSIZE", "LINKSTYLE_FONTFAMILY", "LINKSTYLE_BASE", "LINKSTYLE_INFERRED",
+      "LINKSTYLE_FOLDER", "LINKSTYLE_TAG",
+    ];
+    styleEditor.aliases = [...new Set([
+      ...styleLabels.map((label) => plainText(t(label))),
+      "Show inherited", "Show/Hide Inherited Properties",
+      ...Object.keys(this.plugin.settings.tagNodeStyles),
+      ...this.hierarchyStyleList,
+    ])];
+
+    return [
+      {
+        name: "",
+        searchable: false,
+        render: (setting) => {
+          setting.setClass("excalibrain-settings-support");
+          this.renderSupport(setting.controlEl);
+          return () => setting.settingEl.removeClass("excalibrain-settings-support");
+        },
+      },
+      define("EXCALIBRAIN_FILE_NAME", "EXCALIBRAIN_FILE_DESC", (setting) => {
+        setting.addText((control) => {
+          control.setValue(this.plugin.settings.excalibrainFilepath)
+            .onChange((value) => {
+              if(!value.endsWith(".md")) {
+                value += value.endsWith(".m") ? "d" : value.endsWith(".") ? "md" : ".md";
+              }
+              const apply = () => {
+                this.plugin.settings.excalibrainFilepath = value;
+                this.dirty = true;
+                control.setValue(value);
+              };
+              if(this.app.vault.getAbstractFileByPath(value)) {
+                new WarningPrompt(this.app, "⚠ File Exists",
+                  `${value} already exists in your Vault. Is it ok to overwrite this file?`)
+                  .show((confirmed: boolean) => { if(confirmed) apply(); });
+                return;
+              }
+              this.plugin.settings.excalibrainFilepath = value;
+              this.dirty = true;
+            });
+          control.inputEl.onblur = () => control.setValue(this.plugin.settings.excalibrainFilepath);
+        });
+      }),
+      slider("INDEX_REFRESH_FREQ_NAME", "INDEX_REFRESH_FREQ_DESC", {min: 5, max: 600, step: 5},
+        () => this.plugin.settings.indexUpdateInterval / 1000,
+        (value) => { this.plugin.settings.indexUpdateInterval = value * 1000; this.updateTimer = true; }),
+      {
+        type: "group",
+        heading: t("HIERARCHY_HEAD"),
+        items: [
+          {
+            ...define("HIERARCHY_HEAD", "HIERARCHY_DESC", (setting) => setting.nameEl.empty()),
+            searchable: false,
+          },
+          hierarchy("parents", "PARENTS_NAME"),
+          hierarchy("children", "CHILDREN_NAME"),
+          hierarchy("leftFriends", "LEFT_FRIENDS_NAME"),
+          hierarchy("rightFriends", "RIGHT_FRIENDS_NAME"),
+          hierarchy("previous", "PREVIOUS_NAME"),
+          hierarchy("next", "NEXT_NAME"),
+          hierarchy("hidden", "HIDDEN_NAME", "HIDDEN_DESC"),
+          hierarchy("exclusions", "EXCLUSIONS_NAME", "EXCLUSIONS_DESC"),
+          define("UNASSIGNED_NAME", "UNASSIGNED_DESC", (setting) => {
+            setting.addTextArea((control) => {
+              unusedFields = control;
+              control.inputEl.addClass("excalibrain-settings-textarea-90");
+              control.setValue(this.getUnusedFieldNames()).setDisabled(true);
+            });
+            setting.nameEl.addClass("excalibrain-setting-nameEl");
+            setting.descEl.addClass("excalibrain-setting-descEl");
+            setting.controlEl.addClass("excalibrain-setting-controlEl");
+          }),
+          toggle("inferAllLinksAsFriends", "INFER_NAME", "INFER_DESC"),
+          toggle("inverseInfer", "REVERSE_NAME", "REVERSE_DESC"),
+          toggle("inverseArrowDirection", "INVERSE_ARROW_DIRECTION_NAME", "INVERSE_ARROW_DIRECTION_DESC"),
+          toggle("allowOntologySuggester", "ONTOLOGY_SUGGESTER_NAME", "ONTOLOGY_SUGGESTER_DESC",
+            (value) => ontologyControls.forEach((setting) => setting.setDisabled(!value))),
+          text("ontologySuggesterTrigger", "ONTOLOGY_SUGGESTER_ALL_NAME", undefined, ontologyControl),
+          text("ontologySuggesterParentTrigger", "ONTOLOGY_SUGGESTER_PARENT_NAME", undefined, ontologyControl),
+          text("ontologySuggesterChildTrigger", "ONTOLOGY_SUGGESTER_CHILD_NAME", undefined, ontologyControl),
+          text("ontologySuggesterLeftFriendTrigger", "ONTOLOGY_SUGGESTER_LEFT_FRIEND_NAME", undefined, ontologyControl),
+          text("ontologySuggesterRightFriendTrigger", "ONTOLOGY_SUGGESTER_RIGHT_FRIEND_NAME", undefined, ontologyControl),
+          text("ontologySuggesterPreviousTrigger", "ONTOLOGY_SUGGESTER_PREVIOUS_NAME", undefined, ontologyControl),
+          text("ontologySuggesterNextTrigger", "ONTOLOGY_SUGGESTER_NEXT_NAME", undefined, ontologyControl),
+          define("MID_SENTENCE_SUGGESTER_TRIGGER_NAME", "MID_SENTENCE_SUGGESTER_TRIGGER_DESC", (setting) => {
+            setting.addDropdown((control) => control.addOptions({"(": "(", "[": "["})
+              .setValue(this.plugin.settings.ontologySuggesterMidSentenceTrigger)
+              .onChange((value) => {
+                this.plugin.settings.ontologySuggesterMidSentenceTrigger = value;
+                this.dirty = true;
+              }));
+            ontologyControl(setting);
+          }),
+          define("BOLD_FIELDS_NAME", "BOLD_FIELDS_DESC", (setting) => {
+            setting.addToggle((control) => control.setValue(this.plugin.settings.boldFields)
+              .onChange((value) => { this.plugin.settings.boldFields = value; this.dirty = true; }));
+            ontologyControl(setting);
+          }),
+        ],
+      },
+      {
+        type: "group",
+        heading: t("BEHAVIOR_HEAD"),
+        items: [
+          toggle("toggleEmbedTogglesAutoOpen", "TOGGLE_AUTOOPEN_WHEN_EMBED_TOGGLE_NAME", "TOGGLE_AUTOOPEN_WHEN_EMBED_TOGGLE_DESC"),
+          define("EXCLUDE_PATHLIST_NAME", "EXCLUDE_PATHLIST_DESC", (setting) => {
+            setting.addTextArea((control) => {
+              control.inputEl.addClass("excalibrain-settings-textarea-100");
+              control.setValue(this.plugin.settings.excludeFilepaths.join(", "))
+                .onChange((value) => {
+                  this.plugin.settings.excludeFilepaths = value.replaceAll("\n", " ")
+                    .split(",").map((path) => path.trim()).filter(Boolean);
+                  this.dirty = true;
+                });
+            });
+            setting.descEl.addClass("excalibrain-setting-wide");
+            setting.controlEl.addClass("excalibrain-setting-wide");
+          }),
+          define("NODETITLE_SCRIPT_NAME", "NODETITLE_SCRIPT_DESC", (setting) => {
+            setting.addTextArea((control) => {
+              control.inputEl.addClass("excalibrain-settings-textarea-200");
+              control.setValue(this.plugin.settings.nodeTitleScript)
+                .onChange((value) => { this.plugin.settings.nodeTitleScript = value; this.dirty = true; });
+            });
+            setting.descEl.addClass("excalibrain-setting-wide");
+            setting.controlEl.addClass("excalibrain-setting-wide");
+          }),
+        ],
+      },
+      {
+        type: "group",
+        heading: t("DISPLAY_HEAD"),
+        items: [
+          toggle("compactView", "COMPACT_VIEW_NAME", "COMPACT_VIEW_DESC"),
+          slider("COMPACTING_FACTOR_NAME", "COMPACTING_FACTOR_DESC", {min: 1, max: 2, step: 0.1},
+            () => this.plugin.settings.compactingFactor, (value) => { this.plugin.settings.compactingFactor = value; }),
+          slider("MINLINKLENGTH_NAME", "MINLINKLENGTH_DESC", {min: 0, max: 50, step: 1},
+            () => this.plugin.settings.minLinkLength, (value) => { this.plugin.settings.minLinkLength = value; }),
+          toggle("showFullTagName", "SHOW_FULL_TAG_PATH_NAME", "SHOW_FULL_TAG_PATH_DESC"),
+          slider("MAX_ITEMCOUNT_NAME", "MAX_ITEMCOUNT_DESC", {min: 5, max: 150, step: 5},
+            () => this.plugin.settings.maxItemCount, (value) => { this.plugin.settings.maxItemCount = value; }),
+          toggle("showNeighborCount", "SHOW_COUNT_NAME", "SHOW_COUNT_DESC"),
+          toggle("allowAutozoom", "ALLOW_AUTOZOOM_NAME", "ALLOW_AUTOZOOM_DESC"),
+          slider("MAX_AUTOZOOM_NAME", "MAX_AUTOZOOM_DESC", {min: 10, max: 1000, step: 10},
+            () => this.plugin.settings.maxZoom * 100, (value) => { this.plugin.settings.maxZoom = value / 100; }),
+          toggle("allowAutofocuOnSearch", "ALLOW_AUTOFOCUS_ON_SEARCH_NAME", "ALLOW_AUTOFOCUS_ON_SEARCH_DESC"),
+          toggle("defaultAlwaysOnTop", "ALWAYS_ON_TOP_NAME", "ALWAYS_ON_TOP_DESC"),
+          slider("EMBEDDED_FRAME_WIDTH_NAME", undefined, {min: 400, max: 1600, step: 50},
+            () => this.plugin.settings.centerEmbedWidth, (value) => { this.plugin.settings.centerEmbedWidth = value; }),
+          slider("EMBEDDED_FRAME_HEIGHT_NAME", undefined, {min: 400, max: 1600, step: 50},
+            () => this.plugin.settings.centerEmbedHeight, (value) => { this.plugin.settings.centerEmbedHeight = value; }),
+        ],
+      },
+      {type: "group", heading: t("STYLE_HEAD"), items: [styleEditor]},
+    ];
+  }
+
+  private loadDefinitionSettings(): Promise<void> {
+    if(!this.definitionSettingsLoad) {
+      // Re-rendering a tab must not reload over edits or an in-flight save.
+      this.definitionSettingsLoad = this.dirty || this.isPersistingSettings
+        ? Promise.resolve()
+        : this.plugin.loadSettings();
+    }
+    return this.definitionSettingsLoad;
   }
 
   get hierarchyStyleList(): string[] {
@@ -522,6 +837,8 @@ private normalizeSettings() {
   }
 
   hide(): void {
+    this.definitionRenderGeneration++;
+    this.definitionSettingsLoad = null;
     this.detachSettingsFocusoutHandler();
     if (this.dirty) {
       void this.executeSaveAndApply();
@@ -639,7 +956,7 @@ private normalizeSettings() {
   }
 
   numberslider(
-    containerEl: HTMLElement,
+    containerEl: HTMLElement | Setting,
     name: string,
     description: string,
     limits: {min:number,max:number,step:number},
@@ -653,7 +970,7 @@ private normalizeSettings() {
     let toggleComponent: ToggleComponent;
     let sliderComponent: SliderComponent;
 
-    const setting = new Setting(containerEl).setName(name);
+    const setting = (containerEl instanceof Setting ? containerEl : new Setting(containerEl)).setName(name);
 
     const setDisabled = (isDisabled:boolean) => {
       if(isDisabled) {
@@ -1383,7 +1700,7 @@ private normalizeSettings() {
 
   getUnusedFieldNames():string {
     const fieldSet = new Set<string>();
-    this.plugin.DVAPI.index.pages.forEach((p) => {
+    this.plugin.DVAPI?.index?.pages?.forEach((p) => {
       const keys:IterableIterator<string> = p?.fields.keys();
       if(!keys) return;
       let f;
@@ -1426,13 +1743,21 @@ private normalizeSettings() {
     return Array.from(fieldNameMap.keys()).sort((a,b)=>a.toLowerCase()<b.toLowerCase()?-1:1).join(", ")
   }
 
-  display(): void {
-    void this.displayAsync();
+  private renderSupport(containerEl: HTMLElement): void {
+    const coffeeDiv = containerEl.createDiv("coffee");
+    coffeeDiv.addClass("ex-coffee-div");
+    const coffeeLink = coffeeDiv.createEl("a", {
+      href: "https://ko-fi.com/zsolt",
+    });
+    const coffeeImg = coffeeLink.createEl("img", {
+      attr: {
+        src: "https://cdn.ko-fi.com/cdn/kofi3.png?v=3",
+      },
+    });
+    coffeeImg.height = 45;
   }
 
-  private async displayAsync(): Promise<void> {
-    await this.plugin.loadSettings(); //in case sync loaded changed settings in the background
-
+  private initializeDemo(): void {
     this.ea = getEA();
 
     //initialize sample 
@@ -1459,22 +1784,22 @@ private normalizeSettings() {
       friendGateOnLeft: true
     })
     this.demoNode.ea = this.ea;
-    this.demoNode.setCenter({x:0,y:0}) 
+    this.demoNode.setCenter({x:0,y:0})
+  }
+
+  display(): void {
+    void this.displayAsync();
+  }
+
+  private async displayAsync(): Promise<void> {
+    await this.plugin.loadSettings(); //in case sync loaded changed settings in the background
+
+    this.initializeDemo();
 
     const { containerEl } = this;
     this.containerEl.empty();
 
-    const coffeeDiv = containerEl.createDiv("coffee");
-    coffeeDiv.addClass("ex-coffee-div");
-    const coffeeLink = coffeeDiv.createEl("a", {
-      href: "https://ko-fi.com/zsolt",
-    });
-    const coffeeImg = coffeeLink.createEl("img", {
-      attr: {
-        src: "https://cdn.ko-fi.com/cdn/kofi3.png?v=3",
-      },
-    });
-    coffeeImg.height = 45;
+    this.renderSupport(containerEl);
 
     new Setting(containerEl)
       .setName(t("EXCALIBRAIN_FILE_NAME"))
@@ -1523,10 +1848,9 @@ private normalizeSettings() {
         5000
       )
     
-    this.containerEl.createEl("h1", {
-      cls: "excalibrain-settings-h1",
-      text: t("HIERARCHY_HEAD")
-    });
+    new Setting(containerEl)
+      .setName(t("HIERARCHY_HEAD"))
+      .setHeading();
     const hierarchyDesc = this.containerEl.createEl("p", {});
     hierarchyDesc.appendChild(fragWithHTML(t("HIERARCHY_DESC")));
 
@@ -1884,10 +2208,9 @@ private normalizeSettings() {
     // ------------------------------
     // Behavior
     // ------------------------------
-    this.containerEl.createEl("h1", {
-      cls: "excalibrain-settings-h1",
-      text: t("BEHAVIOR_HEAD") 
-    });
+    new Setting(containerEl)
+      .setName(t("BEHAVIOR_HEAD"))
+      .setHeading();
 
     //toggleEmbedTogglesAutoOpen: boolean;
     new Setting(containerEl)
@@ -1935,10 +2258,9 @@ private normalizeSettings() {
     // ------------------------------
     // Display
     // ------------------------------
-    this.containerEl.createEl("h1", {
-      cls: "excalibrain-settings-h1",
-      text: t("DISPLAY_HEAD") 
-    });
+    new Setting(containerEl)
+      .setName(t("DISPLAY_HEAD"))
+      .setHeading();
 
     new Setting(containerEl)
       .setName(t("COMPACT_VIEW_NAME"))
@@ -2137,13 +2459,51 @@ private normalizeSettings() {
     // ------------------------------
     // Style
     // ------------------------------
-    containerEl.createEl("h1", {
-      cls: "excalibrain-settings-h1",
-      text: t("STYLE_HEAD")
-    });
+    new Setting(containerEl)
+      .setName(t("STYLE_HEAD"))
+      .setHeading();
     const styleDesc = this.containerEl.createEl("p", {});
     styleDesc.appendChild(fragWithHTML(t("STYLE_DESC")));
 
+    onHierarchyChange = this.renderStyleSettings(containerEl, () => {
+      unassingedFieldsTextArea.setValue(this.getUnusedFieldNames());
+    });
+    this.attachSettingsFocusoutHandler();
+  }
+
+  /** Reconcile the model even when search renders only an ontology row. */
+  private syncHierarchyStyles(): void {
+    const hierarchyLinkStyles = this.plugin.settings.hierarchyLinkStyles
+    const linkStyles = this.plugin.linkStyles;
+
+    Object.keys(linkStyles).forEach(key => {
+      if(PREDEFINED_LINK_STYLES.contains(key)) {
+        return;
+      }
+      if(!this.hierarchyStyleList.contains(key)) {
+        delete linkStyles[key];
+        delete hierarchyLinkStyles[key];
+      }
+    });
+    this.hierarchyStyleList.forEach(dataviewfield => {
+      if(
+        !(Object.keys(hierarchyLinkStyles).contains(dataviewfield) ||
+        PREDEFINED_LINK_STYLES.contains(dataviewfield))
+      ) {
+        hierarchyLinkStyles[dataviewfield] = {};
+        linkStyles[dataviewfield] = {
+          style: hierarchyLinkStyles[dataviewfield],
+          allowOverride: true,
+          userStyle: true,
+          display: dataviewfield,
+          getInheritedStyle: () => this.plugin.settings.baseLinkStyle
+        }
+      }
+    });
+  }
+
+  /** The style controls and their previews are shared by both settings APIs. */
+  private renderStyleSettings(containerEl: HTMLElement, refreshUnassignedFields: () => void): () => void {
     this.colorpicker(
       containerEl,
       t("CANVAS_BGCOLOR"),
@@ -2378,35 +2738,11 @@ private normalizeSettings() {
       this.demoLinkStyle = ls;
       void this.updateLinkDemoImg();
 
-    onHierarchyChange = () => {
-      unassingedFieldsTextArea.setValue(this.getUnusedFieldNames());
-      const hierarchyLinkStyles = this.plugin.settings.hierarchyLinkStyles
+    const onHierarchyChange = () => {
+      refreshUnassignedFields();
+      this.syncHierarchyStyles();
       const linkStyles = this.plugin.linkStyles;
 
-      Object.keys(linkStyles).forEach(key => {
-        if(PREDEFINED_LINK_STYLES.contains(key)) {
-          return;
-        }
-        if(!this.hierarchyStyleList.contains(key)) {
-          delete linkStyles[key];
-          delete hierarchyLinkStyles[key];
-        }
-      });
-      this.hierarchyStyleList.forEach(dataviewfield => {
-        if(
-          !(Object.keys(hierarchyLinkStyles).contains(dataviewfield) ||
-          PREDEFINED_LINK_STYLES.contains(dataviewfield))
-        ) {
-          hierarchyLinkStyles[dataviewfield] = {};
-          linkStyles[dataviewfield] = {
-            style: hierarchyLinkStyles[dataviewfield],
-            allowOverride: true,
-            userStyle: true,
-            display: dataviewfield,
-            getInheritedStyle: () => this.plugin.settings.baseLinkStyle
-          }
-        }
-      });
       const selectedItem = linkStylesDropdown.getValue();
       for(let i=linkStylesDropdown.selectEl.options.length-1;i>=0;i--) {
         linkStylesDropdown.selectEl.remove(i);
@@ -2448,6 +2784,6 @@ private normalizeSettings() {
       }
     }
     onHierarchyChange();
-    this.attachSettingsFocusoutHandler();
+    return onHierarchyChange;
   }
 }

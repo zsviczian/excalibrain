@@ -173,10 +173,10 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
         // block for fixed-position descendants.
         inputEl.ownerDocument.body.appendChild(this.suggestEl);
         const rect = inputEl.getBoundingClientRect();
-        this.suggestEl.setCssProps({
-            "left": `${rect.left}px`,
-            "top": `${rect.bottom}px`,
-            "width": `${rect.width}px`,
+        this.suggestEl.setCssStyles({
+            left: `${rect.left}px`,
+            top: `${rect.bottom}px`,
+            width: `${rect.width}px`,
         });
     }
 
